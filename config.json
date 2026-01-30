@@ -1,0 +1,22 @@
+{
+  "server": {
+    "port": 3847
+  },
+  "user": {
+    "gitlabUsername": "damien",
+    "githubUsername": "damien"
+  },
+  "queue": {
+    "maxConcurrent": 2,
+    "deduplicationWindowMs": 300000
+  },
+  "repositories": [
+    {
+      "platform": "gitlab",
+      "remoteUrl": "https://gitlab.com/mentor-goal/main-app-v3",
+      "localPath": "/home/damien/Documents/Gitlab/main-app-v3/frontend",
+      "skill": "review-front",
+      "enabled": true
+    }
+  ]
+}
