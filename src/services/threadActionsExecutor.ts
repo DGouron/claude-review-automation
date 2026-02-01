@@ -1,6 +1,8 @@
 import { execSync } from 'node:child_process'
 import type { ThreadAction } from './threadActionsParser.js'
 
+const COMMAND_TIMEOUT_MS = 30000
+
 export interface ExecutionContext {
   platform: 'gitlab' | 'github'
   projectPath: string
@@ -180,6 +182,6 @@ export const defaultCommandExecutor: CommandExecutor = (
   execSync(`${command} ${args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')}`, {
     cwd,
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: COMMAND_TIMEOUT_MS,
   })
 }
