@@ -1,11 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { ReviewRequestTrackingGateway } from '../interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
 import {
   getPendingFixMrs,
   getPendingApprovalMrs,
   approveMr,
-} from '../services/mrTrackingService.js';
-import { logInfo, logError } from '../services/logService.js';
+} from '../../../services/mrTrackingService.js';
+import { logInfo, logError } from '../../../services/logService.js';
 
 interface MrTrackingRoutesOptions {
   reviewRequestTrackingGateway: ReviewRequestTrackingGateway;

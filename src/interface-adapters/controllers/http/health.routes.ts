@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { getQueueStats, getJobsStatus } from '../queue/reviewQueue.js';
+import { getQueueStats, getJobsStatus } from '../../../queue/reviewQueue.js';
 
 interface HealthRoutesOptions {
   getConfig: () => { version?: string };
