@@ -1,12 +1,12 @@
-import {
-  createInitialProgress,
-  calculateOverallProgress,
-  DEFAULT_AGENTS,
-  type ReviewProgress,
-  type AgentDefinition,
-  type AgentStatus,
-  type ReviewPhase,
-} from '../../../types/progress.js'
+import type {
+  ReviewProgress,
+  AgentStatus,
+  ReviewPhase,
+} from '../../../../entities/progress/progress.type.js'
+import type { AgentDefinition } from '../../../../entities/progress/agentDefinition.type.js'
+import { DEFAULT_AGENTS } from '../../../../entities/progress/agentDefinition.type.js'
+import { createInitialProgress } from '../../../../entities/progress/progress.factory.js'
+import { calculateOverallProgress } from '../../../../entities/progress/progress.calculator.js'
 
 describe('createInitialProgress', () => {
   describe('with default agents', () => {
