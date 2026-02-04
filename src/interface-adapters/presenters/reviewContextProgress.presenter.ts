@@ -1,6 +1,7 @@
 import type { ReviewContextProgress } from '../../entities/reviewContext/reviewContext.js'
-import type { ReviewProgress, ReviewPhase, AgentProgress } from '../../types/progress.js'
-import { DEFAULT_FOLLOWUP_AGENTS, calculateOverallProgress } from '../../types/progress.js'
+import type { ReviewProgress, ReviewPhase, AgentProgress } from '../../entities/progress/progress.type.js'
+import { DEFAULT_FOLLOWUP_AGENTS } from '../../entities/progress/agentDefinition.type.js'
+import { calculateOverallProgress } from '../../entities/progress/progress.calculator.js'
 
 export class ReviewContextProgressPresenter {
   toReviewProgress(contextProgress: ReviewContextProgress): ReviewProgress {

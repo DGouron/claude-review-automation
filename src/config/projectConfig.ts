@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AgentDefinition } from '../types/progress.js';
+import type { AgentDefinition } from '../entities/progress/agentDefinition.type.js';
 
 /**
  * Project-specific review configuration

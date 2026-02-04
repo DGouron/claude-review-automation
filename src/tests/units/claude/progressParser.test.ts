@@ -1,5 +1,6 @@
 import { ProgressParser, parseProgressMarkers } from '../../../claude/progressParser.js'
-import type { AgentDefinition, ProgressEvent } from '../../../types/progress.js'
+import type { AgentDefinition } from '../../../entities/progress/agentDefinition.type.js'
+import type { ProgressEvent } from '../../../entities/progress/progress.type.js'
 
 describe('ProgressParser', () => {
   const testAgents: AgentDefinition[] = [

@@ -14,9 +14,10 @@ import type {
   ReviewProgress,
   ProgressEvent,
   ProgressEventType,
-  AgentDefinition,
-} from '../types/progress.js';
-import { createInitialProgress, calculateOverallProgress } from '../types/progress.js';
+} from '../entities/progress/progress.type.js';
+import type { AgentDefinition } from '../entities/progress/agentDefinition.type.js';
+import { createInitialProgress } from '../entities/progress/progress.factory.js';
+import { calculateOverallProgress } from '../entities/progress/progress.calculator.js';
 
 // Regex patterns for parsing markers
 const PROGRESS_PATTERN = /\[PROGRESS:([a-z-]+):(started|completed|failed)(?::([^\]]+))?\]/gi;

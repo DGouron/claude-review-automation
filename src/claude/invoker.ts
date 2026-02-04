@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { Logger } from 'pino';
 import type { ReviewJob } from '../queue/reviewQueue.js';
-import type { ReviewProgress, ProgressEvent } from '../types/progress.js';
+import type { ReviewProgress, ProgressEvent } from '../entities/progress/progress.type.js';
 import { ProgressParser } from './progressParser.js';
 import { logInfo, logWarn, logError } from '../services/logService.js';
 import { getModel } from '../services/runtimeSettings.js';

@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import type { Logger } from 'pino';
 import { loadConfig } from '../config/loader.js';
-import type { ReviewProgress, ProgressEvent } from '../types/progress.js';
+import type { ReviewProgress, ProgressEvent } from '../entities/progress/progress.type.js';
 
 export interface ReviewJob {
   id: string; // Unique identifier: platform:project:mrNumber

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import type { ReviewProgress, ProgressEvent } from '../types/progress.js';
+import type { ReviewProgress, ProgressEvent } from '../entities/progress/progress.type.js';
 import type { Dependencies } from './dependencies.js';
 import { getJobsStatus, setProgressChangeCallback, setStateChangeCallback, updateJobProgress } from '../queue/reviewQueue.js';
 import { onLog, type LogEntry } from '../services/logService.js';
