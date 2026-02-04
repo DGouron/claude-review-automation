@@ -4,6 +4,27 @@
   "description": "Automatic code review trigger via webhooks for GitLab/GitHub MRs/PRs",
   "type": "module",
   "main": "dist/server.js",
+  "license": "MIT",
+  "author": "Damien Gouron",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DGouron/claude-review-automation.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DGouron/claude-review-automation/issues"
+  },
+  "homepage": "https://github.com/DGouron/claude-review-automation#readme",
+  "keywords": [
+    "code-review",
+    "claude",
+    "ai",
+    "webhook",
+    "gitlab",
+    "github",
+    "merge-request",
+    "pull-request",
+    "automation"
+  ],
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc && mkdir -p dist/interface-adapters/views && cp -r src/interface-adapters/views/dashboard dist/interface-adapters/views/",
