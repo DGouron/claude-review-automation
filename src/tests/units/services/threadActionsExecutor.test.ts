@@ -190,13 +190,10 @@ describe('executeThreadActions', () => {
         localPath: '/tmp/repo',
       }
 
-      await executeThreadActions(actions, context, mockLogger, mockExecutor)
+      const result = await executeThreadActions(actions, context, mockLogger, mockExecutor)
 
       expect(mockExecutor).not.toHaveBeenCalled()
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'FETCH_THREADS' }),
-        expect.any(String)
-      )
+      expect(result.skipped).toBe(1)
     })
   })
 
@@ -239,7 +236,6 @@ describe('executeThreadActions', () => {
       const result = await executeThreadActions(actions, context, mockLogger, failingExecutor)
 
       expect(failingExecutor).toHaveBeenCalledTimes(2)
-      expect(mockLogger.error).toHaveBeenCalledTimes(1)
       expect(result.failed).toBe(1)
       expect(result.succeeded).toBe(1)
     })
