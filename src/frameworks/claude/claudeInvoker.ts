@@ -1,4 +1,7 @@
 import { spawn } from 'node:child_process';
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import type { Logger } from 'pino';
 import type { ReviewJob } from '../../queue/reviewQueue.js';
 import type { ReviewProgress, ProgressEvent } from '../../entities/progress/progress.type.js';
@@ -9,6 +12,39 @@ import { getProjectAgents, getFollowupAgents } from '../../config/projectConfig.
 import { addReviewStats } from '../../services/statsService.js';
 import { getMrDetails } from '../../services/mrTrackingService.js';
 import { resolveClaudePath } from '../../shared/services/claudePathResolver.js';
+
+// MCP context file for passing job info to the MCP server
+const MCP_CONTEXT_DIR = join(homedir(), '.claude-review');
+const MCP_CONTEXT_FILE = join(MCP_CONTEXT_DIR, 'current-job.json');
+
+function writeMcpContext(job: ReviewJob): void {
+  try {
+    if (!existsSync(MCP_CONTEXT_DIR)) {
+      mkdirSync(MCP_CONTEXT_DIR, { recursive: true });
+    }
+    const mergeRequestId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
+    const context = {
+      jobId: job.id,
+      localPath: job.localPath,
+      mergeRequestId,
+      jobType: job.jobType || 'review',
+      timestamp: new Date().toISOString(),
+    };
+    writeFileSync(MCP_CONTEXT_FILE, JSON.stringify(context, null, 2));
+  } catch {
+    // Non-critical, MCP will work without context
+  }
+}
+
+function cleanupMcpContext(): void {
+  try {
+    if (existsSync(MCP_CONTEXT_FILE)) {
+      unlinkSync(MCP_CONTEXT_FILE);
+    }
+  } catch {
+    // Ignore cleanup errors
+  }
+}
 
 // Memory guard configuration
 const MEMORY_LIMIT_GB = 4; // Kill process if RSS exceeds 4GB
@@ -108,14 +144,16 @@ export async function invokeClaudeReview(
   const mcpSystemPrompt = buildMcpSystemPrompt(job);
 
   // Build arguments
-  // Note: --mcp-config was causing Claude to hang, disabled for now
-  // MCP server relies on config in ~/.claude/settings.json
+  // MCP server reads context from ~/.claude-review/current-job.json
   const args = [
     '--print',
     '--model', model,
     '--append-system-prompt', mcpSystemPrompt,
     '-p', prompt,
   ];
+
+  // Write MCP context file for the MCP server to read
+  writeMcpContext(job);
 
   logger.info(
     {
@@ -279,8 +317,9 @@ export async function invokeClaudeReview(
     });
 
     child.on('close', (code) => {
-      // Cleanup interval and abort listener
+      // Cleanup interval, abort listener, and MCP context
       clearInterval(memoryCheckInterval);
+      cleanupMcpContext();
       if (signal) {
         signal.removeEventListener('abort', abortHandler);
       }

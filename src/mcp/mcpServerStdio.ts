@@ -4,6 +4,9 @@ import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 import { createMcpDependencies } from "../main/mcpDependencies.js";
 import { ReviewContextFileSystemGateway } from "../interface-adapters/gateways/reviewContext.fileSystem.gateway.js";
 import { createGetWorkflowHandler } from "../interface-adapters/controllers/mcp/getWorkflow.handler.js";
@@ -22,6 +25,29 @@ interface McpJobContext {
 	jobType: "review" | "followup";
 }
 
+const MCP_CONTEXT_FILE = join(homedir(), ".claude-review", "current-job.json");
+
+function getJobContextFromFile(): McpJobContext | null {
+	try {
+		if (!existsSync(MCP_CONTEXT_FILE)) {
+			mcpLogger.debug("No context file found", { path: MCP_CONTEXT_FILE });
+			return null;
+		}
+		const content = readFileSync(MCP_CONTEXT_FILE, "utf-8");
+		const data = JSON.parse(content);
+		mcpLogger.info("Loaded job context from file", { path: MCP_CONTEXT_FILE, jobId: data.jobId });
+		return {
+			jobId: data.jobId,
+			localPath: data.localPath,
+			mergeRequestId: data.mergeRequestId,
+			jobType: data.jobType || "review",
+		};
+	} catch (error) {
+		mcpLogger.error("Failed to read context file", { error: String(error) });
+		return null;
+	}
+}
+
 function getJobContextFromEnv(): McpJobContext | null {
 	const jobId = process.env.MCP_JOB_ID;
 	const localPath = process.env.MCP_LOCAL_PATH;
@@ -33,6 +59,23 @@ function getJobContextFromEnv(): McpJobContext | null {
 	}
 
 	return { jobId, localPath, mergeRequestId, jobType };
+}
+
+function getJobContext(): McpJobContext | null {
+	// Try env vars first (for backward compatibility), then file
+	const fromEnv = getJobContextFromEnv();
+	if (fromEnv) {
+		mcpLogger.info("Using job context from env vars");
+		return fromEnv;
+	}
+
+	const fromFile = getJobContextFromFile();
+	if (fromFile) {
+		mcpLogger.info("Using job context from file");
+		return fromFile;
+	}
+
+	return null;
 }
 
 const TOOL_DEFINITIONS = [
@@ -130,8 +173,8 @@ export async function startMcpServer(): Promise<void> {
 	const reviewContextGateway = new ReviewContextFileSystemGateway();
 	const mcpDeps = createMcpDependencies({ reviewContextGateway });
 
-	const jobContext = getJobContextFromEnv();
-	mcpLogger.info("Job context from env", {
+	const jobContext = getJobContext();
+	mcpLogger.info("Job context loaded", {
 		hasContext: !!jobContext,
 		jobId: jobContext?.jobId,
 		localPath: jobContext?.localPath,
