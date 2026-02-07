@@ -136,19 +136,4 @@ ngrok http 3000
 
 ## Troubleshooting
 
-### Webhook returns 401
-
-- Verify your webhook token matches the one in `.env`
-- Check server logs: `yarn dev` shows all requests
-
-### Review doesn't start
-
-1. Check the repository is in `config.json` with `enabled: true`
-2. Verify your username matches the one in `config.json`
-3. Ensure the MR/PR is not a draft
-
-### Claude Code fails
-
-- Verify the local path exists and is a git repository
-- Check Claude Code is authenticated: `claude --version`
-- Verify the skill exists in the target project
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues (webhooks, reviews, Claude Code).

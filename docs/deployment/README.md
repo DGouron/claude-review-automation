@@ -139,32 +139,4 @@ sudo systemctl start claude-review
 
 ## Troubleshooting
 
-### Service won't start
-
-```bash
-# Check logs
-journalctl -u claude-review -n 50
-
-# Common issues:
-# - Wrong path in service file
-# - Missing .env file
-# - Node.js not found (check /usr/bin/node exists)
-```
-
-### Tunnel not connecting
-
-```bash
-# Check tunnel status
-cloudflared tunnel info claude-review
-
-# Verify config
-cloudflared tunnel ingress validate
-
-# Check DNS
-dig review.your-domain.com
-```
-
-### Webhook returns 401
-
-- Verify token in `.env` matches GitLab/GitHub webhook config
-- Check service is running: `systemctl status claude-review`
+See [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) for common issues (services, tunnels, webhooks).

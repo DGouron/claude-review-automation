@@ -198,27 +198,7 @@ Your skill should emit matching progress markers:
 
 ## Troubleshooting
 
-### Common Errors
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Review not triggered | Webhook not received | Check webhook configuration |
-| No stats recorded | Missing REVIEW_STATS marker | Add marker to skill output |
-| Thread not resolved | Invalid thread ID | Fetch correct ID from platform API |
-| Progress stuck | Missing PROGRESS markers | Add progress tracking to skill |
-
-### Debugging Tips
-
-1. **Check server logs**: Review automation logs show all parsed markers
-2. **Verify skill invocation**: Check Claude Code output manually
-3. **Test markers locally**: Run skill and grep for `[MARKER:]` patterns
-4. **Dashboard monitoring**: Watch real-time progress on the web dashboard
-
-### Log Locations
-
-- Server logs: stdout (piped to your log system)
-- Review stats: `.claude/reviews/stats.json`
-- MR tracking: `.claude/reviews/tracking.json`
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues. For skill-specific debugging, test locally with `claude -p "/my-review 123"` and grep for `\[` to verify markers.
 
 ---
 
