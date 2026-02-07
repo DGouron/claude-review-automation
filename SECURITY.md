@@ -4,7 +4,7 @@
 
 **Please DO NOT open a public issue for security vulnerabilities.**
 
-If you discover a security vulnerability, please report it privately by emailing the maintainers. Include:
+If you discover a security vulnerability, please report it privately by emailing **damien.gouron@gmail.com**. Include:
 
 1. Description of the vulnerability
 2. Steps to reproduce

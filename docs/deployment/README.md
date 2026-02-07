@@ -1,3 +1,12 @@
+---
+title: Deployment Guide
+scope: guide
+related:
+  - docs/deployment/templates/
+  - docs/TROUBLESHOOTING.md
+last-updated: 2026-02-07
+---
+
 # Deployment Guide
 
 Run Claude Review Automation in production on a Linux VPS.
@@ -15,7 +24,23 @@ This guide covers:
 - `cloudflared` installed ([download](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/))
 - A domain on Cloudflare (for permanent URL)
 
-## Quick Setup
+## Quick Test (Temporary Tunnel)
+
+For testing without permanent setup. The URL changes on each restart.
+
+```bash
+# Terminal 1: Server
+cd ~/claude-review-automation
+yarn install && yarn build
+yarn start
+
+# Terminal 2: Tunnel
+cloudflared tunnel --url http://localhost:3000
+```
+
+Copy the generated URL and use it for your webhook configuration.
+
+## Production Setup
 
 ### 1. Build the project
 
@@ -123,32 +148,4 @@ sudo systemctl start claude-review
 
 ## Troubleshooting
 
-### Service won't start
-
-```bash
-# Check logs
-journalctl -u claude-review -n 50
-
-# Common issues:
-# - Wrong path in service file
-# - Missing .env file
-# - Node.js not found (check /usr/bin/node exists)
-```
-
-### Tunnel not connecting
-
-```bash
-# Check tunnel status
-cloudflared tunnel info claude-review
-
-# Verify config
-cloudflared tunnel ingress validate
-
-# Check DNS
-dig review.your-domain.com
-```
-
-### Webhook returns 401
-
-- Verify token in `.env` matches GitLab/GitHub webhook config
-- Check service is running: `systemctl status claude-review`
+See [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) for common issues (services, tunnels, webhooks).

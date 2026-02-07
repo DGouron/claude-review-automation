@@ -1,3 +1,13 @@
+---
+title: Review Skills Guide
+scope: guide
+related:
+  - docs/MARKERS-REFERENCE.md
+  - docs/MCP-TOOLS-REFERENCE.md
+  - templates/SKILL.md.template
+last-updated: 2026-02-07
+---
+
 # Review Skills Guide
 
 This guide explains how to create custom code review skills for claude-review-automation.
@@ -102,61 +112,9 @@ Create `.claude/reviews/config.json` in your project:
 
 ## Markers Reference
 
-Skills communicate with the automation server through markers in their output.
+Skills communicate with the automation server through markers (`[MARKER_TYPE:params]`) in their output. The most important marker is `[REVIEW_STATS:blocking=N:warnings=N:suggestions=N:score=N]` which is required for metrics tracking.
 
-### Progress Markers
-
-Track review progress in real-time on the dashboard:
-
-```
-[PROGRESS:agent-name:started]     # Agent started working
-[PROGRESS:agent-name:completed]   # Agent finished successfully
-[PROGRESS:agent-name:failed:msg]  # Agent failed with error message
-```
-
-### Phase Markers
-
-Indicate current review phase:
-
-```
-[PHASE:initializing]    # Setup phase
-[PHASE:agents-running]  # Agents are analyzing code
-[PHASE:synthesizing]    # Combining agent results
-[PHASE:publishing]      # Posting results
-[PHASE:completed]       # Review finished
-```
-
-### Stats Marker
-
-Report review statistics (required for metrics):
-
-```
-[REVIEW_STATS:blocking=2:warnings=5:suggestions=3:score=7.5]
-```
-
-| Parameter | Description |
-|-----------|-------------|
-| `blocking` | Number of blocking issues (must fix) |
-| `warnings` | Number of warnings (should fix) |
-| `suggestions` | Number of suggestions (nice to have) |
-| `score` | Overall score out of 10 |
-
-### Thread Action Markers
-
-Execute platform actions after review completion:
-
-```
-[THREAD_REPLY:threadId:Your message here]  # Reply to a thread
-[THREAD_RESOLVE:threadId]                   # Resolve/close a thread
-[POST_COMMENT:Your global comment]          # Post a MR/PR comment
-[FETCH_THREADS]                             # Sync threads (reserved)
-```
-
-**Note**: Thread IDs vary by platform:
-- **GitLab**: Discussion ID (e.g., `abc123def456`)
-- **GitHub**: Review thread node ID (e.g., `PRRT_kwDOAbc123...`)
-
-See [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md) for complete details.
+For full marker syntax, parameters, and platform commands, see [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md). For the MCP tool equivalent, see [MCP-TOOLS-REFERENCE.md](./MCP-TOOLS-REFERENCE.md).
 
 ## Skill Structure
 
@@ -199,29 +157,7 @@ Sample outputs for reference.
 
 ## Platform-Specific Commands
 
-The server automatically translates markers to platform commands.
-
-### GitLab Commands
-
-| Marker | Executed Command |
-|--------|------------------|
-| `[THREAD_REPLY:id:msg]` | `glab api --method POST "projects/.../discussions/id/notes" --field body='msg'` |
-| `[THREAD_RESOLVE:id]` | `glab api --method PUT "projects/.../discussions/id" --field resolved=true` |
-| `[POST_COMMENT:msg]` | `glab api --method POST "projects/.../notes" --field body='msg'` |
-
-### GitHub Commands
-
-| Marker | Executed Command |
-|--------|------------------|
-| `[THREAD_REPLY:id:msg]` | `gh api --method POST "repos/.../pulls/.../comments/id/replies" --field body='msg'` |
-| `[THREAD_RESOLVE:id]` | `gh api graphql -f query='mutation { resolveReviewThread(...) }'` |
-| `[POST_COMMENT:msg]` | `gh api --method POST "repos/.../issues/.../comments" --field body='msg'` |
-
-### Getting Thread IDs
-
-**GitLab**: Use `glab api "projects/ENCODED_PATH/merge_requests/NUMBER/discussions"`
-
-**GitHub**: Use `gh api "repos/OWNER/REPO/pulls/NUMBER/comments"` or GraphQL
+The server automatically translates markers to platform API calls (GitLab `glab` / GitHub `gh`). See [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md) for the full command mapping and thread ID format per platform.
 
 ## Advanced Topics
 
@@ -272,27 +208,7 @@ Your skill should emit matching progress markers:
 
 ## Troubleshooting
 
-### Common Errors
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Review not triggered | Webhook not received | Check webhook configuration |
-| No stats recorded | Missing REVIEW_STATS marker | Add marker to skill output |
-| Thread not resolved | Invalid thread ID | Fetch correct ID from platform API |
-| Progress stuck | Missing PROGRESS markers | Add progress tracking to skill |
-
-### Debugging Tips
-
-1. **Check server logs**: Review automation logs show all parsed markers
-2. **Verify skill invocation**: Check Claude Code output manually
-3. **Test markers locally**: Run skill and grep for `[MARKER:]` patterns
-4. **Dashboard monitoring**: Watch real-time progress on the web dashboard
-
-### Log Locations
-
-- Server logs: stdout (piped to your log system)
-- Review stats: `.claude/reviews/stats.json`
-- MR tracking: `.claude/reviews/tracking.json`
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues. For skill-specific debugging, test locally with `claude -p "/my-review 123"` and grep for `\[` to verify markers.
 
 ---
 
