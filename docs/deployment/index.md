@@ -1,10 +1,5 @@
 ---
 title: Deployment Guide
-scope: guide
-related:
-  - docs/deployment/templates/
-  - docs/TROUBLESHOOTING.md
-last-updated: 2026-02-07
 ---
 
 # Deployment Guide

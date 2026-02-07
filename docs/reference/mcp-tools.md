@@ -1,16 +1,10 @@
 ---
 title: MCP Tools Reference
-scope: reference
-related:
-  - src/mcp/
-  - src/interface-adapters/controllers/mcp/
-  - src/usecases/mcp/
-last-updated: 2026-02-07
 ---
 
 # MCP Tools Reference
 
-Reference for all MCP tools. Unlike text markers (see `MARKERS-REFERENCE.md`), MCP tools provide structured communication with immediate feedback.
+Reference for all MCP tools. Unlike text markers (see [Markers Reference](./markers.md)), MCP tools provide structured communication with immediate feedback.
 
 **Server**: `dist/mcpServer.js` | **Config**: `~/.claude/settings.json` → `mcpServers.review-progress` | **Logs**: `~/.claude-review/logs/mcp-server.log`
 

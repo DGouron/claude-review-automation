@@ -108,7 +108,7 @@ Create `.claude/reviews/config.json` in your project:
 
 Skills communicate with the automation server through markers (`[MARKER_TYPE:params]`) in their output. The most important marker is `[REVIEW_STATS:blocking=N:warnings=N:suggestions=N:score=N]` which is required for metrics tracking.
 
-For full marker syntax, parameters, and platform commands, see [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md). For the MCP tool equivalent, see [MCP-TOOLS-REFERENCE.md](./MCP-TOOLS-REFERENCE.md).
+For full marker syntax, parameters, and platform commands, see [Markers Reference](../reference/markers.md). For the MCP tool equivalent, see [MCP Tools Reference](../reference/mcp-tools.md).
 
 ## Skill Structure
 
@@ -151,7 +151,7 @@ Sample outputs for reference.
 
 ## Platform-Specific Commands
 
-The server automatically translates markers to platform API calls (GitLab `glab` / GitHub `gh`). See [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md) for the full command mapping and thread ID format per platform.
+The server automatically translates markers to platform API calls (GitLab `glab` / GitHub `gh`). See [Markers Reference](../reference/markers.md) for the full command mapping and thread ID format per platform.
 
 ## Advanced Topics
 
@@ -208,6 +208,6 @@ See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues. For skill-spec
 
 ## See Also
 
-- [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md) - Complete markers reference
-- [CONFIG-REFERENCE.md](./CONFIG-REFERENCE.md) - Configuration options
+- [Markers Reference](../reference/markers.md) - Complete markers reference
+- [Configuration Reference](../reference/config.md) - Configuration options
 - [examples/skills/](../examples/skills/) - Example skills
