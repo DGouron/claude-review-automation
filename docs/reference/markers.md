@@ -1,10 +1,5 @@
 ---
 title: Markers Reference
-scope: reference
-related:
-  - src/interface-adapters/presenters/
-  - docs/MCP-TOOLS-REFERENCE.md
-last-updated: 2026-02-07
 ---
 
 # Markers Reference
@@ -139,7 +134,7 @@ Or inline emoji markers (counted):
 
 These markers trigger platform API calls after review completion.
 
-> **MCP equivalent**: These actions can also be performed via MCP tools using `add_action`. See [MCP-TOOLS-REFERENCE.md](./MCP-TOOLS-REFERENCE.md) for the structured alternative.
+> **MCP equivalent**: These actions can also be performed via MCP tools using `add_action`. See [MCP Tools Reference](./mcp-tools.md) for the structured alternative.
 
 ### `[THREAD_REPLY:threadId:message]`
 

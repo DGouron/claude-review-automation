@@ -1,11 +1,5 @@
 ---
 title: MCP Review Progress Specification
-scope: spec
-related:
-  - docs/MCP-TOOLS-REFERENCE.md
-  - docs/mcp/MCP-ARCHITECTURE.md
-  - src/mcpServer.ts
-last-updated: 2026-02-07
 ---
 
 # MCP Review Progress - Specification
@@ -47,7 +41,7 @@ Create a local **MCP Server** that exposes standardized tools for progress track
 
 ## MCP Tools
 
-For full tool parameters and examples, see [MCP-TOOLS-REFERENCE.md](../MCP-TOOLS-REFERENCE.md).
+For full tool parameters and examples, see [MCP Tools Reference](../../reference/mcp-tools.md).
 
 ### Tool Summary
 

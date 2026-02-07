@@ -1,10 +1,5 @@
 ---
 title: Ubiquitous Language
-scope: reference
-related:
-  - src/entities/
-  - docs/ARCHITECTURE-TARGET.md
-last-updated: 2026-02-07
 ---
 
 # Ubiquitous Language - Code Review Automation
@@ -148,4 +143,4 @@ MR (MergeRequest), PR (PullRequest), VO (Value Object), ACL (Anti-Corruption Lay
 
 ## Architecture Patterns
 
-For the full architecture with gateways, adapters, ACLs, and use cases, see [ARCHITECTURE-TARGET.md](./ARCHITECTURE-TARGET.md).
+For the full architecture with gateways, adapters, ACLs, and use cases, see [Target Architecture](../architecture/target.md).

@@ -1,10 +1,5 @@
 ---
 title: Quick Start
-scope: guide
-related:
-  - docs/deployment/README.md
-  - docs/CONFIG-REFERENCE.md
-last-updated: 2026-02-07
 ---
 
 # Quick Start
@@ -139,10 +134,10 @@ ngrok http 3000
 
 ## Next steps
 
-- [Project Configuration](./PROJECT_CONFIG.md) - Configure review skills per project
-- [Deployment Guide](./deployment/README.md) - Run in production with systemd
-- [Architecture](./ARCHITECTURE.md) - Understand the codebase
+- [Project Configuration](./project-config.md) - Configure review skills per project
+- [Deployment Guide](../deployment/index.md) - Run in production with systemd
+- [Architecture](../architecture/current.md) - Understand the codebase
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues (webhooks, reviews, Claude Code).
+See [Troubleshooting](./troubleshooting.md) for common issues (webhooks, reviews, Claude Code).

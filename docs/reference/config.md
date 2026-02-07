@@ -1,11 +1,5 @@
 ---
 title: Configuration Reference
-scope: reference
-related:
-  - config.example.json
-  - .env.example
-  - src/config/
-last-updated: 2026-02-07
 ---
 
 # Configuration Reference
@@ -181,5 +175,5 @@ Configuration files are validated at startup. Common errors: missing required fi
 
 ## See Also
 
-- [REVIEW-SKILLS-GUIDE.md](./REVIEW-SKILLS-GUIDE.md) - How to create skills
-- [MARKERS-REFERENCE.md](./MARKERS-REFERENCE.md) - Marker syntax reference
+- [Review Skills Guide](../guide/review-skills.md) - How to create skills
+- [Markers Reference](./markers.md) - Marker syntax reference
