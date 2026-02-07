@@ -202,7 +202,7 @@ Your skill should emit matching progress markers:
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues. For skill-specific debugging, test locally with `claude -p "/my-review 123"` and grep for `\[` to verify markers.
+See [Troubleshooting](./troubleshooting.md) for common issues. For skill-specific debugging, test locally with `claude -p "/my-review 123"` and grep for `\[` to verify markers.
 
 ---
 
@@ -210,4 +210,4 @@ See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues. For skill-spec
 
 - [Markers Reference](../reference/markers.md) - Complete markers reference
 - [Configuration Reference](../reference/config.md) - Configuration options
-- [examples/skills/](../examples/skills/) - Example skills
+- [Example Skills](https://github.com/DGouron/claude-review-automation/tree/master/examples/skills) - Example skills

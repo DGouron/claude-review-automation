@@ -140,4 +140,4 @@ ngrok http 3000
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues (webhooks, reviews, Claude Code).
+See [Troubleshooting](./troubleshooting.md) for common issues (webhooks, reviews, Claude Code).

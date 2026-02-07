@@ -162,7 +162,7 @@ MCP tools provide structured JSON with immediate feedback, real-time WebSocket d
 
 Logs: `tail -f ~/.claude-review/logs/mcp-server.log`
 
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common MCP issues.
+See [Troubleshooting](../guide/troubleshooting.md) for common MCP issues.
 
 ## Integration with Skills
 

@@ -143,4 +143,4 @@ sudo systemctl start claude-review
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) for common issues (services, tunnels, webhooks).
+See [Troubleshooting](../guide/troubleshooting.md) for common issues (services, tunnels, webhooks).
