@@ -1,447 +1,198 @@
 # Claude Review Automation
 
-Automated code review system using Claude Code. Receives webhooks from GitHub/GitLab and triggers AI-powered code reviews on merge requests and pull requests.
+[![CI](https://github.com/DGouron/claude-review-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/DGouron/claude-review-automation/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 
-## Features
+Automated AI code reviews powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Assign a reviewer on your merge request — Claude reviews the code, tracks progress in real time, and follows up when you push fixes.
 
-- Webhook-driven code reviews for GitHub PRs and GitLab MRs
-- Real-time progress tracking via WebSocket
-- Customizable review skills per project
-- Dashboard for monitoring reviews
-- Support for multiple projects
-
----
-
-## Table of Contents
-
-1. [Quick Start](#quick-start)
-2. [CLI Setup](#cli-setup)
-3. [Webhook Configuration](#webhook-configuration)
-4. [Project Configuration](#project-configuration)
-5. [Review Skills](#review-skills)
-6. [Dashboard](#dashboard)
-7. [Troubleshooting](#troubleshooting)
+Works with **GitLab** and **GitHub** out of the box.
 
 ---
 
-## Quick Start
+## How It Works
 
-### 1. Install Dependencies
-
-```bash
-npm install
 ```
-
-### 2. Build & Run
-
-```bash
-npm run build
-npm start
+Developer pushes code
+       │
+       ▼
+GitLab/GitHub webhook ──► Review server receives event
+                                    │
+                                    ▼
+                          Queue deduplicates & schedules
+                                    │
+                                    ▼
+                          Claude Code runs review skill
+                                    │
+                          ┌─────────┼─────────┐
+                          ▼         ▼         ▼
+                     Agent 1   Agent 2   Agent N
+                   (Archi)    (Tests)   (Quality)
+                          │         │         │
+                          └─────────┼─────────┘
+                                    ▼
+                          MCP server reports progress
+                                    │
+                                    ▼
+                          Dashboard shows live status
+                                    │
+                                    ▼
+                          Review posted on MR/PR
+                                    │
+                                    ▼
+                          Dev pushes fixes ──► Auto follow-up
 ```
-
-The dashboard will be available at `http://localhost:3847`
-
-### 3. Configure CLI + Webhook
-
-See [CLI Setup](#cli-setup) and [Webhook Configuration](#webhook-configuration) below.
 
 ---
 
-## CLI Setup
+## Key Features
 
-The review automation uses the official CLI tools to interact with GitHub/GitLab.
+### Multi-Agent Reviews
 
-### GitLab (glab)
-
-```bash
-# Install glab
-sudo apt install glab
-# or: brew install glab
-
-# Authenticate (interactive)
-glab auth login
-```
-
-This will open a browser for OAuth authentication. Follow the prompts.
-
-### GitHub (gh)
-
-```bash
-# Install gh
-sudo apt install gh
-# or: brew install gh
-
-# Authenticate (interactive)
-gh auth login
-```
-
-This will open a browser for OAuth authentication. Follow the prompts.
-
-> **Note**: No Personal Access Tokens needed! Both CLIs use secure OAuth authentication.
-
----
-
-## Webhook Configuration
-
-### Using a Tunnel (for local development)
-
-For local development, you need a tunnel to expose your local server:
-
-```bash
-# Using Cloudflare Tunnel (recommended, free)
-cloudflared tunnel --url http://localhost:3847
-
-# Using ngrok
-ngrok http 3847
-```
-
-The tunnel will give you a public URL like `https://xxx-xxx.trycloudflare.com`
-
-### GitLab Webhook
-
-1. Go to your GitLab project → **Settings** → **Webhooks**
-2. Click **Add new webhook**
-3. Configure:
-
-| Field | Value |
-|-------|-------|
-| **URL** | `https://<your-tunnel-url>/webhooks/gitlab` |
-| **Secret token** | (optional) Set in `.env` as `GITLAB_WEBHOOK_TOKEN` |
-| **Trigger** | ☑ Merge request events |
-| **SSL verification** | ☑ Enable |
-
-4. Click **Add webhook**
-5. Test with **Test** → **Merge request events**
-
-### GitHub Webhook
-
-1. Go to your GitHub repository → **Settings** → **Webhooks**
-2. Click **Add webhook**
-3. Configure:
-
-| Field | Value |
-|-------|-------|
-| **Payload URL** | `https://<your-tunnel-url>/webhooks/github` |
-| **Content type** | `application/json` |
-| **Secret** | (optional) Set in `.env` as `GITHUB_WEBHOOK_SECRET` |
-| **Events** | ☑ Pull requests |
-
-4. Click **Add webhook**
-
-### Triggering Reviews on GitHub
-
-Reviews are triggered when:
-
-1. **Someone requests you as a reviewer** - The standard way
-2. **The `needs-review` label is added** - Useful for solo projects (GitHub doesn't allow self-review requests)
-
-> **Tip for solo projects**: Since you can't request yourself as a reviewer on your own PRs, use the `needs-review` label to trigger reviews.
-
----
-
-## Project Configuration
-
-Each project needs a configuration file to enable reviews.
-
-### Create Config File
-
-Create `.claude/reviews/config.json` in your project:
-
-```json
-{
-  "github": false,
-  "gitlab": true,
-  "defaultModel": "opus",
-  "reviewSkill": "review-front",
-  "reviewFollowupSkill": "review-followup"
-}
-```
-
-### Configuration Options
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `github` | boolean | Enable GitHub integration |
-| `gitlab` | boolean | Enable GitLab integration |
-| `defaultModel` | string | Claude model: `opus` (powerful) or `sonnet` (fast) |
-| `reviewSkill` | string | Skill name for initial reviews |
-| `reviewFollowupSkill` | string | Skill name for follow-up reviews |
-| `agents` | array | (Optional) Custom review agents list |
-
-> **Note**: Set either `github: true` OR `gitlab: true`, not both.
-
-### Review Agents Configuration
-
-The `agents` field is optional. If not provided, default agents will be used. Each agent represents a specialized reviewer that tracks its own progress.
+Each review runs a configurable set of specialized audit agents — Clean Architecture, SOLID, Testing, DDD, Code Quality, and more. Define your own agents per project to match your team's standards.
 
 ```json
 {
   "agents": [
     { "name": "clean-architecture", "displayName": "Clean Archi" },
-    { "name": "ddd", "displayName": "DDD" },
-    { "name": "react-best-practices", "displayName": "React" },
-    { "name": "solid", "displayName": "SOLID" },
-    { "name": "testing", "displayName": "Testing" },
-    { "name": "code-quality", "displayName": "Code Quality" }
+    { "name": "security", "displayName": "Security" },
+    { "name": "testing", "displayName": "Testing" }
   ]
 }
 ```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | string | Unique identifier (kebab-case). Must match markers emitted by your skill |
-| `displayName` | string | Name displayed in the dashboard |
+### MCP Integration
 
-### Real-time Progress Tracking
+A built-in [Model Context Protocol](https://modelcontextprotocol.io/) server gives Claude structured tools to report progress, manage review phases, and queue actions on discussion threads — replacing fragile text-marker parsing with typed tool calls.
 
-For the dashboard to display real-time progress, your review skill must emit progress markers in its output:
+| MCP Tool | Purpose |
+|----------|---------|
+| `get_workflow` | Read current review state and agent list |
+| `start_agent` / `complete_agent` | Track per-agent progress |
+| `set_phase` | Advance review phases |
+| `get_threads` | Fetch MR/PR discussion threads |
+| `add_action` | Queue thread actions (resolve, reply, comment) |
 
-**Phase markers:**
-```
-[PHASE:initializing]     # Starting up
-[PHASE:agents-running]   # Agents are running
-[PHASE:synthesizing]     # Synthesizing results
-[PHASE:publishing]       # Publishing to GitLab/GitHub
-[PHASE:completed]        # Done
-```
+### Smart Queue
 
-**Agent markers:**
-```
-[PROGRESS:agent-name:started]       # Agent started
-[PROGRESS:agent-name:completed]     # Agent completed successfully
-[PROGRESS:agent-name:failed:msg]    # Agent failed with error message
-```
+Powered by [p-queue](https://github.com/sindresorhus/p-queue) with:
 
-**Example:** Add tracking instructions to sub-agent prompts in your `SKILL.md`:
+- **Concurrency control** — limit parallel reviews (default: 2)
+- **Deduplication** — prevents duplicate reviews within a configurable time window
+- **Graceful cancellation** — abort running reviews via dashboard or API
+- **Memory guard** — auto-kills if RSS exceeds 4 GB
+- **Retry on failure** — failed jobs clear deduplication so they can be re-triggered immediately
 
-```markdown
-**Tracking**:
-- At START: output `[PROGRESS:clean-architecture:started]`
-- At END: output `[PROGRESS:clean-architecture:completed]`
-- On error: output `[PROGRESS:clean-architecture:failed:description]`
-```
+### Real-Time Dashboard
 
-### Server Configuration
+A WebSocket-powered dashboard shows live review progress:
 
-The main server config is in `config.json`:
+- Phase and agent-level progress bars
+- Running / queued / completed review counts
+- Review history with duration, scores, and error details
+- Log stream for debugging
+- Auto-reconnection with exponential backoff
 
-```json
-{
-  "server": {
-    "port": 3847
-  },
-  "user": {
-    "gitlabUsername": "your-username",
-    "githubUsername": "your-username"
-  },
-  "queue": {
-    "maxConcurrent": 2,
-    "deduplicationWindowMs": 300000
-  },
-  "repositories": [
-    {
-      "platform": "gitlab",
-      "remoteUrl": "https://gitlab.com/your-org/your-repo",
-      "localPath": "/path/to/local/clone",
-      "skill": "review-front",
-      "enabled": true
-    }
-  ]
-}
-```
+### Follow-Up Reviews
 
-### Environment Variables
+When a developer pushes fixes after a review, Claude automatically:
 
-Create a `.env` file:
+1. Re-reads the discussion threads
+2. Checks if blocking issues are resolved
+3. Resolves threads on GitLab/GitHub
+4. Posts a follow-up summary with updated score
 
-```env
-GITLAB_WEBHOOK_TOKEN=your-secret-token
-GITHUB_WEBHOOK_SECRET=your-secret-token
-LOG_LEVEL=info
-```
+This creates an iterative review loop, not just a one-shot check.
+
+### Multi-Platform Support
+
+| Feature | GitLab | GitHub |
+|---------|--------|--------|
+| Webhook trigger | Reviewer assigned | Review requested or `needs-review` label |
+| Thread actions | Resolve, reply, comment | Resolve, reply, comment |
+| Auto-followup | On MR push | On PR push |
+| Authentication | `glab` CLI (OAuth) | `gh` CLI (OAuth) |
+
+No API tokens needed — both platforms use secure CLI-based OAuth.
+
+### Customizable Review Skills
+
+Review behavior is defined by [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) — Markdown files in your project that tell Claude what to audit and how. Templates included for frontend, backend, and API reviews in English and French.
 
 ---
 
-## Review Skills
-
-Review skills are Claude Code skills that define how reviews are performed.
-
-### Skill Location
-
-Skills must be in your project at:
-```
-.claude/skills/<skill-name>/SKILL.md
-```
-
-### Skill Format
-
-```markdown
----
-name: review-front
-description: Code review skill for frontend projects
----
-
-# Review Instructions
-
-[Your review instructions for Claude...]
-```
-
-### Templates
-
-See the `templates/` directory for ready-to-use templates:
-
-| File | Description |
-|------|-------------|
-| `config.json.template` | Project configuration with agents |
-| `SKILL.md.template` | Review skill template with all markers |
-| `SETUP.md` | Complete setup instructions |
-
-#### Quick Setup
+## Quick Start
 
 ```bash
-# 1. Copy config template
-cp templates/config.json.template /path/to/project/.claude/reviews/config.json
+# Install
+git clone https://github.com/DGouron/claude-review-automation.git
+cd claude-review-automation
+npm install
 
-# 2. Copy skill template
-mkdir -p /path/to/project/.claude/skills/review-front
-cp templates/SKILL.md.template /path/to/project/.claude/skills/review-front/SKILL.md
+# Configure
+cp .env.example .env
+cp config.example.json config.json
+# Edit config.json with your repositories
 
-# 3. Customize both files
+# Build & run
+npm run build
+npm start
+# Dashboard at http://localhost:3847
 ```
 
-### Stats Parsing
+Then [configure a webhook](docs/QUICKSTART.md) on your GitLab/GitHub project pointing to your server.
 
-For accurate review statistics, your skill must emit a stats line:
-
-```
-[REVIEW_STATS:blocking=1:warnings=2:suggestions=3:score=7.5]
-```
-
-This ensures the dashboard correctly tracks:
-- Number of blocking issues
-- Number of warnings/important issues
-- Number of suggestions
-- Global review score
+For detailed setup, see the **[Quick Start Guide](docs/QUICKSTART.md)**.
 
 ---
 
-## Dashboard
+## Documentation
 
-Access the dashboard at `http://localhost:3847`
-
-### Features
-
-- **Project Loader**: Load and switch between project configurations
-- **CLI Status**: Verify GitHub/GitLab CLI authentication
-- **Queue Monitoring**: View running and queued reviews
-- **Review History**: Browse past review reports
-- **Real-time Updates**: WebSocket-based live progress
-
-### Loading a Project
-
-1. Enter the project path (e.g., `/home/user/my-project`)
-2. Click "Charger"
-3. The dashboard validates:
-   - Config file exists
-   - Required skills exist
-   - Shows active platform (GitHub/GitLab)
+| Topic | Link |
+|-------|------|
+| Quick Start | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
+| Configuration Reference | [docs/CONFIG-REFERENCE.md](docs/CONFIG-REFERENCE.md) |
+| Project Configuration | [docs/PROJECT_CONFIG.md](docs/PROJECT_CONFIG.md) |
+| Review Skills Guide | [docs/REVIEW-SKILLS-GUIDE.md](docs/REVIEW-SKILLS-GUIDE.md) |
+| MCP Tools Reference | [docs/MCP-TOOLS-REFERENCE.md](docs/MCP-TOOLS-REFERENCE.md) |
+| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Deployment | [docs/deployment/README.md](docs/deployment/README.md) |
+| Troubleshooting | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Full Documentation Index | [docs/INDEX.md](docs/INDEX.md) |
 
 ---
 
-## API Endpoints
+## API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Redirect to dashboard |
 | `/dashboard/` | GET | Web dashboard |
 | `/health` | GET | Health check |
 | `/status` | GET | Queue status |
-| `/webhooks/gitlab` | POST | GitLab webhook |
-| `/webhooks/github` | POST | GitHub webhook |
-| `/api/project-config` | GET | Load project config |
-| `/api/gitlab/status` | GET | GitLab CLI status |
-| `/api/github/status` | GET | GitHub CLI status |
+| `/webhooks/gitlab` | POST | GitLab webhook receiver |
+| `/webhooks/github` | POST | GitHub webhook receiver |
 | `/api/reviews` | GET | List reviews |
 | `/api/reviews/cancel/:jobId` | POST | Cancel a running review |
-| `/ws` | WebSocket | Real-time updates |
-
----
-
-## Troubleshooting
-
-### Dashboard shows "Hors ligne"
-
-Server is not running.
-
-```bash
-npm run build
-npm start
-```
-
-### CLI not authenticated
-
-Run the authentication command:
-
-```bash
-# GitLab
-glab auth login
-
-# GitHub
-gh auth login
-```
-
-### Webhook fails (401 Unauthorized)
-
-Token mismatch. Check that:
-- `.env` has the correct `GITLAB_WEBHOOK_TOKEN` or `GITHUB_WEBHOOK_SECRET`
-- GitLab/GitHub webhook has the same secret configured
-
-### Webhook fails (Connection refused)
-
-Tunnel is not running or URL changed.
-
-```bash
-# Restart tunnel
-cloudflared tunnel --url http://localhost:3847
-
-# Update webhook URL in GitLab/GitHub
-```
-
-### Review doesn't start
-
-Check the logs and verify:
-- **GitLab**: You are assigned as **Reviewer** (not Assignee)
-- **GitHub**: Either you are requested as reviewer, OR the `needs-review` label is added
-- MR/PR is not a draft
-- MR/PR is not already merged/closed
-- Project is in `config.json` repositories
-- Your username matches config
-
-### Skills not found
-
-Verify skill paths exist:
-```bash
-ls -la /path/to/project/.claude/skills/review-front/SKILL.md
-ls -la /path/to/project/.claude/skills/review-followup/SKILL.md
-```
+| `/ws` | WS | Real-time progress updates |
 
 ---
 
 ## Development
 
 ```bash
-# Development with hot reload
-npm run dev
-
-# Build
-npm run build
-
-# Type check
-npm run typecheck
+npm run dev          # Dev server with hot reload
+npm test             # Tests in watch mode
+npm run test:ci      # Tests (CI mode)
+npm run typecheck    # TypeScript validation
+npm run lint         # Biome linting
+npm run verify       # All checks (typecheck + lint + test)
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
 ## License
 
-MIT
+[MIT](LICENSE) — Damien Gouron
