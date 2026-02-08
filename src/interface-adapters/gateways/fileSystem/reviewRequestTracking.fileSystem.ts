@@ -4,7 +4,9 @@ import type {
   ReviewRequestTrackingGateway,
   Platform,
 } from '../reviewRequestTracking.gateway.js';
-import type { MrTrackingData, TrackedMr, ReviewEvent } from '../../../services/mrTrackingService.js';
+import type { MrTrackingData } from '../../../entities/tracking/mrTrackingData.js';
+import type { TrackedMr } from '../../../entities/tracking/trackedMr.js';
+import type { ReviewEvent } from '../../../entities/tracking/reviewEvent.js';
 
 function getTrackingPath(projectPath: string): string {
   return join(projectPath, '.claude', 'reviews', 'mr-tracking.json');

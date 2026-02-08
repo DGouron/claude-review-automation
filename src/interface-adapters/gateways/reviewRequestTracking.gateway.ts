@@ -1,4 +1,6 @@
-import type { MrTrackingData, TrackedMr, ReviewEvent } from '../../services/mrTrackingService.js';
+import type { MrTrackingData } from '../../entities/tracking/mrTrackingData.js';
+import type { TrackedMr } from '../../entities/tracking/trackedMr.js';
+import type { ReviewEvent } from '../../entities/tracking/reviewEvent.js';
 
 export type Platform = 'gitlab' | 'github';
 

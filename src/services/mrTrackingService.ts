@@ -2,105 +2,17 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 
-/**
- * Review event - each review or followup on a MR
- */
-export interface ReviewEvent {
-  type: 'review' | 'followup';
-  timestamp: string;
-  durationMs: number;
-  score: number | null;
-  blocking: number;
-  warnings: number;
-  suggestions: number;
-  threadsClosed: number;
-  threadsOpened: number;
-}
+import type { ReviewEvent } from '../entities/tracking/reviewEvent.js';
+import type { AssignmentInfo } from '../entities/tracking/assignmentInfo.js';
+import type { TrackedMr } from '../entities/tracking/trackedMr.js';
+import type { MrTrackingData, ProjectStats } from '../entities/tracking/mrTrackingData.js';
+import { createEmptyStats } from '../entities/tracking/mrTrackingData.js';
+export { createTrackedMrId } from '../entities/tracking/trackedMr.js';
 
-/**
- * Assignment info - who assigned the review
- */
-export interface AssignmentInfo {
-  username: string;
-  displayName?: string;
-  assignedAt: string;
-}
-
-/**
- * Tracked MR with full history
- */
-export interface TrackedMr {
-  id: string;
-  mrNumber: number;
-  title: string;
-  url: string;
-  project: string;
-  platform: 'gitlab' | 'github';
-  sourceBranch: string;
-  targetBranch: string;
-
-  // Assignment tracking
-  assignment: AssignmentInfo;
-
-  // Current state
-  state: 'pending-review' | 'pending-fix' | 'pending-approval' | 'approved' | 'merged' | 'closed';
-  openThreads: number;
-  totalThreads: number;
-
-  // Timeline
-  createdAt: string;
-  lastReviewAt: string | null;
-  lastPushAt: string | null;
-  approvedAt: string | null;
-  mergedAt: string | null;
-
-  // Review history
-  reviews: ReviewEvent[];
-
-  // Aggregated stats
-  totalReviews: number;
-  totalFollowups: number;
-  totalBlocking: number;
-  totalWarnings: number;
-  totalSuggestions: number;
-  totalDurationMs: number;
-  averageScore: number | null;
-  latestScore: number | null;
-
-  autoFollowup: boolean;
-}
-
-/**
- * Project MR tracking data
- */
-export interface MrTrackingData {
-  mrs: TrackedMr[];
-  lastUpdated: string;
-
-  // Global project stats (computed)
-  stats: {
-    totalMrs: number;
-    totalReviews: number;
-    totalFollowups: number;
-    averageReviewsPerMr: number;
-    averageTimeToApproval: number | null; // ms
-    topAssigners: Array<{ username: string; count: number }>;
-  };
-}
+export type { ReviewEvent, AssignmentInfo, TrackedMr, MrTrackingData, ProjectStats };
 
 function getTrackingPath(projectPath: string): string {
   return join(projectPath, '.claude', 'reviews', 'mr-tracking.json');
-}
-
-function createEmptyStats(): MrTrackingData['stats'] {
-  return {
-    totalMrs: 0,
-    totalReviews: 0,
-    totalFollowups: 0,
-    averageReviewsPerMr: 0,
-    averageTimeToApproval: null,
-    topAssigners: [],
-  };
 }
 
 function recalculateStats(data: MrTrackingData): void {
