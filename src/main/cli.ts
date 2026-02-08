@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCliArgs } from '../cli/parseCliArgs.js';
 import { validateDependencies } from '../shared/services/dependencyChecker.js';
@@ -31,33 +31,58 @@ Options:
 `);
 }
 
-const args = parseCliArgs(process.argv.slice(2));
+export interface StartDependencies {
+  validateDependencies: () => { name: string; installUrl: string }[];
+  startServer: () => Promise<unknown>;
+  exit: (code: number) => void;
+  error: (...args: unknown[]) => void;
+}
 
-switch (args.command) {
-  case 'version':
-    console.log(readVersion());
-    break;
-
-  case 'help':
-    printHelp();
-    break;
-
-  case 'start': {
-    if (!args.skipDependencyCheck) {
-      const missing = validateDependencies();
-      if (missing.length > 0) {
-        console.error('Missing dependencies:');
-        for (const dep of missing) {
-          console.error(`  - ${dep.name}: ${dep.installUrl}`);
-        }
-        process.exit(1);
+export function executeStart(
+  skipDependencyCheck: boolean,
+  deps: StartDependencies,
+): void {
+  if (!skipDependencyCheck) {
+    const missing = deps.validateDependencies();
+    if (missing.length > 0) {
+      deps.error('Missing dependencies:');
+      for (const dep of missing) {
+        deps.error(`  - ${dep.name}: ${dep.installUrl}`);
       }
+      deps.exit(1);
+      return;
     }
+  }
 
-    startServer().catch((err) => {
-      console.error('Fatal error:', err);
-      process.exit(1);
-    });
-    break;
+  deps.startServer().catch((err) => {
+    deps.error('Fatal error:', err);
+    deps.exit(1);
+  });
+}
+
+const isDirectlyExecuted =
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectlyExecuted) {
+  const args = parseCliArgs(process.argv.slice(2));
+
+  switch (args.command) {
+    case 'version':
+      console.log(readVersion());
+      break;
+
+    case 'help':
+      printHelp();
+      break;
+
+    case 'start':
+      executeStart(args.skipDependencyCheck, {
+        validateDependencies,
+        startServer,
+        exit: process.exit,
+        error: console.error,
+      });
+      break;
   }
 }

@@ -6,6 +6,8 @@ interface DependencyInfo {
   installUrl: string;
 }
 
+type CommandExecutor = (command: string, options?: object) => Buffer | string;
+
 const REQUIRED_DEPENDENCIES: DependencyInfo[] = [
   {
     name: 'Claude Code CLI',
@@ -24,19 +26,24 @@ const REQUIRED_DEPENDENCIES: DependencyInfo[] = [
   },
 ];
 
-export function checkDependency(dep: { name: string; command: string }): boolean {
+export function checkDependency(
+  dep: { name: string; command: string },
+  executor: CommandExecutor = execSync,
+): boolean {
   try {
-    execSync(dep.command, { stdio: 'pipe' });
+    executor(dep.command, { stdio: 'pipe' });
     return true;
   } catch {
     return false;
   }
 }
 
-export function validateDependencies(): DependencyInfo[] {
+export function validateDependencies(
+  executor: CommandExecutor = execSync,
+): DependencyInfo[] {
   const missing: DependencyInfo[] = [];
   for (const dep of REQUIRED_DEPENDENCIES) {
-    if (!checkDependency(dep)) {
+    if (!checkDependency(dep, executor)) {
       missing.push(dep);
     }
   }
