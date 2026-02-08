@@ -76,6 +76,38 @@ export class InMemoryReviewRequestTrackingGateway implements ReviewRequestTracki
     this.storage.set(projectPath, data);
   }
 
+  getByState(projectPath: string, state: TrackedMr['state']): TrackedMr[] {
+    const data = this.storage.get(projectPath);
+    if (!data) return [];
+
+    return data.mrs.filter((mr) => mr.state === state);
+  }
+
+  getActiveMrs(projectPath: string): TrackedMr[] {
+    const data = this.storage.get(projectPath);
+    if (!data) return [];
+
+    return data.mrs.filter((mr) => mr.state !== 'merged' && mr.state !== 'closed');
+  }
+
+  remove(projectPath: string, reviewRequestId: string): boolean {
+    const data = this.storage.get(projectPath);
+    if (!data) return false;
+
+    const index = data.mrs.findIndex((mr) => mr.id === reviewRequestId);
+    if (index === -1) return false;
+
+    data.mrs.splice(index, 1);
+    data.stats.totalMrs = data.mrs.length;
+    data.lastUpdated = new Date().toISOString();
+    this.storage.set(projectPath, data);
+    return true;
+  }
+
+  archive(projectPath: string, reviewRequestId: string): boolean {
+    return this.remove(projectPath, reviewRequestId);
+  }
+
   recordReviewEvent(
     projectPath: string,
     reviewRequestId: string,

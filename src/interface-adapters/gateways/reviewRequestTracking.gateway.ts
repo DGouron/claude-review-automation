@@ -22,6 +22,11 @@ export interface ReviewRequestTrackingGateway {
     updates: Partial<TrackedMr>
   ): void;
 
+  getByState(projectPath: string, state: TrackedMr['state']): TrackedMr[];
+  getActiveMrs(projectPath: string): TrackedMr[];
+  remove(projectPath: string, reviewRequestId: string): boolean;
+  archive(projectPath: string, reviewRequestId: string): boolean;
+
   recordReviewEvent(
     projectPath: string,
     reviewRequestId: string,

@@ -114,6 +114,37 @@ export class FileSystemReviewRequestTrackingGateway implements ReviewRequestTrac
     this.saveTracking(projectPath, data);
   }
 
+  getByState(projectPath: string, state: TrackedMr['state']): TrackedMr[] {
+    const data = this.loadTracking(projectPath);
+    if (!data) return [];
+
+    return data.mrs.filter((mr) => mr.state === state);
+  }
+
+  getActiveMrs(projectPath: string): TrackedMr[] {
+    const data = this.loadTracking(projectPath);
+    if (!data) return [];
+
+    return data.mrs.filter((mr) => mr.state !== 'merged' && mr.state !== 'closed');
+  }
+
+  remove(projectPath: string, reviewRequestId: string): boolean {
+    const data = this.loadTracking(projectPath);
+    if (!data) return false;
+
+    const index = data.mrs.findIndex((mr) => mr.id === reviewRequestId);
+    if (index === -1) return false;
+
+    data.mrs.splice(index, 1);
+    data.stats.totalMrs = data.mrs.length;
+    this.saveTracking(projectPath, data);
+    return true;
+  }
+
+  archive(projectPath: string, reviewRequestId: string): boolean {
+    return this.remove(projectPath, reviewRequestId);
+  }
+
   recordReviewEvent(
     projectPath: string,
     reviewRequestId: string,
