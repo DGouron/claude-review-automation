@@ -124,23 +124,31 @@ Review behavior is defined by [Claude Code skills](https://docs.anthropic.com/en
 
 ## Quick Start
 
+### Install globally
+
 ```bash
-# Install
 npm install -g reviewflow
+# or
+yarn global add reviewflow
+```
 
-# Or clone for development
-git clone https://github.com/DGouron/reviewflow.git
-cd reviewflow
-npm install
+### Or run directly with npx
 
+```bash
+npx reviewflow --help
+npx reviewflow start
+```
+
+### Configure & run
+
+```bash
 # Configure
 cp .env.example .env
 cp config.example.json config.json
 # Edit config.json with your repositories
 
-# Build & run
-npm run build
-npm start
+# Start the server
+reviewflow start
 # Dashboard at http://localhost:3847
 ```
 

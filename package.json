@@ -17,6 +17,14 @@
     "url": "https://github.com/DGouron/reviewflow/issues"
   },
   "homepage": "https://github.com/DGouron/reviewflow#readme",
+  "files": [
+    "dist/",
+    "templates/",
+    "scripts/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "keywords": [
     "code-review",
     "claude",
@@ -26,7 +34,8 @@
     "github",
     "merge-request",
     "pull-request",
-    "automation"
+    "automation",
+    "reviewflow"
   ],
   "scripts": {
     "dev": "tsx watch src/main/cli.ts start --skip-dependency-check",
