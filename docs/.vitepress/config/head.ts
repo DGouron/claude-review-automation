@@ -1,6 +1,6 @@
 import type { HeadConfig } from "vitepress";
 
-const siteUrl = "https://dgouron.github.io/reviewflow/";
+const siteUrl = "https://dgouron.github.io/review-flow/";
 const title = "Reviewflow";
 const description =
 	"AI-powered code review automation for GitLab and GitHub";

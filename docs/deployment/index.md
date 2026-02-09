@@ -61,18 +61,18 @@ nano config.json  # Add your repos
 
 ```bash
 # Copy template
-sudo cp docs/deployment/templates/claude-review.service /etc/systemd/system/
+sudo cp docs/deployment/templates/review-flow.service /etc/systemd/system/
 
 # Edit with your values
-sudo nano /etc/systemd/system/claude-review.service
+sudo nano /etc/systemd/system/review-flow.service
 # Replace YOUR_USER and paths
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable --now claude-review
+sudo systemctl enable --now review-flow
 
 # Check status
-sudo systemctl status claude-review
+sudo systemctl status review-flow
 ```
 
 ### 4. Set up Cloudflare Tunnel
@@ -82,11 +82,11 @@ sudo systemctl status claude-review
 cloudflared tunnel login
 
 # Create tunnel
-cloudflared tunnel create claude-review
+cloudflared tunnel create review-flow
 # Note the tunnel ID
 
 # Configure DNS
-cloudflared tunnel route dns claude-review review.your-domain.com
+cloudflared tunnel route dns review-flow review.your-domain.com
 
 # Create config
 mkdir -p ~/.cloudflared
@@ -95,33 +95,33 @@ nano ~/.cloudflared/config.yml
 # Replace YOUR_TUNNEL_ID, YOUR_USER, and domain
 
 # Install tunnel service
-sudo cp docs/deployment/templates/cloudflared.service /etc/systemd/system/cloudflared-claude-review.service
-sudo nano /etc/systemd/system/cloudflared-claude-review.service
+sudo cp docs/deployment/templates/cloudflared.service /etc/systemd/system/cloudflared-review-flow.service
+sudo nano /etc/systemd/system/cloudflared-review-flow.service
 # Replace YOUR_USER
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable --now cloudflared-claude-review
+sudo systemctl enable --now cloudflared-review-flow
 ```
 
 ### 5. Verify
 
 ```bash
 # Check services
-sudo systemctl status claude-review
-sudo systemctl status cloudflared-claude-review
+sudo systemctl status review-flow
+sudo systemctl status cloudflared-review-flow
 
 # Test endpoint
 curl https://review.your-domain.com/health
 
 # View logs
-journalctl -u claude-review -f
+journalctl -u review-flow -f
 ```
 
 ## Templates
 
 See the `templates/` directory for:
-- `claude-review.service` - systemd unit for the server
+- `review-flow.service` - systemd unit for the server
 - `cloudflared.service` - systemd unit for the tunnel
 - `cloudflared-config.yml` - Cloudflare tunnel configuration
 
@@ -129,7 +129,7 @@ See the `templates/` directory for:
 
 ```bash
 # Stop service
-sudo systemctl stop claude-review
+sudo systemctl stop review-flow
 
 # Update code
 cd ~/reviewflow
@@ -138,7 +138,7 @@ yarn install
 yarn build
 
 # Restart
-sudo systemctl start claude-review
+sudo systemctl start review-flow
 ```
 
 ## Troubleshooting

@@ -11,8 +11,8 @@ Common issues and solutions for Reviewflow.
 ### Webhook returns 401
 
 - Verify your webhook token in `.env` matches the one configured in GitLab/GitHub
-- Check server logs: `journalctl -u claude-review -n 50` (production) or `yarn dev` output (development)
-- Check the service is running: `systemctl status claude-review`
+- Check server logs: `journalctl -u review-flow -n 50` (production) or `yarn dev` output (development)
+- Check the service is running: `systemctl status review-flow`
 
 ### Review doesn't start
 
@@ -26,7 +26,7 @@ Common issues and solutions for Reviewflow.
 ### Service won't start
 
 ```bash
-journalctl -u claude-review -n 50
+journalctl -u review-flow -n 50
 ```
 
 Common causes:
@@ -38,7 +38,7 @@ Common causes:
 
 ```bash
 # Check tunnel status
-cloudflared tunnel info claude-review
+cloudflared tunnel info review-flow
 
 # Verify config
 cloudflared tunnel ingress validate
@@ -47,7 +47,7 @@ cloudflared tunnel ingress validate
 dig review.your-domain.com
 
 # Restart tunnel
-sudo systemctl restart cloudflared-claude-review
+sudo systemctl restart cloudflared-review-flow
 ```
 
 ## Claude Code
@@ -65,12 +65,12 @@ sudo systemctl restart cloudflared-claude-review
 
 - The MCP server only starts when Claude actually calls a tool
 - Ensure `--print` mode and MCP server config are both set
-- Check `~/.claude-review/logs/mcp-server.log`
+- Check `~/.review-flow/logs/mcp-server.log`
 
 ### "Workflow not found" error
 
 - Check `MCP_JOB_ID` env var is set correctly
-- Verify the job context file exists: `~/.claude-review/jobs/<jobId>.json`
+- Verify the job context file exists: `~/.review-flow/jobs/<jobId>.json`
 
 ### Tools listed but not callable
 
@@ -81,7 +81,7 @@ sudo systemctl restart cloudflared-claude-review
 
 | Log | Location |
 |-----|----------|
-| Server logs | stdout / `journalctl -u claude-review -f` |
-| MCP server | `~/.claude-review/logs/mcp-server.log` |
+| Server logs | stdout / `journalctl -u review-flow -f` |
+| MCP server | `~/.review-flow/logs/mcp-server.log` |
 | Review stats | `.claude/reviews/stats.json` (in project) |
 | MR tracking | `.claude/reviews/tracking.json` (in project) |
