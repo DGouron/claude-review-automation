@@ -233,6 +233,9 @@ export async function invokeClaudeReview(
   const args = [
     '--print',
     '--model', model,
+    // Override user's global defaultMode (e.g. "plan" in ~/.claude/settings.json)
+    // Without this, reviews hang waiting for plan approval indefinitely
+    '--permission-mode', 'bypassPermissions',
     '--append-system-prompt', mcpSystemPrompt,
     // Grant permissions for review operations (automated, no user to approve)
     // - Core tools: Read, Glob, Grep, Bash, Edit, Task, Skill, Write, LSP
