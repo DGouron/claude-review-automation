@@ -7,7 +7,7 @@ export default defineConfig({
 	title: "Reviewflow",
 	description:
 		"AI-powered code review automation for GitLab and GitHub",
-	base: "/reviewflow/",
+	base: "/review-flow/",
 
 	lastUpdated: true,
 	cleanUrls: true,
@@ -29,13 +29,13 @@ export default defineConfig({
 		socialLinks: [
 			{
 				icon: "github",
-				link: "https://github.com/DGouron/reviewflow",
+				link: "https://github.com/DGouron/review-flow",
 			},
 		],
 
 		editLink: {
 			pattern:
-				"https://github.com/DGouron/reviewflow/edit/master/docs/:path",
+				"https://github.com/DGouron/review-flow/edit/master/docs/:path",
 			text: "Edit this page on GitHub",
 		},
 

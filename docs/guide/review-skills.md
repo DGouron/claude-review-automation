@@ -210,4 +210,4 @@ See [Troubleshooting](./troubleshooting.md) for common issues. For skill-specifi
 
 - [Markers Reference](../reference/markers.md) - Complete markers reference
 - [Configuration Reference](../reference/config.md) - Configuration options
-- [Example Skills](https://github.com/DGouron/reviewflow/tree/master/examples/skills) - Example skills
+- [Example Skills](https://github.com/DGouron/review-flow/tree/master/examples/skills) - Example skills

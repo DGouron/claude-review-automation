@@ -11,12 +11,12 @@
   "author": "Damien Gouron",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DGouron/reviewflow.git"
+    "url": "https://github.com/DGouron/review-flow.git"
   },
   "bugs": {
-    "url": "https://github.com/DGouron/reviewflow/issues"
+    "url": "https://github.com/DGouron/review-flow/issues"
   },
-  "homepage": "https://github.com/DGouron/reviewflow#readme",
+  "homepage": "https://github.com/DGouron/review-flow#readme",
   "files": [
     "dist/",
     "templates/",
