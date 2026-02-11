@@ -2,12 +2,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { formatStartupBanner } from '../../../cli/startupBanner.js';
 
 describe('formatStartupBanner', () => {
+  const originalNoColor = process.env.NO_COLOR;
+
   beforeEach(() => {
     process.env.NO_COLOR = '1';
   });
 
   afterEach(() => {
-    process.env.NO_COLOR = undefined;
+    if (originalNoColor === undefined) {
+      // biome-ignore lint/performance/noDelete: process.env requires delete to truly unset
+      delete process.env.NO_COLOR;
+    } else {
+      process.env.NO_COLOR = originalNoColor;
+    }
   });
 
   it('should return dashboard URL', () => {

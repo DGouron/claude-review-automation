@@ -1,9 +1,9 @@
-import { execSync as defaultExecSync } from 'node:child_process';
+import { execFileSync as defaultExecFileSync } from 'node:child_process';
 import { platform as defaultPlatform } from 'node:os';
 
 interface BrowserOpenerDeps {
   platform: string;
-  execSync: (command: string) => unknown;
+  execFileSync: (command: string, args: string[]) => unknown;
 }
 
 const PLATFORM_COMMANDS: Record<string, string> = {
@@ -14,13 +14,13 @@ const PLATFORM_COMMANDS: Record<string, string> = {
 
 export function openInBrowser(
   url: string,
-  deps: BrowserOpenerDeps = { platform: defaultPlatform(), execSync: defaultExecSync },
+  deps: BrowserOpenerDeps = { platform: defaultPlatform(), execFileSync: defaultExecFileSync },
 ): void {
   const command = PLATFORM_COMMANDS[deps.platform];
   if (!command) return;
 
   try {
-    deps.execSync(`${command} "${url}"`);
+    deps.execFileSync(command, [url]);
   } catch {
     // silently ignore — missing xdg-open or similar should not crash the CLI
   }

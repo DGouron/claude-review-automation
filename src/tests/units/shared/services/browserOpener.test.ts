@@ -3,36 +3,36 @@ import { openInBrowser } from '../../../../shared/services/browserOpener.js';
 
 describe('openInBrowser', () => {
   it('should call xdg-open on linux', () => {
-    const execSync = vi.fn();
-    openInBrowser('http://localhost:3000', { platform: 'linux', execSync });
+    const execFileSync = vi.fn();
+    openInBrowser('http://localhost:3000', { platform: 'linux', execFileSync });
 
-    expect(execSync).toHaveBeenCalledWith('xdg-open "http://localhost:3000"');
+    expect(execFileSync).toHaveBeenCalledWith('xdg-open', ['http://localhost:3000']);
   });
 
   it('should call open on darwin', () => {
-    const execSync = vi.fn();
-    openInBrowser('http://localhost:3000', { platform: 'darwin', execSync });
+    const execFileSync = vi.fn();
+    openInBrowser('http://localhost:3000', { platform: 'darwin', execFileSync });
 
-    expect(execSync).toHaveBeenCalledWith('open "http://localhost:3000"');
+    expect(execFileSync).toHaveBeenCalledWith('open', ['http://localhost:3000']);
   });
 
   it('should call start on win32', () => {
-    const execSync = vi.fn();
-    openInBrowser('http://localhost:3000', { platform: 'win32', execSync });
+    const execFileSync = vi.fn();
+    openInBrowser('http://localhost:3000', { platform: 'win32', execFileSync });
 
-    expect(execSync).toHaveBeenCalledWith('start "http://localhost:3000"');
+    expect(execFileSync).toHaveBeenCalledWith('start', ['http://localhost:3000']);
   });
 
   it('should not throw on unsupported platform', () => {
-    const execSync = vi.fn();
+    const execFileSync = vi.fn();
 
-    expect(() => openInBrowser('http://localhost:3000', { platform: 'freebsd', execSync })).not.toThrow();
-    expect(execSync).not.toHaveBeenCalled();
+    expect(() => openInBrowser('http://localhost:3000', { platform: 'freebsd', execFileSync })).not.toThrow();
+    expect(execFileSync).not.toHaveBeenCalled();
   });
 
   it('should not throw when command fails', () => {
-    const execSync = vi.fn(() => { throw new Error('command not found'); });
+    const execFileSync = vi.fn(() => { throw new Error('command not found'); });
 
-    expect(() => openInBrowser('http://localhost:3000', { platform: 'linux', execSync })).not.toThrow();
+    expect(() => openInBrowser('http://localhost:3000', { platform: 'linux', execFileSync })).not.toThrow();
   });
 });
