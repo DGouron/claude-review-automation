@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCliArgs } from '../cli/parseCliArgs.js';
@@ -236,7 +236,7 @@ function createPidFileDeps() {
 
 const isDirectlyExecuted =
   process.argv[1] &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  realpathSync(resolve(process.argv[1])) === fileURLToPath(import.meta.url);
 
 if (isDirectlyExecuted) {
   const args = parseCliArgs(process.argv.slice(2));
