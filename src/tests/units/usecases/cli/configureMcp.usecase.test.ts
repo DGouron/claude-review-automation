@@ -76,16 +76,26 @@ describe('ConfigureMcpUseCase', () => {
   });
 
   it('should update mcp config when path has changed', () => {
-    const existingSettings = {
+    const existingSettings = JSON.stringify({
       mcpServers: {
         'review-progress': {
           command: 'node',
           args: ['/old/path/mcpServer.js'],
         },
       },
-    };
+    });
+    const updatedSettings = JSON.stringify({
+      mcpServers: {
+        'review-progress': {
+          command: 'node',
+          args: ['/path/to/dist/mcpServer.js'],
+        },
+      },
+    });
     const deps = createFakeDeps({
-      readFileSync: vi.fn(() => JSON.stringify(existingSettings)),
+      readFileSync: vi.fn()
+        .mockReturnValueOnce(existingSettings)
+        .mockReturnValueOnce(updatedSettings),
     });
     const usecase = new ConfigureMcpUseCase(deps);
 
@@ -96,18 +106,27 @@ describe('ConfigureMcpUseCase', () => {
   });
 
   it('should preserve existing mcp servers when adding review-progress', () => {
-    const existingSettings = {
+    const existingSettings = JSON.stringify({
       mcpServers: {
         'other-server': { command: 'python', args: ['server.py'] },
       },
-    };
+    });
+    const updatedSettings = JSON.stringify({
+      mcpServers: {
+        'other-server': { command: 'python', args: ['server.py'] },
+        'review-progress': { command: 'node', args: ['/path/to/dist/mcpServer.js'] },
+      },
+    });
     const deps = createFakeDeps({
-      readFileSync: vi.fn(() => JSON.stringify(existingSettings)),
+      readFileSync: vi.fn()
+        .mockReturnValueOnce(existingSettings)
+        .mockReturnValueOnce(updatedSettings),
     });
     const usecase = new ConfigureMcpUseCase(deps);
 
-    usecase.execute();
+    const result = usecase.execute();
 
+    expect(result).toBe('configured');
     const writtenContent = JSON.parse(
       (deps.writeFileSync as ReturnType<typeof vi.fn>).mock.calls[0][1],
     );
@@ -116,8 +135,15 @@ describe('ConfigureMcpUseCase', () => {
   });
 
   it('should backup settings before modifying', () => {
+    const validWrittenSettings = JSON.stringify({
+      mcpServers: {
+        'review-progress': { command: 'node', args: ['/path/to/dist/mcpServer.js'] },
+      },
+    });
     const deps = createFakeDeps({
-      readFileSync: vi.fn(() => '{}'),
+      readFileSync: vi.fn()
+        .mockReturnValueOnce('{}')
+        .mockReturnValueOnce(validWrittenSettings),
     });
     const usecase = new ConfigureMcpUseCase(deps);
 
