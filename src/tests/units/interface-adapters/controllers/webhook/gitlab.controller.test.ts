@@ -52,6 +52,7 @@ vi.mock('../../../../../config/projectConfig.js', () => ({
   loadProjectConfig: vi.fn(() => null),
   getProjectAgents: vi.fn(() => null),
   getFollowupAgents: vi.fn(() => null),
+  getProjectLanguage: vi.fn(() => 'en'),
 }));
 
 vi.mock('../../../../../../interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({

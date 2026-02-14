@@ -3,17 +3,18 @@ import { writeFileSync, mkdirSync, existsSync, unlinkSync, readFileSync } from '
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Logger } from 'pino';
-import type { ReviewJob } from '../queue/pQueueAdapter.js';
-import type { ReviewProgress, ProgressEvent } from '../../entities/progress/progress.type.js';
-import { ProgressParser } from './progressParser.js';
-import { logInfo, logWarn, logError } from '../logging/logBuffer.js';
-import { getModel } from '../settings/runtimeSettings.js';
-import { getProjectAgents, getFollowupAgents } from '../../config/projectConfig.js';
-import { addReviewStats } from '../../services/statsService.js';
-import { FileSystemReviewRequestTrackingGateway } from '../../interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
-import { ProjectStatsCalculator } from '../../interface-adapters/presenters/projectStats.calculator.js';
-import { resolveClaudePath } from '../../shared/services/claudePathResolver.js';
-import { getJobContextFilePath } from '../../shared/services/mcpJobContext.js';
+import type { ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
+import type { ReviewProgress, ProgressEvent } from '@/entities/progress/progress.type.js';
+import { ProgressParser } from '@/frameworks/claude/progressParser.js';
+import { logInfo, logWarn, logError } from '@/frameworks/logging/logBuffer.js';
+import { getModel } from '@/frameworks/settings/runtimeSettings.js';
+import { getProjectAgents, getFollowupAgents } from '@/config/projectConfig.js';
+import { addReviewStats } from '@/services/statsService.js';
+import { FileSystemReviewRequestTrackingGateway } from '@/interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
+import { ProjectStatsCalculator } from '@/interface-adapters/presenters/projectStats.calculator.js';
+import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
+import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';
+import { buildLanguageDirective } from '@/frameworks/claude/languageDirective.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -204,6 +205,8 @@ Use \`POST_INLINE_COMMENT\` to post comments directly on specific lines in the d
 - Producing a "plan" instead of executing → Review will be empty
 - Using text markers like [PROGRESS:xxx] → Dashboard won't update
 - Waiting for user approval → Review will hang forever
+
+${buildLanguageDirective(job.language ?? 'en')}
 `.trim();
 }
 

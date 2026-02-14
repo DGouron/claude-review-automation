@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AgentDefinition } from '../entities/progress/agentDefinition.type.js';
+import type { AgentDefinition } from '@/entities/progress/agentDefinition.type.js';
+import type { Language } from '@/entities/language/language.schema.js';
 
 /**
  * Project-specific review configuration
@@ -12,6 +13,7 @@ export interface ProjectConfig {
   defaultModel: 'sonnet' | 'opus';
   reviewSkill: string;
   reviewFollowupSkill: string;
+  language: Language;
   agents?: AgentDefinition[];
   followupAgents?: AgentDefinition[];
 }
@@ -88,6 +90,7 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
     defaultModel: parsed.defaultModel === 'opus' ? 'opus' : 'sonnet',
     reviewSkill: String(parsed.reviewSkill),
     reviewFollowupSkill: String(parsed.reviewFollowupSkill),
+    language: parsed.language === 'fr' ? 'fr' : 'en',
     agents: parsed.agents as AgentDefinition[] | undefined,
     followupAgents: parsed.followupAgents as AgentDefinition[] | undefined,
   };
@@ -102,6 +105,18 @@ export function getProjectAgents(localPath: string): AgentDefinition[] | undefin
     return config?.agents;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Get language from project config, defaulting to 'en'
+ */
+export function getProjectLanguage(localPath: string): Language {
+  try {
+    const config = loadProjectConfig(localPath);
+    return config?.language ?? 'en';
+  } catch {
+    return 'en';
   }
 }
 
