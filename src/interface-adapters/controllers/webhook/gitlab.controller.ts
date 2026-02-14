@@ -19,7 +19,7 @@ import { RecordPushUseCase } from '../../../usecases/tracking/recordPush.usecase
 import { TransitionStateUseCase } from '../../../usecases/tracking/transitionState.usecase.js';
 import { CheckFollowupNeededUseCase } from '../../../usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '../../../usecases/tracking/syncThreads.usecase.js';
-import { loadProjectConfig, getProjectAgents, getFollowupAgents } from '../../../config/projectConfig.js';
+import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '../../../entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '../../../services/statsService.js';
 import { parseThreadActions } from '../../../services/threadActionsParser.js';
@@ -434,6 +434,7 @@ export async function handleGitLabWebhook(
     sourceBranch: filterResult.sourceBranch,
     targetBranch: filterResult.targetBranch,
     jobType: 'review',
+    language: getProjectLanguage(repoConfig.localPath),
     // MR metadata for dashboard
     title: mrTitle,
     description: event.object_attributes?.description,

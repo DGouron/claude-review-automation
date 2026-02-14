@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
-import type { ReviewJob } from '../frameworks/queue/pQueueAdapter.js';
-import type { ReviewRequestTrackingGateway, Platform } from '../interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
+import type { ReviewRequestTrackingGateway, Platform } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { Language } from '@/entities/language/language.schema.js';
 
 export interface TriggerReviewParams {
   platform: Platform;
@@ -13,6 +14,7 @@ export interface TriggerReviewParams {
   mrUrl: string;
   skill: string;
   jobType?: 'review' | 'followup';
+  language?: Language;
   assignedBy?: {
     username: string;
     displayName?: string;
@@ -63,6 +65,7 @@ export function triggerReview(
     sourceBranch: params.sourceBranch,
     targetBranch: params.targetBranch,
     jobType: params.jobType,
+    language: params.language,
     title: params.title,
     assignedBy: params.assignedBy,
   };

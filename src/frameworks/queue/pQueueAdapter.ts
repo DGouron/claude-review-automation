@@ -1,7 +1,8 @@
 import PQueue from 'p-queue';
 import type { Logger } from 'pino';
-import { loadConfig } from '../config/configLoader.js';
-import type { ReviewProgress, ProgressEvent } from '../../entities/progress/progress.type.js';
+import { loadConfig } from '@/frameworks/config/configLoader.js';
+import type { ReviewProgress, ProgressEvent } from '@/entities/progress/progress.type.js';
+import type { Language } from '@/entities/language/language.schema.js';
 
 export interface ReviewJob {
   id: string; // Unique identifier: platform:project:mrNumber
@@ -15,6 +16,8 @@ export interface ReviewJob {
   targetBranch: string;
   // Job type: review or followup
   jobType?: 'review' | 'followup';
+  // Output language for the review
+  language?: Language;
   // Optional MR metadata
   title?: string;
   description?: string;

@@ -23,7 +23,7 @@ import { ReviewContextFileSystemGateway } from '../../gateways/reviewContext.fil
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '../../gateways/threadFetch.github.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '../../gateways/diffMetadataFetch.github.gateway.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '../../../main/websocket.js';
-import { getProjectAgents } from '../../../config/projectConfig.js';
+import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS } from '../../../entities/progress/agentDefinition.type.js';
 
 export async function handleGitHubWebhook(
@@ -185,6 +185,7 @@ export async function handleGitHubWebhook(
     sourceBranch: filterResult.sourceBranch,
     targetBranch: filterResult.targetBranch,
     jobType: 'review',
+    language: getProjectLanguage(repoConfig.localPath),
     title: prTitle,
     description: event.pull_request?.body,
     assignedBy,
