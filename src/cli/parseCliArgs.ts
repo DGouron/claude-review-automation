@@ -30,6 +30,12 @@ interface InitArgs {
   scanPaths: string[];
 }
 
+interface DiscoverArgs {
+  command: 'discover';
+  scanPaths: string[];
+  maxDepth: number;
+}
+
 interface ValidateArgs {
   command: 'validate';
   fix: boolean;
@@ -49,9 +55,9 @@ interface HelpArgs {
   command: 'help';
 }
 
-export type CliArgs = StartArgs | StopArgs | StatusArgs | LogsArgs | InitArgs | ValidateArgs | FollowupImportantsArgs | VersionArgs | HelpArgs;
+export type CliArgs = StartArgs | StopArgs | StatusArgs | LogsArgs | InitArgs | DiscoverArgs | ValidateArgs | FollowupImportantsArgs | VersionArgs | HelpArgs;
 
-const KNOWN_COMMANDS = ['start', 'stop', 'status', 'logs', 'init', 'validate', 'followup-importants'] as const;
+const KNOWN_COMMANDS = ['start', 'stop', 'status', 'logs', 'init', 'discover', 'validate', 'followup-importants'] as const;
 type KnownCommand = (typeof KNOWN_COMMANDS)[number];
 
 function hasFlag(args: string[], long: string, short?: string): boolean {
@@ -137,6 +143,15 @@ function parseInitArgs(args: string[]): InitArgs {
   };
 }
 
+function parseDiscoverArgs(args: string[]): DiscoverArgs {
+  const maxDepthValue = getFlagValue(args, '--max-depth');
+  return {
+    command: 'discover',
+    scanPaths: getAllFlagValues(args, '--scan-path'),
+    maxDepth: maxDepthValue !== undefined ? Number(maxDepthValue) : 3,
+  };
+}
+
 function parseValidateArgs(args: string[]): ValidateArgs {
   return {
     command: 'validate',
@@ -166,6 +181,8 @@ export function parseCliArgs(args: string[]): CliArgs {
       return parseLogsArgs(args);
     case 'init':
       return parseInitArgs(args);
+    case 'discover':
+      return parseDiscoverArgs(args);
     case 'validate':
       return parseValidateArgs(args);
     case 'followup-importants':

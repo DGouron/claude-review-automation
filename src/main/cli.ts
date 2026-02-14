@@ -5,31 +5,32 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { parseCliArgs } from '../cli/parseCliArgs.js';
-import { validateDependencies, checkDependency } from '../shared/services/dependencyChecker.js';
-import { startServer } from './server.js';
-import { StartDaemonUseCase, type StartDaemonDependencies } from '../usecases/cli/startDaemon.usecase.js';
-import { StopDaemonUseCase, type StopDaemonDependencies } from '../usecases/cli/stopDaemon.usecase.js';
-import { QueryStatusUseCase, type QueryStatusDependencies } from '../usecases/cli/queryStatus.usecase.js';
-import { ReadLogsUseCase, type ReadLogsDependencies } from '../usecases/cli/readLogs.usecase.js';
-import { FollowupImportantsUseCase } from '../usecases/cli/followupImportants.usecase.js';
-import { readPidFile, writePidFile, removePidFile } from '../shared/services/pidFileManager.js';
-import { isProcessRunning } from '../shared/services/processChecker.js';
-import { PID_FILE_PATH, LOG_FILE_PATH } from '../shared/services/daemonPaths.js';
-import { spawnDaemon } from '../shared/services/daemonSpawner.js';
-import { logFileExists, readLastLines, watchLogFile } from '../shared/services/logFileReader.js';
-import { green, red, yellow, dim, bold } from '../shared/services/ansiColors.js';
-import { formatStartupBanner } from '../cli/startupBanner.js';
-import { openInBrowser } from '../shared/services/browserOpener.js';
-import { loadConfig } from '../frameworks/config/configLoader.js';
-import { getConfigDir } from '../shared/services/configDir.js';
-import { generateWebhookSecret, truncateSecret } from '../shared/services/secretGenerator.js';
-import { DiscoverRepositoriesUseCase } from '../usecases/cli/discoverRepositories.usecase.js';
-import { ConfigureMcpUseCase } from '../usecases/cli/configureMcp.usecase.js';
-import { WriteInitConfigUseCase } from '../usecases/cli/writeInitConfig.usecase.js';
-import { ValidateConfigUseCase } from '../usecases/cli/validateConfig.usecase.js';
-import { formatInitSummary } from '../cli/formatters/initSummary.js';
-import { resolveMcpServerPath } from '../frameworks/claude/claudeInvoker.js';
+import { parseCliArgs } from '@/cli/parseCliArgs.js';
+import { validateDependencies, checkDependency } from '@/shared/services/dependencyChecker.js';
+import { startServer } from '@/main/server.js';
+import { StartDaemonUseCase, type StartDaemonDependencies } from '@/usecases/cli/startDaemon.usecase.js';
+import { StopDaemonUseCase, type StopDaemonDependencies } from '@/usecases/cli/stopDaemon.usecase.js';
+import { QueryStatusUseCase, type QueryStatusDependencies } from '@/usecases/cli/queryStatus.usecase.js';
+import { ReadLogsUseCase, type ReadLogsDependencies } from '@/usecases/cli/readLogs.usecase.js';
+import { FollowupImportantsUseCase } from '@/usecases/cli/followupImportants.usecase.js';
+import { readPidFile, writePidFile, removePidFile } from '@/shared/services/pidFileManager.js';
+import { isProcessRunning } from '@/shared/services/processChecker.js';
+import { PID_FILE_PATH, LOG_FILE_PATH } from '@/shared/services/daemonPaths.js';
+import { spawnDaemon } from '@/shared/services/daemonSpawner.js';
+import { logFileExists, readLastLines, watchLogFile } from '@/shared/services/logFileReader.js';
+import { green, red, yellow, dim, bold } from '@/shared/services/ansiColors.js';
+import { formatStartupBanner } from '@/cli/startupBanner.js';
+import { openInBrowser } from '@/shared/services/browserOpener.js';
+import { loadConfig } from '@/frameworks/config/configLoader.js';
+import { getConfigDir } from '@/shared/services/configDir.js';
+import { generateWebhookSecret, truncateSecret } from '@/shared/services/secretGenerator.js';
+import { DiscoverRepositoriesUseCase, type DiscoveredRepository } from '@/usecases/cli/discoverRepositories.usecase.js';
+import { ConfigureMcpUseCase } from '@/usecases/cli/configureMcp.usecase.js';
+import { WriteInitConfigUseCase } from '@/usecases/cli/writeInitConfig.usecase.js';
+import { ValidateConfigUseCase } from '@/usecases/cli/validateConfig.usecase.js';
+import { AddRepositoriesToConfigUseCase } from '@/usecases/cli/addRepositoriesToConfig.usecase.js';
+import { formatInitSummary } from '@/cli/formatters/initSummary.js';
+import { resolveMcpServerPath } from '@/frameworks/claude/claudeInvoker.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -52,7 +53,12 @@ Commands:
   status                   Show server status
   logs                     Show daemon logs
   validate                 Validate configuration
+  discover                 Scan and add repositories to existing config
   followup-importants      Trigger followups for pending-approval MRs with Important issues
+
+Discover options:
+  --scan-path <path>       Custom scan path (repeatable)
+  --max-depth <n>          Max directory depth (default: 3)
 
 Init options:
   -y, --yes                Accept all defaults (non-interactive)
@@ -453,6 +459,79 @@ export async function executeInit(
   console.log(green(summary));
 }
 
+export interface DiscoverDependencies {
+  existsSync: (path: string) => boolean;
+  readFileSync: (path: string, encoding: string) => string;
+  writeFileSync: (path: string, content: string) => void;
+  readdirSync: (path: string) => Array<{ name: string; isDirectory: () => boolean }>;
+  getGitRemoteUrl: (localPath: string) => string | null;
+  getConfigPath: () => string;
+  log: (...args: unknown[]) => void;
+  selectRepositories: (repositories: DiscoveredRepository[]) => Promise<DiscoveredRepository[]>;
+}
+
+export async function executeDiscover(
+  scanPaths: string[],
+  maxDepth: number,
+  deps: DiscoverDependencies,
+): Promise<void> {
+  const configPath = deps.getConfigPath();
+
+  if (!deps.existsSync(configPath)) {
+    throw new Error(`Configuration file not found: ${configPath}\nRun 'reviewflow init' to create one.`);
+  }
+
+  const pathsToScan = scanPaths.length > 0 ? scanPaths : DEFAULT_SCAN_PATHS;
+
+  deps.log(dim('\nScanning for repositories...'));
+  const discoverer = new DiscoverRepositoriesUseCase({
+    existsSync: deps.existsSync,
+    readdirSync: deps.readdirSync,
+    getGitRemoteUrl: deps.getGitRemoteUrl,
+  });
+
+  const discovered = discoverer.execute({ scanPaths: pathsToScan, maxDepth });
+  deps.log(`  Found ${discovered.repositories.length} repositories`);
+
+  if (discovered.repositories.length === 0) {
+    deps.log(yellow('No new repositories found.'));
+    return;
+  }
+
+  const selected = await deps.selectRepositories(discovered.repositories);
+
+  if (selected.length === 0) {
+    deps.log(yellow('No repositories selected.'));
+    return;
+  }
+
+  const adder = new AddRepositoriesToConfigUseCase({
+    readFileSync: deps.readFileSync,
+    writeFileSync: deps.writeFileSync,
+    existsSync: deps.existsSync,
+  });
+
+  const result = adder.execute({
+    configPath,
+    newRepositories: selected.map(repo => ({
+      name: repo.name,
+      localPath: repo.localPath,
+      enabled: true,
+    })),
+  });
+
+  if (result.added.length > 0) {
+    deps.log(green(`\n  Added ${result.added.length} repositories:`));
+    for (const repo of result.added) {
+      deps.log(green(`    + ${repo.name} (${repo.localPath})`));
+    }
+  }
+
+  if (result.skipped.length > 0) {
+    deps.log(dim(`  Skipped ${result.skipped.length} already configured`));
+  }
+}
+
 export function executeValidate(fix: boolean): void {
   const configDir = getConfigDir();
   const configPath = join(configDir, 'config.json');
@@ -589,6 +668,33 @@ if (isDirectlyExecuted) {
 
     case 'init':
       executeInit(args.yes, args.skipMcp, args.showSecrets, args.scanPaths);
+      break;
+
+    case 'discover':
+      executeDiscover(args.scanPaths, args.maxDepth, {
+        existsSync,
+        readFileSync: (path, encoding) => readFileSync(path, encoding as BufferEncoding),
+        writeFileSync,
+        readdirSync: (path: string) =>
+          readdirSync(path, { withFileTypes: true }).map(d => ({
+            name: d.name,
+            isDirectory: () => d.isDirectory(),
+          })),
+        getGitRemoteUrl,
+        getConfigPath: () => join(getConfigDir(), 'config.json'),
+        log: console.log,
+        selectRepositories: async (repositories) => {
+          const { checkbox } = await import('@inquirer/prompts');
+          return checkbox({
+            message: 'Select repositories to add:',
+            choices: repositories.map(r => ({
+              name: `${r.name} ${dim(`(${r.localPath})`)}${r.hasReviewConfig ? green(' [configured]') : ''}`,
+              value: r,
+              checked: r.hasReviewConfig,
+            })),
+          });
+        },
+      });
       break;
 
     case 'validate':
