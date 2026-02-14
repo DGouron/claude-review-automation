@@ -5,6 +5,7 @@ import {
   STORAGE_KEY_PROJECTS,
   STORAGE_KEY_CURRENT,
   STORAGE_KEY_FOCUS_STRIP_MODE,
+  QUALITY_TARGET_SCORE,
 } from '@/interface-adapters/views/dashboard/modules/constants.js';
 
 describe('constants', () => {
@@ -17,5 +18,9 @@ describe('constants', () => {
     expect(STORAGE_KEY_PROJECTS).toBe('review-flow-projects');
     expect(STORAGE_KEY_CURRENT).toBe('review-flow-current-project');
     expect(STORAGE_KEY_FOCUS_STRIP_MODE).toBe('review-flow-focus-strip-mode');
+  });
+
+  it('should export quality score target', () => {
+    expect(QUALITY_TARGET_SCORE).toBe(8);
   });
 });
