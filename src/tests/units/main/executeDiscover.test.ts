@@ -27,12 +27,62 @@ function createFakeDiscoverDeps(
 }
 
 describe('executeDiscover', () => {
-  it('should throw when config does not exist', async () => {
+  it('should throw when config does not exist and repos are selected', async () => {
     const deps = createFakeDiscoverDeps({
-      existsSync: vi.fn(() => false),
+      existsSync: vi.fn((path: string) => {
+        if (path === '/home/user/.config/reviewflow/config.json') return false;
+        if (path === '/projects') return true;
+        if (path === '/projects/app/.git') return true;
+        return false;
+      }),
+      readdirSync: vi.fn((path: string) => {
+        if (path === '/projects') return [{ name: 'app', isDirectory: () => true }];
+        return [];
+      }),
+      getGitRemoteUrl: vi.fn(() => 'https://github.com/user/app'),
     });
 
-    await expect(executeDiscover([], 3, deps)).rejects.toThrow();
+    await expect(executeDiscover(['/projects'], 3, deps)).rejects.toThrow(
+      'Configuration file not found',
+    );
+  });
+
+  it('should log message and skip when no repositories found', async () => {
+    const log = vi.fn();
+    const writeFileSync = vi.fn();
+    const deps = createFakeDiscoverDeps({
+      readdirSync: vi.fn(() => []),
+      log,
+      writeFileSync,
+    });
+
+    await executeDiscover(['/empty/path'], 3, deps);
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('No new repositories found'));
+    expect(writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('should not write config when user selects nothing', async () => {
+    const writeFileSync = vi.fn();
+    const deps = createFakeDiscoverDeps({
+      readdirSync: vi.fn((path: string) => {
+        if (path === '/projects') return [{ name: 'app', isDirectory: () => true }];
+        return [];
+      }),
+      existsSync: vi.fn((path: string) => {
+        if (path === '/home/user/.config/reviewflow/config.json') return true;
+        if (path === '/projects') return true;
+        if (path === '/projects/app/.git') return true;
+        return false;
+      }),
+      getGitRemoteUrl: vi.fn(() => 'https://github.com/user/app'),
+      selectRepositories: vi.fn(async () => []),
+      writeFileSync,
+    });
+
+    await executeDiscover(['/projects'], 3, deps);
+
+    expect(writeFileSync).not.toHaveBeenCalled();
   });
 
   it('should discover repos and add selected ones to config', async () => {

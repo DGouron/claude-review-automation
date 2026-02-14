@@ -1,7 +1,7 @@
 import type { UseCase } from '@/shared/foundation/usecase.base.js';
 
 export interface AddRepositoriesToConfigDependencies {
-  readFileSync: (path: string, encoding: string) => string;
+  readFileSync: (path: string, encoding: BufferEncoding) => string;
   writeFileSync: (path: string, content: string) => void;
   existsSync: (path: string) => boolean;
 }
@@ -34,7 +34,12 @@ export class AddRepositoriesToConfigUseCase
     }
 
     const raw = this.deps.readFileSync(input.configPath, 'utf-8');
-    const config = JSON.parse(raw);
+    let config: { repositories: Array<{ localPath: string }>; [key: string]: unknown };
+    try {
+      config = JSON.parse(raw);
+    } catch {
+      throw new Error(`Invalid JSON in configuration file: ${input.configPath}`);
+    }
     const existingPaths = new Set(
       config.repositories.map((r: { localPath: string }) => r.localPath),
     );

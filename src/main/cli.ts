@@ -416,7 +416,7 @@ export async function executeInit(
     try {
       const mcpUseCase = new ConfigureMcpUseCase({
         isClaudeInstalled: () => checkDependency({ name: 'Claude', command: 'claude --version' }),
-        readFileSync: (path, encoding) => readFileSync(path, encoding as BufferEncoding),
+        readFileSync,
         writeFileSync,
         existsSync,
         copyFileSync,
@@ -461,7 +461,7 @@ export async function executeInit(
 
 export interface DiscoverDependencies {
   existsSync: (path: string) => boolean;
-  readFileSync: (path: string, encoding: string) => string;
+  readFileSync: (path: string, encoding: BufferEncoding) => string;
   writeFileSync: (path: string, content: string) => void;
   readdirSync: (path: string) => Array<{ name: string; isDirectory: () => boolean }>;
   getGitRemoteUrl: (localPath: string) => string | null;
@@ -476,11 +476,6 @@ export async function executeDiscover(
   deps: DiscoverDependencies,
 ): Promise<void> {
   const configPath = deps.getConfigPath();
-
-  if (!deps.existsSync(configPath)) {
-    throw new Error(`Configuration file not found: ${configPath}\nRun 'reviewflow init' to create one.`);
-  }
-
   const pathsToScan = scanPaths.length > 0 ? scanPaths : DEFAULT_SCAN_PATHS;
 
   deps.log(dim('\nScanning for repositories...'));
@@ -543,7 +538,7 @@ export function executeValidate(fix: boolean): void {
 
   const validator = new ValidateConfigUseCase({
     existsSync,
-    readFileSync: (path, encoding) => readFileSync(path, encoding as BufferEncoding),
+    readFileSync,
   });
 
   const result = validator.execute({ configPath: resolvedConfigPath, envPath: resolvedEnvPath });
@@ -673,7 +668,7 @@ if (isDirectlyExecuted) {
     case 'discover':
       executeDiscover(args.scanPaths, args.maxDepth, {
         existsSync,
-        readFileSync: (path, encoding) => readFileSync(path, encoding as BufferEncoding),
+        readFileSync,
         writeFileSync,
         readdirSync: (path: string) =>
           readdirSync(path, { withFileTypes: true }).map(d => ({

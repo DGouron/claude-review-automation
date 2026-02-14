@@ -4,7 +4,7 @@ export type ConfigureMcpResult = 'configured' | 'already-configured' | 'claude-n
 
 export interface ConfigureMcpDependencies {
   isClaudeInstalled: () => boolean;
-  readFileSync: (path: string, encoding: string) => string;
+  readFileSync: (path: string, encoding: BufferEncoding) => string;
   writeFileSync: (path: string, content: string) => void;
   existsSync: (path: string) => boolean;
   copyFileSync: (src: string, dest: string) => void;

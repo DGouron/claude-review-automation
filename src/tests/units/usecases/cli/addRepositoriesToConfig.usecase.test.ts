@@ -103,6 +103,20 @@ describe('AddRepositoriesToConfigUseCase', () => {
     })).toThrow();
   });
 
+  it('should throw a meaningful error when config contains invalid JSON', () => {
+    const deps = createFakeDeps({
+      readFileSync: vi.fn(() => '{ invalid json !!!'),
+    });
+    const usecase = new AddRepositoriesToConfigUseCase(deps);
+
+    expect(() => usecase.execute({
+      configPath: '/config/config.json',
+      newRepositories: [
+        { name: 'app', localPath: '/projects/app', enabled: true },
+      ],
+    })).toThrow('Invalid JSON in configuration file: /config/config.json');
+  });
+
   it('should write the merged repositories back to config file', () => {
     const existingConfig = {
       server: { port: 3847 },
