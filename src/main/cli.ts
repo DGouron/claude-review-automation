@@ -24,13 +24,14 @@ import { openInBrowser } from '@/shared/services/browserOpener.js';
 import { loadConfig } from '@/frameworks/config/configLoader.js';
 import { getConfigDir } from '@/shared/services/configDir.js';
 import { generateWebhookSecret, truncateSecret } from '@/shared/services/secretGenerator.js';
-import { DiscoverRepositoriesUseCase, type DiscoveredRepository } from '@/usecases/cli/discoverRepositories.usecase.js';
-import { ConfigureMcpUseCase } from '@/usecases/cli/configureMcp.usecase.js';
-import { WriteInitConfigUseCase } from '@/usecases/cli/writeInitConfig.usecase.js';
+import { DiscoverRepositoriesUseCase, type DiscoveredRepository, type DiscoverRepositoriesResult } from '@/usecases/cli/discoverRepositories.usecase.js';
+import { ConfigureMcpUseCase, type ConfigureMcpResult } from '@/usecases/cli/configureMcp.usecase.js';
+import { WriteInitConfigUseCase, type WriteInitConfigInput, type WriteInitConfigResult } from '@/usecases/cli/writeInitConfig.usecase.js';
 import { ValidateConfigUseCase } from '@/usecases/cli/validateConfig.usecase.js';
 import { AddRepositoriesToConfigUseCase } from '@/usecases/cli/addRepositoriesToConfig.usecase.js';
-import { formatInitSummary } from '@/cli/formatters/initSummary.js';
+import { formatInitSummary, type InitSummaryInput } from '@/cli/formatters/initSummary.js';
 import { resolveMcpServerPath } from '@/frameworks/claude/claudeInvoker.js';
+import { checkInitPrerequisites, type PrerequisitesResult } from '@/usecases/cli/checkInitPrerequisites.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -296,23 +297,62 @@ function getGitRemoteUrl(localPath: string): string | null {
   }
 }
 
+export type PlatformChoice = 'gitlab' | 'github' | 'both';
+
+export interface InitDependencies {
+  log: (...args: unknown[]) => void;
+  exit: (code: number) => void;
+  getConfigDir: () => string;
+  existsSync: (path: string) => boolean;
+  checkPrerequisites: () => PrerequisitesResult;
+  confirmOverwrite: (configPath: string) => Promise<boolean>;
+  promptPlatform: () => Promise<PlatformChoice>;
+  promptPort: () => Promise<number>;
+  promptGitlabUsername: () => Promise<string>;
+  promptGithubUsername: () => Promise<string>;
+  confirmScanRepositories: () => Promise<boolean>;
+  selectRepositories: (repos: DiscoveredRepository[]) => Promise<DiscoveredRepository[]>;
+  generateWebhookSecret: () => string;
+  truncateSecret: (secret: string, length: number) => string;
+  discoverRepositories: (scanPaths: string[], maxDepth: number) => DiscoverRepositoriesResult;
+  configureMcp: () => ConfigureMcpResult;
+  writeConfig: (input: WriteInitConfigInput) => WriteInitConfigResult;
+  formatSummary: (input: InitSummaryInput) => string;
+}
+
+const WELCOME_BANNER = `
+Welcome to ReviewFlow!
+Automated code review powered by Claude Code.
+`;
+
 export async function executeInit(
   yes: boolean,
   skipMcp: boolean,
   showSecrets: boolean,
   scanPaths: string[],
+  deps: InitDependencies,
 ): Promise<void> {
-  const configDir = getConfigDir();
+  deps.log(WELCOME_BANNER);
+
+  const prereqResult = deps.checkPrerequisites();
+  if (prereqResult.status === 'node-version-too-low') {
+    deps.log(red(`Node.js >= ${prereqResult.required} is required (found: ${prereqResult.found})`));
+    deps.exit(1);
+    return;
+  }
+  if (prereqResult.status === 'claude-not-installed') {
+    deps.log(red(`Claude CLI is not installed. Install it from: ${prereqResult.installUrl}`));
+    deps.exit(1);
+    return;
+  }
+
+  const configDir = deps.getConfigDir();
   const configPath = join(configDir, 'config.json');
 
-  if (existsSync(configPath) && !yes) {
-    const { confirm } = await import('@inquirer/prompts');
-    const overwrite = await confirm({
-      message: `Config already exists at ${configPath}. Overwrite?`,
-      default: false,
-    });
+  if (deps.existsSync(configPath) && !yes) {
+    const overwrite = await deps.confirmOverwrite(configPath);
     if (!overwrite) {
-      console.log(yellow('Init cancelled.'));
+      deps.log(yellow('Init cancelled.'));
       return;
     }
   }
@@ -322,67 +362,42 @@ export async function executeInit(
   let githubUsername = '';
 
   if (yes) {
-    console.log(dim('Non-interactive mode: using defaults'));
+    deps.log(dim('Non-interactive mode: using defaults'));
   } else {
-    const { input, number: numberPrompt } = await import('@inquirer/prompts');
+    const platform = await deps.promptPlatform();
+    port = await deps.promptPort();
 
-    const portAnswer = await numberPrompt({
-      message: 'Server port:',
-      default: 3847,
-      validate: (value) => {
-        if (value === undefined || value < 1 || value > 65535) return 'Port must be between 1 and 65535';
-        return true;
-      },
-    });
-    port = portAnswer ?? 3847;
-
-    gitlabUsername = await input({
-      message: 'GitLab username (optional):',
-      default: '',
-    });
-
-    githubUsername = await input({
-      message: 'GitHub username (optional):',
-      default: '',
-    });
+    if (platform === 'gitlab' || platform === 'both') {
+      gitlabUsername = await deps.promptGitlabUsername();
+    }
+    if (platform === 'github' || platform === 'both') {
+      githubUsername = await deps.promptGithubUsername();
+    }
   }
 
-  const gitlabSecret = generateWebhookSecret();
-  const githubSecret = generateWebhookSecret();
+  const gitlabSecret = deps.generateWebhookSecret();
+  const githubSecret = deps.generateWebhookSecret();
 
-  console.log('');
-  console.log(bold('Webhook secrets generated:'));
+  deps.log('');
+  deps.log(bold('Webhook secrets generated:'));
   if (showSecrets) {
-    console.log(`  GitLab: ${gitlabSecret}`);
-    console.log(`  GitHub: ${githubSecret}`);
+    deps.log(`  GitLab: ${gitlabSecret}`);
+    deps.log(`  GitHub: ${githubSecret}`);
   } else {
-    console.log(`  GitLab: ${truncateSecret(gitlabSecret, 16)}`);
-    console.log(`  GitHub: ${truncateSecret(githubSecret, 16)}`);
-    console.log(dim('  Use --show-secrets to display full values'));
+    deps.log(`  GitLab: ${deps.truncateSecret(gitlabSecret, 16)}`);
+    deps.log(`  GitHub: ${deps.truncateSecret(githubSecret, 16)}`);
+    deps.log(dim('  Use --show-secrets to display full values'));
   }
 
   const pathsToScan = scanPaths.length > 0 ? scanPaths : DEFAULT_SCAN_PATHS;
   let selectedRepos: Array<{ name: string; localPath: string; enabled: boolean }> = [];
 
-  const shouldScan = yes || (await (async () => {
-    const { confirm } = await import('@inquirer/prompts');
-    return confirm({ message: 'Scan for repositories?', default: true });
-  })());
+  const shouldScan = yes || await deps.confirmScanRepositories();
 
   if (shouldScan) {
-    console.log(dim('\nScanning for repositories...'));
-    const discoverer = new DiscoverRepositoriesUseCase({
-      existsSync,
-      readdirSync: (path: string) =>
-        readdirSync(path, { withFileTypes: true }).map(d => ({
-          name: d.name,
-          isDirectory: () => d.isDirectory(),
-        })),
-      getGitRemoteUrl,
-    });
-
-    const discovered = discoverer.execute({ scanPaths: pathsToScan, maxDepth: 3 });
-    console.log(`  Found ${discovered.repositories.length} repositories`);
+    deps.log(dim('\nScanning for repositories...'));
+    const discovered = deps.discoverRepositories(pathsToScan, 3);
+    deps.log(`  Found ${discovered.repositories.length} repositories`);
 
     if (discovered.repositories.length > 0) {
       if (yes) {
@@ -392,15 +407,7 @@ export async function executeInit(
           enabled: true,
         }));
       } else {
-        const { checkbox } = await import('@inquirer/prompts');
-        const selected = await checkbox({
-          message: 'Select repositories to configure:',
-          choices: discovered.repositories.map(r => ({
-            name: `${r.name} ${dim(`(${r.localPath})`)}${r.hasReviewConfig ? green(' [configured]') : ''}`,
-            value: r,
-            checked: r.hasReviewConfig,
-          })),
-        });
+        const selected = await deps.selectRepositories(discovered.repositories);
         selectedRepos = selected.map(r => ({
           name: r.name,
           localPath: r.localPath,
@@ -410,34 +417,18 @@ export async function executeInit(
     }
   }
 
-  let mcpStatus: 'configured' | 'already-configured' | 'claude-not-found' | 'validation-failed' | 'skipped' | 'failed' = 'skipped';
+  let mcpStatus: ConfigureMcpResult | 'skipped' | 'failed' = 'skipped';
   if (!skipMcp) {
-    console.log(dim('\nConfiguring MCP server...'));
+    deps.log(dim('\nConfiguring MCP server...'));
     try {
-      const mcpUseCase = new ConfigureMcpUseCase({
-        isClaudeInstalled: () => checkDependency({ name: 'Claude', command: 'claude --version' }),
-        readFileSync,
-        writeFileSync,
-        existsSync,
-        copyFileSync,
-        resolveMcpServerPath: () => {
-          try {
-            return resolveMcpServerPath();
-          } catch {
-            return join(dirname(fileURLToPath(import.meta.url)), '..', 'mcpServer.js');
-          }
-        },
-        settingsPath: join(homedir(), '.claude', 'settings.json'),
-      });
-      mcpStatus = mcpUseCase.execute();
+      mcpStatus = deps.configureMcp();
     } catch {
       mcpStatus = 'failed';
     }
-    console.log(`  MCP: ${mcpStatus}`);
+    deps.log(`  MCP: ${mcpStatus}`);
   }
 
-  const writer = new WriteInitConfigUseCase({ mkdirSync, writeFileSync });
-  const result = writer.execute({
+  const result = deps.writeConfig({
     configDir,
     port,
     gitlabUsername,
@@ -447,7 +438,7 @@ export async function executeInit(
     githubWebhookSecret: githubSecret,
   });
 
-  const summary = formatInitSummary({
+  const summary = deps.formatSummary({
     configPath: result.configPath,
     envPath: result.envPath,
     port,
@@ -456,7 +447,7 @@ export async function executeInit(
     gitlabUsername,
     githubUsername,
   });
-  console.log(green(summary));
+  deps.log(green(summary));
 }
 
 export interface DiscoverDependencies {
@@ -662,7 +653,107 @@ if (isDirectlyExecuted) {
       break;
 
     case 'init':
-      executeInit(args.yes, args.skipMcp, args.showSecrets, args.scanPaths);
+      executeInit(args.yes, args.skipMcp, args.showSecrets, args.scanPaths, {
+        log: console.log,
+        exit: process.exit,
+        getConfigDir,
+        existsSync,
+        checkPrerequisites: () =>
+          checkInitPrerequisites({
+            executeCommand: execSync,
+            getNodeMajorVersion: () => Number(process.versions.node.split('.')[0]),
+          }),
+        confirmOverwrite: async (configPath) => {
+          const { confirm } = await import('@inquirer/prompts');
+          return confirm({
+            message: `Config already exists at ${configPath}. Overwrite?`,
+            default: false,
+          });
+        },
+        promptPlatform: async () => {
+          const { select } = await import('@inquirer/prompts');
+          return select<PlatformChoice>({
+            message: 'Which platform(s) do you use?',
+            choices: [
+              { name: 'GitLab', value: 'gitlab' },
+              { name: 'GitHub', value: 'github' },
+              { name: 'Both', value: 'both' },
+            ],
+          });
+        },
+        promptPort: async () => {
+          const { number: numberPrompt } = await import('@inquirer/prompts');
+          const portAnswer = await numberPrompt({
+            message: 'Server port:',
+            default: 3847,
+            validate: (value) => {
+              if (value === undefined || value < 1 || value > 65535) return 'Port must be between 1 and 65535';
+              return true;
+            },
+          });
+          return portAnswer ?? 3847;
+        },
+        promptGitlabUsername: async () => {
+          const { input } = await import('@inquirer/prompts');
+          return input({ message: 'GitLab username:', default: '' });
+        },
+        promptGithubUsername: async () => {
+          const { input } = await import('@inquirer/prompts');
+          return input({ message: 'GitHub username:', default: '' });
+        },
+        confirmScanRepositories: async () => {
+          const { confirm } = await import('@inquirer/prompts');
+          return confirm({ message: 'Scan for repositories?', default: true });
+        },
+        selectRepositories: async (repositories) => {
+          const { checkbox } = await import('@inquirer/prompts');
+          return checkbox({
+            message: 'Select repositories to configure:',
+            choices: repositories.map(r => ({
+              name: `${r.name} ${dim(`(${r.localPath})`)}${r.hasReviewConfig ? green(' [configured]') : ''}`,
+              value: r,
+              checked: r.hasReviewConfig,
+            })),
+          });
+        },
+        generateWebhookSecret,
+        truncateSecret,
+        discoverRepositories: (scanPaths, maxDepth) => {
+          const discoverer = new DiscoverRepositoriesUseCase({
+            existsSync,
+            readdirSync: (path: string) =>
+              readdirSync(path, { withFileTypes: true }).map(d => ({
+                name: d.name,
+                isDirectory: () => d.isDirectory(),
+              })),
+            getGitRemoteUrl,
+          });
+          return discoverer.execute({ scanPaths, maxDepth });
+        },
+        configureMcp: () => {
+          const mcpUseCase = new ConfigureMcpUseCase({
+            isClaudeInstalled: () => checkDependency({ name: 'Claude', command: 'claude --version' }),
+            readFileSync,
+            writeFileSync,
+            existsSync,
+            copyFileSync,
+            resolveMcpServerPath: () => {
+              try {
+                return resolveMcpServerPath();
+              } catch {
+                return join(dirname(fileURLToPath(import.meta.url)), '..', 'mcpServer.js');
+              }
+            },
+            settingsPath: join(homedir(), '.claude', 'settings.json'),
+          });
+          return mcpUseCase.execute();
+        },
+        writeConfig: (input) => {
+          const writer = new WriteInitConfigUseCase({ mkdirSync, writeFileSync });
+          return writer.execute(input);
+        },
+        formatSummary: formatInitSummary,
+      });
       break;
 
     case 'discover':
