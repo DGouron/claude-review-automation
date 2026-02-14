@@ -1,6 +1,6 @@
 export interface ValidateConfigDependencies {
   existsSync: (path: string) => boolean;
-  readFileSync: (path: string, encoding: string) => string;
+  readFileSync: (path: string, encoding: BufferEncoding) => string;
 }
 
 export interface ValidateConfigInput {

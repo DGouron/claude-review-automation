@@ -301,6 +301,24 @@ describe('parseCliArgs', () => {
     });
   });
 
+  describe('discover command', () => {
+    it('should detect discover command with default values', () => {
+      const result = parseCliArgs(['discover']);
+
+      expect(result.command).toBe('discover');
+      expect((result as CliArgs & { command: 'discover' }).scanPaths).toEqual([]);
+      expect((result as CliArgs & { command: 'discover' }).maxDepth).toBe(3);
+    });
+
+    it('should detect --scan-path and --max-depth flags', () => {
+      const result = parseCliArgs(['discover', '--scan-path', '/my/path', '--max-depth', '5']);
+
+      expect(result.command).toBe('discover');
+      expect((result as CliArgs & { command: 'discover' }).scanPaths).toEqual(['/my/path']);
+      expect((result as CliArgs & { command: 'discover' }).maxDepth).toBe(5);
+    });
+  });
+
   describe('version and help flags', () => {
     it('should detect --version flag', () => {
       const result = parseCliArgs(['--version']);
