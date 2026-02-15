@@ -805,31 +805,35 @@
 
         if (data.summary) {
           const s = data.summary;
-          const trendIcon = (trend) => trend === 'up' ? '<i data-lucide="trending-up"></i>' : trend === 'down' ? '<i data-lucide="trending-down"></i>' : '<i data-lucide="minus"></i>';
+          const trendIcon = (trend) => trend === 'up'
+            ? '<span class="stat-trend up"><i data-lucide="trending-up"></i></span>'
+            : trend === 'down'
+              ? '<span class="stat-trend down"><i data-lucide="trending-down"></i></span>'
+              : '<span class="stat-trend flat"><i data-lucide="minus"></i></span>';
 
           statsEl.innerHTML = `
-            <div class="stat-card">
-              <div class="stat-value">${s.totalReviews}</div>
+            <div class="stat-card metric-reviews">
+              <div class="stat-value"><span class="stat-main">${s.totalReviews}</span></div>
               <div class="stat-label"><i data-lucide="file-search"></i> ${t('stats.reviews')}</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-value">${s.averageScore}/10 ${trendIcon(s.trend.score)}</div>
+            <div class="stat-card metric-score">
+              <div class="stat-value"><span class="stat-main">${s.averageScore}</span><span class="stat-denominator">/10</span>${trendIcon(s.trend.score)}</div>
               <div class="stat-label"><i data-lucide="star"></i> ${t('stats.averageScore')}</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-value">${s.totalTime}</div>
+            <div class="stat-card metric-time">
+              <div class="stat-value"><span class="stat-main">${s.totalTime}</span></div>
               <div class="stat-label"><i data-lucide="timer"></i> ${t('stats.totalTime')}</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-value">${s.averageTime}</div>
+            <div class="stat-card metric-average-time">
+              <div class="stat-value"><span class="stat-main">${s.averageTime}</span></div>
               <div class="stat-label"><i data-lucide="clock"></i> ${t('stats.averageTime')}</div>
             </div>
-            <div class="stat-card warning">
-              <div class="stat-value">${s.totalBlocking} ${trendIcon(s.trend.blocking)}</div>
+            <div class="stat-card warning metric-blocking">
+              <div class="stat-value"><span class="stat-main">${s.totalBlocking}</span>${trendIcon(s.trend.blocking)}</div>
               <div class="stat-label"><i data-lucide="octagon-alert"></i> ${t('stats.blocking')}</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-value">${s.totalWarnings}</div>
+            <div class="stat-card metric-warnings">
+              <div class="stat-value"><span class="stat-main">${s.totalWarnings}</span></div>
               <div class="stat-label"><i data-lucide="alert-triangle"></i> ${t('stats.warnings')}</div>
             </div>
           `;
