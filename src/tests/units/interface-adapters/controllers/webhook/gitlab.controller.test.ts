@@ -85,6 +85,12 @@ import { GitLabEventFactory } from '@/tests/factories/gitLabEvent.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
 import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
+import { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
+import { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
+import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
+import { TransitionStateUseCase } from '@/usecases/tracking/transitionState.usecase.js';
+import { CheckFollowupNeededUseCase } from '@/usecases/tracking/checkFollowupNeeded.usecase.js';
+import { SyncThreadsUseCase } from '@/usecases/tracking/syncThreads.usecase.js';
 
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({
@@ -123,14 +129,25 @@ function createStubContextGateway() {
   };
 }
 
+function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTrackingGateway>) {
+  const threadFetchGateway = { fetchThreads: vi.fn(() => []) };
+  return {
+    reviewContextGateway: createStubContextGateway(),
+    threadFetchGateway,
+    diffMetadataFetchGateway: { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'abc', headSha: 'def', startSha: 'ghi' })) },
+    trackAssignment: new TrackAssignmentUseCase(trackingGateway),
+    recordCompletion: new RecordReviewCompletionUseCase(trackingGateway),
+    recordPush: new RecordPushUseCase(trackingGateway),
+    transitionState: new TransitionStateUseCase(trackingGateway),
+    checkFollowupNeeded: new CheckFollowupNeededUseCase(trackingGateway),
+    syncThreads: new SyncThreadsUseCase(trackingGateway, threadFetchGateway),
+  };
+}
+
 describe('handleGitLabWebhook', () => {
   let mockReply: FastifyReply;
   let mockGateway: ReturnType<typeof createMockTrackingGateway>;
-  const defaultDeps = {
-    reviewContextGateway: createStubContextGateway(),
-    threadFetchGateway: { fetchThreads: vi.fn(() => []) },
-    diffMetadataFetchGateway: { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'abc', headSha: 'def', startSha: 'ghi' })) },
-  };
+  let defaultDeps: ReturnType<typeof createDefaultDeps>;
 
   const logger = createStubLogger();
 
@@ -141,6 +158,7 @@ describe('handleGitLabWebhook', () => {
       send: vi.fn().mockReturnThis(),
     } as unknown as FastifyReply;
     mockGateway = createMockTrackingGateway();
+    defaultDeps = createDefaultDeps(mockGateway);
   });
 
   afterEach(() => {
@@ -295,11 +313,7 @@ describe('handleGitLabWebhook', () => {
   describe('dependency injection: reviewContextGateway', () => {
     it('should delete review context via injected gateway when MR is closed', async () => {
       const contextGateway = createStubContextGateway();
-      const deps = {
-        reviewContextGateway: contextGateway,
-        threadFetchGateway: { fetchThreads: vi.fn(() => []) },
-        diffMetadataFetchGateway: { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'a', headSha: 'b', startSha: 'c' })) },
-      };
+      const deps = { ...defaultDeps, reviewContextGateway: contextGateway };
 
       const event = GitLabEventFactory.createClosedMr();
       const request = { body: event, headers: {} } as unknown as FastifyRequest;
@@ -327,11 +341,7 @@ describe('handleGitLabWebhook', () => {
       });
 
       const contextGateway = createStubContextGateway();
-      const deps = {
-        reviewContextGateway: contextGateway,
-        threadFetchGateway: { fetchThreads: vi.fn(() => []) },
-        diffMetadataFetchGateway: { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'a', headSha: 'b', startSha: 'c' })) },
-      };
+      const deps = { ...defaultDeps, reviewContextGateway: contextGateway };
 
       const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
       const request = { body: event, headers: {} } as unknown as FastifyRequest;
@@ -364,9 +374,8 @@ describe('handleGitLabWebhook', () => {
         return true;
       });
 
-      const contextGateway = createStubContextGateway();
       const deps = {
-        reviewContextGateway: contextGateway,
+        ...defaultDeps,
         threadFetchGateway: stubThreadFetch,
         diffMetadataFetchGateway: stubDiffMetadataFetch,
       };
