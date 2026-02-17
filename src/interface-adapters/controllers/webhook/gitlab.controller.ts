@@ -1,46 +1,55 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
-import { verifyGitLabSignature, getGitLabEventType } from '../../../security/verifier.js';
-import { gitLabMergeRequestEventGuard } from '../../../entities/gitlab/gitlabMergeRequestEvent.guard.js';
-import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove } from './eventFilter.js';
-import { findRepositoryByProjectPath } from '../../../config/loader.js';
+import { verifyGitLabSignature, getGitLabEventType } from '@/security/verifier.js';
+import { gitLabMergeRequestEventGuard } from '@/entities/gitlab/gitlabMergeRequestEvent.guard.js';
+import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove } from '@/interface-adapters/controllers/webhook/eventFilter.js';
+import { findRepositoryByProjectPath } from '@/config/loader.js';
 import {
   enqueueReview,
   createJobId,
   updateJobProgress,
   cancelJob,
   type ReviewJob,
-} from '../../../frameworks/queue/pQueueAdapter.js';
-import { invokeClaudeReview, sendNotification } from '../../../claude/invoker.js';
-import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
-import { TrackAssignmentUseCase } from '../../../usecases/tracking/trackAssignment.usecase.js';
-import { RecordReviewCompletionUseCase } from '../../../usecases/tracking/recordReviewCompletion.usecase.js';
-import { RecordPushUseCase } from '../../../usecases/tracking/recordPush.usecase.js';
-import { TransitionStateUseCase } from '../../../usecases/tracking/transitionState.usecase.js';
-import { CheckFollowupNeededUseCase } from '../../../usecases/tracking/checkFollowupNeeded.usecase.js';
-import { SyncThreadsUseCase } from '../../../usecases/tracking/syncThreads.usecase.js';
+} from '@/frameworks/queue/pQueueAdapter.js';
+import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
+import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
+import type { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
+import type { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
+import type { TransitionStateUseCase } from '@/usecases/tracking/transitionState.usecase.js';
+import type { CheckFollowupNeededUseCase } from '@/usecases/tracking/checkFollowupNeeded.usecase.js';
+import type { SyncThreadsUseCase } from '@/usecases/tracking/syncThreads.usecase.js';
 import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
-import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '../../../entities/progress/agentDefinition.type.js';
-import { parseReviewOutput } from '../../../services/statsService.js';
-import { parseThreadActions } from '../../../services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '../../../services/threadActionsExecutor.js';
-import { executeActionsFromContext } from '../../../services/contextActionsExecutor.js';
-import { ReviewContextFileSystemGateway } from '../../gateways/reviewContext.fileSystem.gateway.js';
-import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '../../gateways/threadFetch.gitlab.gateway.js';
-import { GitLabDiffMetadataFetchGateway } from '../../gateways/diffMetadataFetch.gitlab.gateway.js';
-import { startWatchingReviewContext, stopWatchingReviewContext } from '../../../main/websocket.js';
+import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/entities/progress/agentDefinition.type.js';
+import { parseReviewOutput } from '@/services/statsService.js';
+import { parseThreadActions } from '@/services/threadActionsParser.js';
+import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
+import { executeActionsFromContext } from '@/services/contextActionsExecutor.js';
+import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
+import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
+import type { ThreadFetchGateway } from '@/entities/threadFetch/threadFetch.gateway.js';
+import type { DiffMetadataFetchGateway } from '@/entities/diffMetadata/diffMetadata.gateway.js';
+
+export interface GitLabWebhookDependencies {
+  reviewContextGateway: ReviewContextGateway;
+  threadFetchGateway: ThreadFetchGateway;
+  diffMetadataFetchGateway: DiffMetadataFetchGateway;
+  trackAssignment: TrackAssignmentUseCase;
+  recordCompletion: RecordReviewCompletionUseCase;
+  recordPush: RecordPushUseCase;
+  transitionState: TransitionStateUseCase;
+  checkFollowupNeeded: CheckFollowupNeededUseCase;
+  syncThreads: SyncThreadsUseCase;
+}
 
 export async function handleGitLabWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
   logger: Logger,
-  trackingGateway: ReviewRequestTrackingGateway
+  trackingGateway: ReviewRequestTrackingGateway,
+  deps: GitLabWebhookDependencies
 ): Promise<void> {
-  const trackAssignment = new TrackAssignmentUseCase(trackingGateway);
-  const recordCompletion = new RecordReviewCompletionUseCase(trackingGateway);
-  const recordPush = new RecordPushUseCase(trackingGateway);
-  const transitionState = new TransitionStateUseCase(trackingGateway);
-  const checkFollowupNeeded = new CheckFollowupNeededUseCase(trackingGateway);
+  const { trackAssignment, recordCompletion, recordPush, transitionState, checkFollowupNeeded, syncThreads } = deps;
   // 1. Verify signature
   const verification = verifyGitLabSignature(request);
   if (!verification.valid) {
@@ -84,7 +93,7 @@ export async function handleGitLabWebhook(
       const archived = trackingGateway.archive(repoConfig.localPath, mrId);
 
       // Delete review context file
-      const contextGateway = new ReviewContextFileSystemGateway();
+      const contextGateway = deps.reviewContextGateway;
       const contextDeleted = contextGateway.delete(repoConfig.localPath, mrId);
 
       logger.info(
@@ -222,15 +231,15 @@ export async function handleGitLabWebhook(
 
             // Create review context file with pre-fetched threads and diff metadata
             const mergeRequestId = `gitlab-${j.projectPath}-${j.mrNumber}`;
-            const contextGateway = new ReviewContextFileSystemGateway();
-            const threadFetchGateway = new GitLabThreadFetchGateway(defaultGitLabExecutor);
-            const diffMetadataFetchGateway = new GitLabDiffMetadataFetchGateway(defaultGitLabExecutor);
+            const contextGateway = deps.reviewContextGateway;
+            const threadFetchGw = deps.threadFetchGateway;
+            const diffMetadataFetchGw = deps.diffMetadataFetchGateway;
 
             try {
-              const threads = threadFetchGateway.fetchThreads(j.projectPath, j.mrNumber);
+              const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
               let diffMetadata: import('../../../entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
               try {
-                diffMetadata = diffMetadataFetchGateway.fetchDiffMetadata(j.projectPath, j.mrNumber);
+                diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
               } catch (error) {
                 logger.warn(
                   { mrNumber: j.mrNumber, error: error instanceof Error ? error.message : String(error) },
@@ -325,8 +334,7 @@ export async function handleGitLabWebhook(
 
               // Sync threads from GitLab FIRST to get real state after followup resolves threads
               const mrId = `gitlab-${j.projectPath}-${j.mrNumber}`;
-              const syncUseCase = new SyncThreadsUseCase(trackingGateway, threadFetchGateway);
-              const updatedMr = syncUseCase.execute({ projectPath: j.localPath, mrId });
+              const updatedMr = syncThreads.execute({ projectPath: j.localPath, mrId });
 
               // Record followup completion with parsed stats
               // threadsClosed comes from THREAD_RESOLVE markers parsed from output
@@ -451,15 +459,15 @@ export async function handleGitLabWebhook(
 
     // Create review context file with pre-fetched threads and diff metadata
     const mergeRequestId = `gitlab-${j.projectPath}-${j.mrNumber}`;
-    const contextGateway = new ReviewContextFileSystemGateway();
-    const threadFetchGateway = new GitLabThreadFetchGateway(defaultGitLabExecutor);
-    const diffMetadataFetchGateway = new GitLabDiffMetadataFetchGateway(defaultGitLabExecutor);
+    const contextGateway = deps.reviewContextGateway;
+    const threadFetchGw = deps.threadFetchGateway;
+    const diffMetadataFetchGw = deps.diffMetadataFetchGateway;
 
     try {
-      const threads = threadFetchGateway.fetchThreads(j.projectPath, j.mrNumber);
+      const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
       let diffMetadata: import('../../../entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
       try {
-        diffMetadata = diffMetadataFetchGateway.fetchDiffMetadata(j.projectPath, j.mrNumber);
+        diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
       } catch (error) {
         logger.warn(
           { mrNumber: j.mrNumber, error: error instanceof Error ? error.message : String(error) },

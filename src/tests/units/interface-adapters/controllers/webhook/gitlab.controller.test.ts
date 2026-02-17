@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { RepositoryConfig } from '../../../../../config/loader.js';
+import type { RepositoryConfig } from '@/config/loader.js';
 
 const mockConfig = {
   server: { port: 3000 },
@@ -21,41 +21,41 @@ const mockRepoConfig: RepositoryConfig = {
   enabled: true,
 };
 
-vi.mock('../../../../../config/loader.js', () => ({
+vi.mock('@/config/loader.js', () => ({
   loadConfig: vi.fn(() => mockConfig),
   findRepositoryByProjectPath: vi.fn(() => mockRepoConfig),
 }));
 
-vi.mock('../../../../../security/verifier.js', () => ({
+vi.mock('@/security/verifier.js', () => ({
   verifyGitLabSignature: vi.fn(() => ({ valid: true })),
   getGitLabEventType: vi.fn(() => 'Merge Request Hook'),
 }));
 
-vi.mock('../../../../../frameworks/queue/pQueueAdapter.js', () => ({
+vi.mock('@/frameworks/queue/pQueueAdapter.js', () => ({
   createJobId: vi.fn(() => 'gitlab-test-org/test-project-42'),
   enqueueReview: vi.fn(() => Promise.resolve(true)),
   updateJobProgress: vi.fn(),
   cancelJob: vi.fn(),
 }));
 
-vi.mock('../../../../../claude/invoker.js', () => ({
+vi.mock('@/claude/invoker.js', () => ({
   invokeClaudeReview: vi.fn(),
   sendNotification: vi.fn(),
 }));
 
-vi.mock('../../../../../main/websocket.js', () => ({
+vi.mock('@/main/websocket.js', () => ({
   startWatchingReviewContext: vi.fn(),
   stopWatchingReviewContext: vi.fn(),
 }));
 
-vi.mock('../../../../../config/projectConfig.js', () => ({
+vi.mock('@/config/projectConfig.js', () => ({
   loadProjectConfig: vi.fn(() => null),
   getProjectAgents: vi.fn(() => null),
   getFollowupAgents: vi.fn(() => null),
   getProjectLanguage: vi.fn(() => 'en'),
 }));
 
-vi.mock('../../../../../../interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({
+vi.mock('@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({
   ReviewContextFileSystemGateway: vi.fn().mockImplementation(() => ({
     create: vi.fn(),
     read: vi.fn(() => null),
@@ -64,19 +64,33 @@ vi.mock('../../../../../../interface-adapters/gateways/reviewContext.fileSystem.
   })),
 }));
 
-vi.mock('../../../../../../interface-adapters/gateways/threadFetch.gitlab.gateway.js', () => ({
+vi.mock('@/interface-adapters/gateways/threadFetch.gitlab.gateway.js', () => ({
   GitLabThreadFetchGateway: vi.fn().mockImplementation(() => ({
     fetchThreads: vi.fn(() => []),
   })),
   defaultGitLabExecutor: vi.fn(),
 }));
 
+vi.mock('@/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js', () => ({
+  GitLabDiffMetadataFetchGateway: vi.fn().mockImplementation(() => ({
+    fetchDiffMetadata: vi.fn(() => undefined),
+  })),
+}));
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleGitLabWebhook } from '../../../../../interface-adapters/controllers/webhook/gitlab.controller.js';
-import { GitLabEventFactory } from '../../../../factories/gitLabEvent.factory.js';
-import { createStubLogger } from '../../../../stubs/logger.stub.js';
-import { TrackedMrFactory } from '../../../../factories/trackedMr.factory.js';
-import type { TrackedMr } from '../../../../../entities/tracking/trackedMr.js';
+import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
+import { enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
+import { invokeClaudeReview } from '@/claude/invoker.js';
+import { GitLabEventFactory } from '@/tests/factories/gitLabEvent.factory.js';
+import { createStubLogger } from '@/tests/stubs/logger.stub.js';
+import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
+import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
+import { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
+import { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
+import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
+import { TransitionStateUseCase } from '@/usecases/tracking/transitionState.usecase.js';
+import { CheckFollowupNeededUseCase } from '@/usecases/tracking/checkFollowupNeeded.usecase.js';
+import { SyncThreadsUseCase } from '@/usecases/tracking/syncThreads.usecase.js';
 
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({
@@ -102,9 +116,38 @@ function createMockTrackingGateway() {
   };
 }
 
+function createStubContextGateway() {
+  return {
+    create: vi.fn(() => ({ success: true, filePath: '' })),
+    read: vi.fn(() => null),
+    delete: vi.fn(() => ({ success: true, deleted: true })),
+    exists: vi.fn(() => false),
+    getFilePath: vi.fn(() => ''),
+    appendAction: vi.fn(() => ({ success: true })),
+    updateProgress: vi.fn(() => ({ success: true })),
+    setResult: vi.fn(() => ({ success: true })),
+  };
+}
+
+function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTrackingGateway>) {
+  const threadFetchGateway = { fetchThreads: vi.fn(() => []) };
+  return {
+    reviewContextGateway: createStubContextGateway(),
+    threadFetchGateway,
+    diffMetadataFetchGateway: { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'abc', headSha: 'def', startSha: 'ghi' })) },
+    trackAssignment: new TrackAssignmentUseCase(trackingGateway),
+    recordCompletion: new RecordReviewCompletionUseCase(trackingGateway),
+    recordPush: new RecordPushUseCase(trackingGateway),
+    transitionState: new TransitionStateUseCase(trackingGateway),
+    checkFollowupNeeded: new CheckFollowupNeededUseCase(trackingGateway),
+    syncThreads: new SyncThreadsUseCase(trackingGateway, threadFetchGateway),
+  };
+}
+
 describe('handleGitLabWebhook', () => {
   let mockReply: FastifyReply;
   let mockGateway: ReturnType<typeof createMockTrackingGateway>;
+  let defaultDeps: ReturnType<typeof createDefaultDeps>;
 
   const logger = createStubLogger();
 
@@ -115,6 +158,7 @@ describe('handleGitLabWebhook', () => {
       send: vi.fn().mockReturnThis(),
     } as unknown as FastifyReply;
     mockGateway = createMockTrackingGateway();
+    defaultDeps = createDefaultDeps(mockGateway);
   });
 
   afterEach(() => {
@@ -129,7 +173,7 @@ describe('handleGitLabWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitLabWebhook(request, mockReply, logger, mockGateway);
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
 
       expect(mockGateway.update).toHaveBeenCalledWith(
         '/home/user/projects/test-project',
@@ -151,7 +195,7 @@ describe('handleGitLabWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitLabWebhook(request, mockReply, logger, mockGateway);
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
 
       expect(mockGateway.update).toHaveBeenCalledWith(
         '/home/user/projects/test-project',
@@ -177,7 +221,7 @@ describe('handleGitLabWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitLabWebhook(request, mockReply, logger, mockGateway);
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
 
       expect(mockGateway.create).toHaveBeenCalledWith(
         '/home/user/projects/test-project',
@@ -201,7 +245,7 @@ describe('handleGitLabWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitLabWebhook(request, mockReply, logger, mockGateway);
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
 
       expect(mockGateway.create).toHaveBeenCalledWith(
         '/home/user/projects/test-project',
@@ -228,7 +272,7 @@ describe('handleGitLabWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitLabWebhook(request, mockReply, logger, mockGateway);
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
 
       expect(mockGateway.create).toHaveBeenCalledWith(
         '/home/user/projects/test-project',
@@ -252,7 +296,7 @@ describe('handleGitLabWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitLabWebhook(request, mockReply, logger, mockGateway);
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
 
       expect(mockGateway.create).toHaveBeenCalledWith(
         '/home/user/projects/test-project',
@@ -262,6 +306,88 @@ describe('handleGitLabWebhook', () => {
             displayName: 'Fallback User',
           }),
         })
+      );
+    });
+  });
+
+  describe('dependency injection: reviewContextGateway', () => {
+    it('should delete review context via injected gateway when MR is closed', async () => {
+      const contextGateway = createStubContextGateway();
+      const deps = { ...defaultDeps, reviewContextGateway: contextGateway };
+
+      const event = GitLabEventFactory.createClosedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(contextGateway.delete).toHaveBeenCalledWith(
+        '/home/user/projects/test-project',
+        'gitlab-test-org/test-project-42'
+      );
+    });
+
+    it('should create review context via injected gateway when review is enqueued', async () => {
+      vi.mocked(invokeClaudeReview).mockResolvedValue({
+        success: false,
+        cancelled: true,
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        durationMs: 0,
+      });
+      vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
+        await callback(job, new AbortController().signal);
+        return true;
+      });
+
+      const contextGateway = createStubContextGateway();
+      const deps = { ...defaultDeps, reviewContextGateway: contextGateway };
+
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(contextGateway.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          platform: 'gitlab',
+          projectPath: 'test-org/test-project',
+          mergeRequestNumber: 42,
+        })
+      );
+    });
+
+    it('should use injected threadFetchGateway to fetch threads when review is enqueued', async () => {
+      const stubThreadFetch = { fetchThreads: vi.fn(() => []) };
+      const stubDiffMetadataFetch = { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'a', headSha: 'b', startSha: 'c' })) };
+
+      vi.mocked(invokeClaudeReview).mockResolvedValue({
+        success: false,
+        cancelled: true,
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        durationMs: 0,
+      });
+      vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
+        await callback(job, new AbortController().signal);
+        return true;
+      });
+
+      const deps = {
+        ...defaultDeps,
+        threadFetchGateway: stubThreadFetch,
+        diffMetadataFetchGateway: stubDiffMetadataFetch,
+      };
+
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(stubThreadFetch.fetchThreads).toHaveBeenCalledWith(
+        'test-org/test-project',
+        42
       );
     });
   });
