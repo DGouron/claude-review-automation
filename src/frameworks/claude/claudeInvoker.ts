@@ -154,6 +154,23 @@ These rules are about WRITING production code. You are in **READ-ONLY review mod
 - **Source Branch**: ${job.sourceBranch || 'unknown'}
 - **Target Branch**: ${job.targetBranch || 'unknown'}
 
+## ⛔ CRITICAL: Data Source Rules
+
+The local repository at \`${job.localPath}\` may be checked out on a DIFFERENT branch than MR !${job.mrNumber}.
+Multiple reviews can run concurrently on the same repo. The local state is UNRELIABLE.
+
+**SOURCE OF TRUTH for the MR diff**: \`glab mr diff ${job.mrNumber}\` — use this, NEVER \`git diff\`.
+**SOURCE OF TRUTH for MR metadata**: \`glab mr view ${job.mrNumber}\` — use this for branch names, title, description.
+**SOURCE OF TRUTH for threads**: \`get_threads({ jobId: "${job.id}" })\` — MCP tool.
+
+**FORBIDDEN — these reflect LOCAL state, not the MR:**
+- \`git diff\`, \`git log\`, \`git branch\`, \`git status\`
+- Reading local files as source of truth for what the MR changes
+- Assuming the local branch matches the MR being reviewed
+
+**ALLOWED — local repo for conflict detection only:**
+- Reading local files to check if they conflict with MR changes (advisory only)
+
 ## MANDATORY MCP Tools Usage
 
 You MUST use these MCP tools for ALL operations. Do NOT use text markers.
