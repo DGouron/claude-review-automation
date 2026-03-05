@@ -1,39 +1,47 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
-import { verifyGitHubSignature, getGitHubEventType } from '../../../security/verifier.js';
-import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose } from './eventFilter.js';
-import { gitHubPullRequestEventGuard } from '../../../entities/github/githubPullRequestEvent.guard.js';
-import { findRepositoryByRemoteUrl } from '../../../config/loader.js';
+import { verifyGitHubSignature, getGitHubEventType } from '@/security/verifier.js';
+import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose } from '@/interface-adapters/controllers/webhook/eventFilter.js';
+import { gitHubPullRequestEventGuard } from '@/entities/github/githubPullRequestEvent.guard.js';
+import { findRepositoryByRemoteUrl } from '@/config/loader.js';
 import {
   enqueueReview,
   createJobId,
   updateJobProgress,
   cancelJob,
   type ReviewJob,
-} from '../../../frameworks/queue/pQueueAdapter.js';
-import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
-import { TrackAssignmentUseCase } from '../../../usecases/tracking/trackAssignment.usecase.js';
-import { RecordReviewCompletionUseCase } from '../../../usecases/tracking/recordReviewCompletion.usecase.js';
-import { parseReviewOutput } from '../../../services/statsService.js';
-import { parseThreadActions } from '../../../services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '../../../services/threadActionsExecutor.js';
-import { executeActionsFromContext } from '../../../services/contextActionsExecutor.js';
-import { invokeClaudeReview, sendNotification } from '../../../claude/invoker.js';
-import { ReviewContextFileSystemGateway } from '../../gateways/reviewContext.fileSystem.gateway.js';
-import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '../../gateways/threadFetch.github.gateway.js';
-import { GitHubDiffMetadataFetchGateway } from '../../gateways/diffMetadataFetch.github.gateway.js';
-import { startWatchingReviewContext, stopWatchingReviewContext } from '../../../main/websocket.js';
+} from '@/frameworks/queue/pQueueAdapter.js';
+import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
+import type { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
+import { parseReviewOutput } from '@/services/statsService.js';
+import { parseThreadActions } from '@/services/threadActionsParser.js';
+import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
+import { executeActionsFromContext } from '@/services/contextActionsExecutor.js';
+import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
+import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';
-import { DEFAULT_AGENTS } from '../../../entities/progress/agentDefinition.type.js';
+import { DEFAULT_AGENTS } from '@/entities/progress/agentDefinition.type.js';
+import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
+import type { ThreadFetchGateway } from '@/entities/threadFetch/threadFetch.gateway.js';
+import type { DiffMetadataFetchGateway } from '@/entities/diffMetadata/diffMetadata.gateway.js';
+
+export interface GitHubWebhookDependencies {
+  reviewContextGateway: ReviewContextGateway;
+  threadFetchGateway: ThreadFetchGateway;
+  diffMetadataFetchGateway: DiffMetadataFetchGateway;
+  trackAssignment: TrackAssignmentUseCase;
+  recordCompletion: RecordReviewCompletionUseCase;
+}
 
 export async function handleGitHubWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
   logger: Logger,
-  trackingGateway: ReviewRequestTrackingGateway
+  trackingGateway: ReviewRequestTrackingGateway,
+  deps: GitHubWebhookDependencies
 ): Promise<void> {
-  const trackAssignment = new TrackAssignmentUseCase(trackingGateway);
-  const recordCompletion = new RecordReviewCompletionUseCase(trackingGateway);
+  const { trackAssignment, recordCompletion } = deps;
   // 1. Verify signature
   const verification = verifyGitHubSignature(request);
   if (!verification.valid) {
@@ -77,8 +85,7 @@ export async function handleGitHubWebhook(
       const archived = trackingGateway.archive(repoConfig.localPath, mrId);
 
       // Delete review context file
-      const contextGateway = new ReviewContextFileSystemGateway();
-      const contextDeleted = contextGateway.delete(repoConfig.localPath, mrId);
+      const contextDeleted = deps.reviewContextGateway.delete(repoConfig.localPath, mrId);
 
       logger.info(
         {
@@ -201,9 +208,7 @@ export async function handleGitHubWebhook(
 
     // Create review context file with pre-fetched threads and diff metadata
     const mergeRequestId = `github-${j.projectPath}-${j.mrNumber}`;
-    const contextGateway = new ReviewContextFileSystemGateway();
-    const threadFetchGateway = new GitHubThreadFetchGateway(defaultGitHubExecutor);
-    const diffMetadataFetchGateway = new GitHubDiffMetadataFetchGateway(defaultGitHubExecutor);
+    const { reviewContextGateway: contextGateway, threadFetchGateway, diffMetadataFetchGateway } = deps;
 
     try {
       const threads = threadFetchGateway.fetchThreads(j.projectPath, j.mrNumber);

@@ -1,0 +1,355 @@
+# ReviewFlow CLAUDE.md
+
+## Behavior
+
+Important: Each response will start with "I read the rules." This demonstrates you have followed our guidelines.
+
+Always challenge me when relevant and be straightforward without sugarcoating.
+
+Always evaluate the scope of what's being asked and tell me if it's too broad or vague.
+
+Since I'm allergic to technical comments in code, only add them if vital for understanding. This means you've already named functions, files, variables, and folders in a way that screams intent.
+
+## Language Rules
+
+- **Documentation**: English
+- **Technical** (code, tests, commits, logs): English
+
+## Project Overview
+
+ReviewFlow is an AI-powered code review automation tool for GitLab/GitHub using Claude Code. It receives webhooks from merge requests/pull requests, queues review jobs, invokes Claude for automated code review, and posts inline comments and review reports back to the platform.
+
+Check `package.json` for all package versions.
+
+## Development Commands
+
+### Essential Commands
+```bash
+yarn dev                 # Start dev server (tsx watch)
+yarn build               # Build TypeScript + resolve aliases + copy assets
+yarn start               # Start production server
+yarn typecheck           # TypeScript validation only
+yarn lint                # Biome linting check
+yarn lint:fix            # Auto-fix linting issues
+
+# Testing
+yarn test                # Run tests with UI
+yarn test:ci             # Run tests in CI mode
+yarn coverage            # Generate coverage report
+
+# Quality
+yarn verify              # Run typecheck + lint + test:ci (run before commits)
+
+# Documentation
+yarn docs:dev            # VitePress dev server
+yarn docs:build          # Build docs
+yarn docs:preview        # Preview built docs
+```
+
+### Quality Assurance
+Always run `yarn verify` before committing. This runs TypeScript validation, linting, and tests.
+
+## Architecture
+
+- **Style**: Clean Architecture (Uncle Bob)
+- **DDD**: Strategic level only (Bounded Contexts, Ubiquitous Language)
+- **Modules**: Organized by layer (`src/entities/`, `src/usecases/`, `src/interface-adapters/`, `src/frameworks/`)
+
+### Principles
+
+- **Clean Architecture definitions take precedence** over DDD tactical patterns
+- **Dependency Rule**: Dependencies point inward only
+- **SOLID Principles**: SRP & DIP as pillars
+
+### Key Patterns
+
+- **Gateway Pattern**: All external data access through interfaces
+- **Factory Pattern**: Object creation with validation in domain layer
+- **Use Case Pattern**: Each business action encapsulated in a dedicated use case class
+
+### Foundation Utilities
+
+**IMPORTANT**: Before creating new utilities, check `src/shared/foundation/` for existing tools:
+
+| Module | Purpose | Usage |
+|--------|---------|-------|
+| `guard/` | Type-safe validation with Zod | `createGuard(schema, 'context')` |
+| `usecase/` | Base use case interface | `UseCase<Input, Output>` |
+| `executionGateway.base.ts` | Base class for CLI command execution | Handles build/execute/skip pattern |
+
+Always prefer existing foundation utilities over creating new ones.
+
+### Dependency Injection
+
+Controllers receive dependencies via a typed `Dependencies` interface parameter. Instantiation happens in the composition root (`src/main/routes.ts`), not inside controllers.
+
+```typescript
+// Interface definition in controller file
+export interface WebhookDependencies {
+  reviewContextGateway: ReviewContextGateway;
+  threadFetchGateway: ThreadFetchGateway;
+  trackAssignment: TrackAssignmentUseCase;
+}
+
+// Controller receives deps as parameter
+export async function handleWebhook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  logger: Logger,
+  deps: WebhookDependencies
+): Promise<void> {
+  const { trackAssignment } = deps;
+  // ...
+}
+
+// Composition root (routes.ts) — only place for instantiation
+app.post('/webhooks/gitlab', async (request, reply) => {
+  await handleWebhook(request, reply, deps.logger, {
+    reviewContextGateway: deps.reviewContextGateway,
+    threadFetchGateway: new GitLabThreadFetchGateway(executor),
+    trackAssignment: new TrackAssignmentUseCase(trackingGw),
+  });
+});
+```
+
+### Interface Adapters (Anti-Corruption Layer)
+
+```
+External World (GitLab API, GitHub API, CLI, File System)
+    │
+    ▼
+INTERFACE ADAPTERS (ACL): Gateway | Controller | Presenter
+    │
+    ▼
+APPLICATION LAYER (Use Cases)
+    │
+    ▼
+DOMAIN LAYER (Entities, Business Rules)
+```
+
+| Adapter | Direction | Responsibility |
+|---------|-----------|----------------|
+| **Gateway** | External <-> Domain | Handles communication with external systems (APIs, CLI, DB). Isolates use cases from infrastructure. |
+| **Controller** | Inbound -> Application | Transforms webhook/HTTP events into use case calls. |
+
+**Rules**:
+- Interface Adapters NEVER contain business logic
+- They can transform, validate, and adapt data
+- Internal structures (domain) must NEVER leak outside without going through an adapter
+- Dependency always points inward (Dependency Rule)
+
+## Testing
+
+### Approach: Inside-Out (Detroit School)
+
+**Direction**: Start from Domain, work outward to Controllers
+
+| Principle | Description |
+|-----------|-------------|
+| **Test state** | Verify final result, not how we got there |
+| **Inside-Out** | Start from domain, work outward |
+| **Minimal mocks** | Only for external I/O (gateways, CLI, file system) |
+| **Robust tests** | Resistant to internal refactoring |
+
+- **Framework**: Vitest
+- **Absolute Rule**: Never write production code without a failing test first
+- **Cycle**: Red -> Green -> Refactor
+- **Language**: Tests in **English** (code, descriptions, names)
+
+### Coverage Requirements
+
+Branches 80%, Functions 40%, Lines 30%, Statements 30%
+
+### Test Structure
+
+All tests in `/src/tests/` mirroring source code:
+
+```
+/src/tests/
+├── units/                    # Unit tests (mirror of /src/)
+├── factories/                # Factories to create test data
+├── helpers/                  # Shared test helpers
+├── stubs/                    # Stub gateways for external dependencies
+└── mocks/                    # Mock data
+```
+
+### Factories
+
+- **Location**: `/src/tests/factories/`
+- **Convention**: `<entity>.factory.ts`
+- **Usage**: Always use factories in tests, never hardcoded data
+
+## Technology Stack
+
+- **Node.js >= 20** with ES modules (`"type": "module"`)
+- **TypeScript 5.8+** with strict configuration
+- **Fastify 5** for HTTP server and webhooks
+- **Zod 4** for runtime validation and guards
+- **Pino** for structured logging
+- **p-queue** for review job queuing with concurrency control
+- **MCP SDK** (`@modelcontextprotocol/sdk`) for Model Context Protocol server
+- **Vitest** for testing
+- **Biome** for linting and formatting
+- **VitePress** for documentation site
+
+## Code Quality
+
+### Naming Conventions
+
+- **Full words**: Always use complete words. Never use abbreviations.
+  - Allowed: `existing`, `index`, `context`, `gateway`
+  - Forbidden: `ex`, `i`, `idx`, `ctx`, `gw`
+
+### File Naming Rules
+
+- **TypeScript files (.ts)**: camelCase (`reviewContext.gateway.ts`, `trackAssignment.usecase.ts`)
+- **Classes in files**: Even if the class is `PascalCase`, the file name stays camelCase
+- **Imports**: ALWAYS use alias `@/`, NEVER relative paths `../`. The `.js` extension is MANDATORY (NodeNext module resolution).
+  ```typescript
+  // Forbidden: relative paths
+  import { foo } from "../../../entities/foo";
+
+  // Forbidden: missing .js extension
+  import { foo } from "@/entities/foo";
+
+  // Correct: alias + .js extension
+  import { foo } from "@/entities/foo.js";
+  ```
+  This applies to ALL files: source code AND tests.
+- **Test files**: Located in `/src/tests/` mirroring source structure + `.test.ts` suffix
+- **Types**: Capitalized (`TrackedMr`, `ReviewContext`) - NO "Type" suffix when using `type`
+- **Interfaces**: NO prefix - aligned with Clean Code and ubiquitous language
+  - Allowed: `ReviewContextGateway`, `ThreadFetchGateway`
+  - Forbidden: `IReviewContextGateway`, `IThreadFetchGateway`
+- **Comments**: AVOID systematic comments, prefer self-documenting code
+- **JSDoc**: Use for public APIs (this is NOT considered a comment)
+- **Type vs Interface**: `type` for data shapes, `interface` for contracts/extending
+
+### Type Assertions (as Type)
+
+**FORBIDDEN**: Type assertions (`as Type`, `as unknown as Type`) bypass TypeScript's type checking.
+
+Use instead:
+- **Guards** with Zod schema validation for external data
+- **Type narrowing** (`if`, `typeof`, `instanceof`)
+- **Optional chaining** + **nullish coalescing** (`?.`, `??`)
+
+### No `undefined`, No Primitive Obsession
+
+- **`undefined` is banned** in domain types — use `null` for intentional absence
+- **Primitives should be wrapped** in domain types using branded types (zero runtime cost):
+  ```typescript
+  type MergeRequestId = string & { readonly __brand: 'MergeRequestId' };
+  ```
+
+### Async Patterns
+
+**MANDATORY**: Use `async/await` with `try/catch/finally`. Never use `.then()/.catch()` chains.
+
+## Backlog Management
+
+**Source of truth**: [GitHub Issues](https://github.com/DGouron/review-flow/issues) and [ReviewFlow Roadmap](https://github.com/users/DGouron/projects/3) project board.
+
+### Conventions
+
+- **Issues** are the single source of truth for all features, bugs, and refactoring tickets
+- **Milestones** group issues by release scope
+- **Labels** indicate type (`enhancement`, `bug`, `refactor`), priority (`P1-critical`, `P2-important`, `P3-nice-to-have`), and scope (`cli`, `dashboard`, `mcp`, `skills`, etc.)
+- Use conventional commit format and reference issues in PRs (`Fixes #43`)
+
+## Git Workflow
+
+### Branch Strategy
+- Main branch: `master`
+- Feature branches: `feat/<issue-number>-description`
+- Conventional commits with commitlint validation
+
+### Before Committing
+1. Run `yarn verify` to validate code quality
+2. Ensure tests pass with `yarn test:ci`
+3. Follow conventional commit format
+
+### Before Creating a Pull Request
+1. Run `yarn verify` locally to catch lint/type/test errors before pushing
+2. Fix any issues found, commit, and push
+3. Only then create the PR
+
+### Linting & Formatting
+- **Biome.js** for both linting and formatting
+- Run `yarn lint:fix` for auto-corrections
+
+## Refactoring
+
+- **Guideline**: https://refactoring.guru/refactoring/smells
+- **Techniques**: Mikado and Strangler Pattern
+- **Focus**: Dead code, unused imports, ubiquitous language, deprecated elements
+
+## Available Skills
+
+### Mandatory Skills (MUST use before coding)
+
+**CRITICAL**: These 3 skills are MANDATORY before writing any production code:
+
+| Skill | When to use | Why mandatory |
+|-------|-------------|---------------|
+| `/tdd` | **ALWAYS** before writing/modifying code | No code without failing test first |
+| `/architecture` | Creating new components (entity, use case, gateway) | Ensures Clean Architecture compliance |
+| `/anti-overengineering` | Before adding patterns, abstractions, or "improvements" | Prevents over-complexity, validates YAGNI |
+
+**Workflow**:
+1. `/anti-overengineering` -> Challenge if the approach is justified
+2. `/architecture` -> Design the component structure
+3. `/tdd` -> Implement with Red-Green-Refactor cycle
+
+### Optional Skills
+
+| Skill | When to use |
+|-------|-------------|
+| `/refactoring` | Migration, library replacement, module splitting |
+| `/ddd` | Split domain, define ubiquitous language |
+| `/security` | Scan for secrets before commit, detect tokens and API keys |
+| `/solid` | Apply SOLID principles from Clean Architecture |
+| `/create-doc` | Creating new documentation files |
+| `/update-docs` | Updating docs after code changes |
+| `/audit-docs` | Auditing documentation quality |
+| `/docs-index` | Generating/updating centralized documentation index |
+
+## Universal Rules (.claude/rules/)
+
+These rules ALWAYS apply:
+- [Anti-hallucination](rules/anti-hallucination.md) -- verify before asserting
+- [Reformulation](rules/reformulation.md) -- reformulate if prompt is vague
+- [Prompt-structure](rules/prompt-structure.md) -- 4 mandatory blocks
+- [Scope-discipline](rules/scope-discipline.md) -- one change = one scope = one commit
+
+## Roles (.claude/roles/)
+
+| Role | File | When |
+|------|------|------|
+| Senior Dev | `senior-dev.md` | Default, always active |
+| Code Reviewer | `code-reviewer.md` | Code review |
+| Mentor | `mentor.md` | Explaining a concept |
+| Architect | `architect.md` | Architecture decisions |
+| Documentalist | `documentalist.md` | Documentation tasks |
+| Specifier | `specifier.md` | Specifications & discovery |
+
+## Agents (.claude/agents/)
+
+| Agent | Role loaded | When |
+|-------|-------------|------|
+| architect | architect | Design & implement features |
+| reviewer | code-reviewer | Pre-PR code review |
+| product-manager | specifier | Specs & discovery |
+| documentalist | documentalist | Documentation management |
+| open-source | -- | OSS health (README, CHANGELOG) |
+| pair-programming | senior-dev | Implement together |
+| debug | senior-dev | Diagnose a bug |
+| mentor | mentor | Explain a concept |
+| tdd | senior-dev | Double Loop ATDD/TDD |
+
+## Commands (.claude/commands/)
+
+| Command | Description |
+|---------|-------------|
+| `/status` | Full diagnostic: tests, types, lint, debt, git |
+| `/test` | Test verification: results, coverage, untested files |

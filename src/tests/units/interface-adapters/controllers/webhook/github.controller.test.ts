@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { RepositoryConfig } from '../../../../../config/loader.js';
+import type { GitHubWebhookDependencies } from '../../../../../interface-adapters/controllers/webhook/github.controller.js';
 
 const mockConfig = {
   server: { port: 3000 },
@@ -60,6 +61,30 @@ import { invokeClaudeReview } from '../../../../../claude/invoker.js';
 import { TrackedMrFactory } from '../../../../factories/trackedMr.factory.js';
 import type { TrackedMr } from '../../../../../entities/tracking/trackedMr.js';
 
+function createMockDeps(): GitHubWebhookDependencies {
+  return {
+    reviewContextGateway: {
+      create: vi.fn(),
+      read: vi.fn(() => null),
+      delete: vi.fn(() => ({ deleted: true })),
+      updateProgress: vi.fn(),
+      appendAction: vi.fn(),
+    },
+    threadFetchGateway: {
+      fetchThreads: vi.fn(() => []),
+    },
+    diffMetadataFetchGateway: {
+      fetchDiffMetadata: vi.fn(() => ({
+        baseSha: 'abc',
+        headSha: 'def',
+        startSha: 'ghi',
+      })),
+    },
+    trackAssignment: { execute: vi.fn() },
+    recordCompletion: { execute: vi.fn() },
+  } as unknown as GitHubWebhookDependencies;
+}
+
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({
     id: 'github-test-owner/test-repo-123',
@@ -87,6 +112,7 @@ function createMockTrackingGateway() {
 describe('handleGitHubWebhook', () => {
   let mockReply: FastifyReply;
   let mockGateway: ReturnType<typeof createMockTrackingGateway>;
+  let mockDeps: GitHubWebhookDependencies;
 
   const logger = createStubLogger();
 
@@ -97,6 +123,7 @@ describe('handleGitHubWebhook', () => {
       send: vi.fn().mockReturnThis(),
     } as unknown as FastifyReply;
     mockGateway = createMockTrackingGateway();
+    mockDeps = createMockDeps();
   });
 
   afterEach(() => {
@@ -105,26 +132,27 @@ describe('handleGitHubWebhook', () => {
 
   describe('PR tracking on review request', () => {
     it('should track PR assignment when review is requested', async () => {
-      mockGateway.getById.mockReturnValue(null);
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       const request = {
         body: event,
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.create).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
+      expect(mockDeps.trackAssignment.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          mrNumber: 123,
-          title: 'Test PR',
-          url: 'https://github.com/test-owner/test-repo/pull/123',
-          project: 'test-owner/test-repo',
-          platform: 'github',
-          sourceBranch: 'feature/test',
-          targetBranch: 'main',
-          assignment: expect.objectContaining({
+          projectPath: '/home/user/projects/test-repo',
+          mrInfo: expect.objectContaining({
+            mrNumber: 123,
+            title: 'Test PR',
+            url: 'https://github.com/test-owner/test-repo/pull/123',
+            project: 'test-owner/test-repo',
+            platform: 'github',
+            sourceBranch: 'feature/test',
+            targetBranch: 'main',
+          }),
+          assignedBy: expect.objectContaining({
             username: 'developer',
           }),
         })
@@ -132,20 +160,20 @@ describe('handleGitHubWebhook', () => {
     });
 
     it('should track PR assignment when labeled with needs-review', async () => {
-      mockGateway.getById.mockReturnValue(null);
       const event = GitHubEventFactory.createLabeledPr('needs-review');
       const request = {
         body: event,
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.create).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
+      expect(mockDeps.trackAssignment.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          mrNumber: 123,
-          platform: 'github',
+          mrInfo: expect.objectContaining({
+            mrNumber: 123,
+            platform: 'github',
+          }),
         })
       );
     });
@@ -172,17 +200,19 @@ describe('handleGitHubWebhook', () => {
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       const request = { body: event, headers: {} } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.recordReviewEvent).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
-        'github-test-owner/test-repo-123',
+      expect(mockDeps.recordCompletion.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'review',
-          score: 7.5,
-          blocking: 2,
-          warnings: 3,
-          suggestions: 1,
+          projectPath: '/home/user/projects/test-repo',
+          mrId: 'github-test-owner/test-repo-123',
+          reviewData: expect.objectContaining({
+            type: 'review',
+            score: 7.5,
+            blocking: 2,
+            warnings: 3,
+            suggestions: 1,
+          }),
         })
       );
     });
@@ -207,13 +237,14 @@ describe('handleGitHubWebhook', () => {
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       const request = { body: event, headers: {} } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.update).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
-        'github-test-owner/test-repo-123',
+      expect(mockDeps.recordCompletion.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          openThreads: 1, // Only blocking count, not blocking + warnings (6)
+          reviewData: expect.objectContaining({
+            blocking: 1,
+            threadsOpened: 1, // Only blocking count, not blocking + warnings (6)
+          }),
         })
       );
     });
@@ -238,9 +269,9 @@ describe('handleGitHubWebhook', () => {
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       const request = { body: event, headers: {} } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.recordReviewEvent).not.toHaveBeenCalled();
+      expect(mockDeps.recordCompletion.execute).not.toHaveBeenCalled();
     });
 
     it('should not record stats when review fails', async () => {
@@ -263,15 +294,14 @@ describe('handleGitHubWebhook', () => {
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       const request = { body: event, headers: {} } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.recordReviewEvent).not.toHaveBeenCalled();
+      expect(mockDeps.recordCompletion.execute).not.toHaveBeenCalled();
     });
   });
 
   describe('assignedBy attribution', () => {
     it('should use PR assignee as assignedBy when assignee is present', async () => {
-      mockGateway.getById.mockReturnValue(null);
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       event.pull_request.assignees = [{ login: 'pr-owner' }];
       event.sender = { login: 'reviewer-who-requested' };
@@ -281,12 +311,11 @@ describe('handleGitHubWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.create).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
+      expect(mockDeps.trackAssignment.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          assignment: expect.objectContaining({
+          assignedBy: expect.objectContaining({
             username: 'pr-owner',
             displayName: 'pr-owner',
           }),
@@ -295,7 +324,6 @@ describe('handleGitHubWebhook', () => {
     });
 
     it('should fallback to sender when no assignee is present', async () => {
-      mockGateway.getById.mockReturnValue(null);
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       event.pull_request.assignees = [];
       event.sender = { login: 'webhook-sender' };
@@ -305,12 +333,11 @@ describe('handleGitHubWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.create).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
+      expect(mockDeps.trackAssignment.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          assignment: expect.objectContaining({
+          assignedBy: expect.objectContaining({
             username: 'webhook-sender',
             displayName: 'webhook-sender',
           }),
@@ -319,7 +346,6 @@ describe('handleGitHubWebhook', () => {
     });
 
     it('should use first assignee when multiple assignees exist', async () => {
-      mockGateway.getById.mockReturnValue(null);
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       event.pull_request.assignees = [
         { login: 'primary-owner' },
@@ -332,12 +358,11 @@ describe('handleGitHubWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.create).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
+      expect(mockDeps.trackAssignment.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          assignment: expect.objectContaining({
+          assignedBy: expect.objectContaining({
             username: 'primary-owner',
             displayName: 'primary-owner',
           }),
@@ -346,7 +371,6 @@ describe('handleGitHubWebhook', () => {
     });
 
     it('should fallback to sender when assignees field is undefined', async () => {
-      mockGateway.getById.mockReturnValue(null);
       const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
       (event.pull_request as Record<string, unknown>).assignees = undefined;
       event.sender = { login: 'fallback-sender' };
@@ -356,12 +380,11 @@ describe('handleGitHubWebhook', () => {
         headers: {},
       } as unknown as FastifyRequest;
 
-      await handleGitHubWebhook(request, mockReply, logger, mockGateway);
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
 
-      expect(mockGateway.create).toHaveBeenCalledWith(
-        '/home/user/projects/test-repo',
+      expect(mockDeps.trackAssignment.execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          assignment: expect.objectContaining({
+          assignedBy: expect.objectContaining({
             username: 'fallback-sender',
             displayName: 'fallback-sender',
           }),

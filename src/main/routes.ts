@@ -18,6 +18,8 @@ import { handleGitHubWebhook } from '@/interface-adapters/controllers/webhook/gi
 import { cancelJob, getJobStatus } from '@/frameworks/queue/pQueueAdapter.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
+import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/interface-adapters/gateways/threadFetch.github.gateway.js';
+import { GitHubDiffMetadataFetchGateway } from '@/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
 import { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
 import { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
 import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
@@ -89,8 +91,16 @@ export async function registerRoutes(
     });
   });
 
+  const gitHubThreadFetchGw = new GitHubThreadFetchGateway(defaultGitHubExecutor);
+
   app.post('/webhooks/github', async (request, reply) => {
-    await handleGitHubWebhook(request, reply, deps.logger, deps.reviewRequestTrackingGateway);
+    await handleGitHubWebhook(request, reply, deps.logger, trackingGw, {
+      reviewContextGateway: deps.reviewContextGateway,
+      threadFetchGateway: gitHubThreadFetchGw,
+      diffMetadataFetchGateway: new GitHubDiffMetadataFetchGateway(defaultGitHubExecutor),
+      trackAssignment: new TrackAssignmentUseCase(trackingGw),
+      recordCompletion: new RecordReviewCompletionUseCase(trackingGw),
+    });
   });
 
   app.get('/', async (_request, reply) => {
