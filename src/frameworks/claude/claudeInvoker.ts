@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { writeFileSync, mkdirSync, existsSync, unlinkSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Logger } from 'pino';
@@ -58,36 +58,22 @@ export function writeMcpContext(job: ReviewJob): void {
   }
 }
 
-export function ensureProjectMcpConfig(projectPath: string): void {
-  try {
-    const mcpServerPath = resolveMcpServerPath();
-    const mcpConfigPath = join(projectPath, '.mcp.json');
-    const expectedConfig = {
-      mcpServers: {
-        "review-progress": {
-          command: "node",
-          args: [mcpServerPath],
-        },
+/**
+ * Build MCP config JSON for --mcp-config flag.
+ * Returns a self-contained JSON string with ONLY the review-progress server.
+ * Used with --strict-mcp-config to isolate reviews from project .mcp.json
+ * (which may contain other MCP servers that cause timeouts).
+ */
+export function buildMcpConfigJson(): string {
+  const mcpServerPath = resolveMcpServerPath();
+  return JSON.stringify({
+    mcpServers: {
+      "review-progress": {
+        command: "node",
+        args: [mcpServerPath],
       },
-    };
-
-    // Check if file exists and has correct config
-    if (existsSync(mcpConfigPath)) {
-      const existing = JSON.parse(readFileSync(mcpConfigPath, 'utf-8'));
-      if (existing?.mcpServers?.["review-progress"]) {
-        return; // Already configured
-      }
-      // Merge with existing config
-      existing.mcpServers = existing.mcpServers || {};
-      existing.mcpServers["review-progress"] = expectedConfig.mcpServers["review-progress"];
-      writeFileSync(mcpConfigPath, JSON.stringify(existing, null, 2) + '\n');
-    } else {
-      // Create new config
-      writeFileSync(mcpConfigPath, JSON.stringify(expectedConfig, null, 2) + '\n');
-    }
-  } catch {
-    // Non-critical, skill may still work without MCP
-  }
+    },
+  });
 }
 
 export function cleanupMcpContext(jobId: string): void {
@@ -234,22 +220,28 @@ export async function invokeClaudeReview(
   // Build MCP system prompt injection
   const mcpSystemPrompt = buildMcpSystemPrompt(job);
 
+  // Build MCP config: isolated from project .mcp.json to avoid
+  // third-party MCP servers (e.g. gitnexus) causing initialization timeouts
+  const mcpConfigJson = buildMcpConfigJson();
+
   // Build arguments
   // --permission-mode bypassPermissions: automated review, no user to approve
   // --allowedTools / --disallowedTools: belt-and-suspenders to restrict tool scope
+  // --mcp-config + --strict-mcp-config: use ONLY review-progress MCP server
   const args = [
     '--print',
     '--model', model,
     '--permission-mode', 'bypassPermissions',
     '--append-system-prompt', mcpSystemPrompt,
+    '--mcp-config', mcpConfigJson,
+    '--strict-mcp-config',
     '--allowedTools', 'Read,Glob,Grep,Bash,Edit,Task,Skill,Write,LSP,mcp__review-progress__*',
     '--disallowedTools', 'EnterPlanMode,AskUserQuestion',
     '-p', prompt,
   ];
 
-  // Setup MCP: write context file and ensure project has .mcp.json
+  // Setup MCP job context file (used by MCP server to identify the review)
   writeMcpContext(job);
-  ensureProjectMcpConfig(job.localPath);
 
   logger.info(
     {
