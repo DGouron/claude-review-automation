@@ -1,6 +1,6 @@
 ---
 name: e2e
-description: Guide pour les tests end-to-end Playwright. Utiliser pour créer un nouveau test e2e, un Page Object, ou débugger un test flaky. Rappelle les patterns, workarounds et conventions du projet.
+description: Guide for Playwright end-to-end tests. Use to create a new e2e test, debug a flaky test, or test API endpoints. Covers patterns, workarounds, and project conventions.
 ---
 
 # Playwright E2E Testing Guide
@@ -11,11 +11,10 @@ Read `.claude/roles/code-reviewer.md` — adopt this profile and follow all its 
 
 ## Activation
 
-Ce skill s'active pour :
-- Créer un nouveau test e2e
-- Créer un Page Object
-- Débugger un test flaky
-- Tester une feature critique (parcours utilisateur complet)
+This skill activates for:
+- Creating a new e2e test
+- Debugging a flaky test
+- Testing a critical feature (complete API workflow)
 
 ---
 
@@ -23,325 +22,219 @@ Ce skill s'active pour :
 
 ```
 src/tests/e2e/
-├── .auth/                    # Session authentifiée (gitignored)
 ├── fixtures/
-│   └── test-data.ts          # Données de test (users, selections, etc.)
-├── page-objects/
-│   ├── shared/
-│   │   └── BasePage.ts       # Utilitaires communs
-│   ├── auth/
-│   │   └── LoginPage.ts      # Authentification
-│   └── school/
-│       └── <Page>Page.ts     # Pages par contexte
+│   └── test-data.ts          # Test data (webhooks, payloads, etc.)
 ├── specs/
-│   ├── auth.setup.ts         # Setup authentification (run once)
+│   ├── setup.ts              # Server setup (run once)
 │   └── <context>/
-│       └── <feature>.spec.ts # Tests par feature
+│       └── <feature>.spec.ts # Tests per feature
 └── utils/
-    └── test-helpers.ts       # Helpers (login, API setup)
+    └── test-helpers.ts       # Helpers (API calls, server setup)
 ```
 
 ---
 
-## Commandes
+## Commands
 
-| Commande | Usage |
-|----------|-------|
-| `yarn e2e` | Exécuter tous les tests |
-| `yarn e2e:ui` | Mode interactif avec UI Playwright |
-| `yarn e2e:debug` | Mode debug avec inspector |
-| `yarn e2e:headed` | Navigateur visible |
-| `yarn test:e2e:report` | Voir le rapport HTML |
+| Command | Usage |
+|---------|-------|
+| `yarn e2e` | Run all tests |
+| `yarn e2e:debug` | Debug mode with inspector |
+| `yarn test:e2e:report` | View HTML report |
 
 ---
 
-## Workflow : Créer un nouveau test
+## Workflow: Create a New Test
 
-### 1. Identifier le contexte
+### 1. Identify the Context
 
 ```
 specs/
-├── auth.setup.ts           # Setup (ne pas toucher)
-├── school/                 # Tests école
-├── student/                # Tests étudiant
-└── company/                # Tests entreprise
+├── setup.ts                # Setup (do not touch)
+├── webhook/                # Webhook endpoint tests
+├── review/                 # Review workflow tests
+└── health/                 # Health check tests
 ```
 
-### 2. Vérifier le Page Object
-
-**Page Object existe ?**
-- Oui → L'importer et l'utiliser
-- Non → Le créer d'abord (voir section suivante)
-
-### 3. Écrire le test
+### 2. Write the Test
 
 ```typescript
-// specs/school/my-feature.spec.ts
+// specs/webhook/github-webhook.spec.ts
 import { test, expect } from "@playwright/test";
-import { MyFeaturePage } from "../../page-objects/school/MyFeaturePage";
 
-test.describe("My Feature", () => {
-  // Utilise la session pré-authentifiée (85% plus rapide)
-  test.use({ storageState: "src/tests/e2e/.auth/school.json" });
+test.describe("GitHub Webhook", () => {
+  test("should accept a valid pull request event", async ({ request }) => {
+    const response = await request.post("/webhooks/github", {
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "pull_request",
+        "x-hub-signature-256": "sha256=valid-signature",
+      },
+      data: {
+        action: "opened",
+        pull_request: {
+          number: 42,
+          title: "feat: add new feature",
+          head: { ref: "feat/new-feature" },
+          base: { ref: "main" },
+        },
+        repository: { full_name: "org/repo" },
+        sender: { login: "developer" },
+      },
+    });
 
-  test("should do something", async ({ page }) => {
-    const myFeaturePage = new MyFeaturePage(page);
+    expect(response.status()).toBe(200);
+  });
 
-    // ⚠️ WORKAROUND: Router race condition
-    await page.waitForTimeout(2000);
+  test("should reject an invalid payload", async ({ request }) => {
+    const response = await request.post("/webhooks/github", {
+      data: {},
+    });
 
-    await myFeaturePage.navigate();
-    await myFeaturePage.waitForPageLoad();
-
-    // Assertions
-    await expect(page.getByTestId("my-element")).toBeVisible();
+    expect(response.status()).toBe(400);
   });
 });
 ```
 
-### 4. Exécuter et valider
+### 3. Run and Validate
 
 ```bash
-# Mode interactif pour debug
-yarn e2e:ui
+# Debug mode
+yarn e2e:debug
 
-# Exécuter un seul fichier
-yarn e2e specs/school/my-feature.spec.ts
+# Run a single file
+yarn e2e specs/webhook/github-webhook.spec.ts
 ```
 
 ---
 
-## Workflow : Créer un Page Object
+## Selectors (priority for UI tests)
 
-### Template
-
-```typescript
-// page-objects/school/MyFeaturePage.ts
-import { Page } from "@playwright/test";
-import { BasePage } from "../shared/BasePage";
-
-export class MyFeaturePage extends BasePage {
-  constructor(page: Page) {
-    super(page);
-  }
-
-  // Navigation
-  async navigate(): Promise<void> {
-    await this.page.goto("/my-feature");
-    await this.waitForPageLoad();
-  }
-
-  async waitForPageLoad(): Promise<void> {
-    await this.waitForElement('[data-testid="my-feature-page"]');
-  }
-
-  // Actions
-  async clickPrimaryButton(): Promise<void> {
-    await this.safeClick('[data-testid="primary-button"]');
-  }
-
-  async fillSearchInput(text: string): Promise<void> {
-    await this.safeFill('[data-testid="search-input"]', text);
-  }
-
-  // Queries
-  async getItemCount(): Promise<number> {
-    const items = await this.page.locator('[data-testid="item"]').all();
-    return items.length;
-  }
-
-  async hasItems(): Promise<boolean> {
-    return this.isElementVisible('[data-testid="item"]');
-  }
-
-  // Semantic selectors (accessibilité)
-  async clickTab(tabName: string): Promise<void> {
-    await this.page.getByRole("tab", { name: tabName }).click();
-  }
-}
-```
-
-### Conventions
-
-| Méthode | Pattern | Exemple |
-|---------|---------|---------|
-| Navigation | `navigate()`, `goTo<Page>()` | `navigateToDetails()` |
-| Attente | `waitFor<Element>()` | `waitForTableLoad()` |
-| Actions | `click<Element>()`, `fill<Input>()` | `clickSubmitButton()` |
-| Queries | `get<Data>()`, `has<Element>()` | `getFirstItemId()` |
-
----
-
-## Sélecteurs (priorité)
-
-| Priorité | Type | Exemple |
+| Priority | Type | Example |
 |----------|------|---------|
 | 1 | `data-testid` | `[data-testid="submit-btn"]` |
-| 2 | Role (accessibilité) | `getByRole("button", { name: "Submit" })` |
-| 3 | Text | `getByText("Valider")` |
-| 4 | CSS (dernier recours) | `table tbody tr` |
-
-```typescript
-// ✅ Préféré : data-testid
-await page.getByTestId("submit-button").click();
-
-// ✅ Accessible : role-based
-await page.getByRole("button", { name: "Submit" }).click();
-
-// ⚠️ Fragile : text exact
-await page.getByText("Soumettre").click();
-
-// ❌ À éviter : sélecteurs CSS complexes
-await page.locator("div.container > button.primary").click();
-```
+| 2 | Role (accessibility) | `getByRole("button", { name: "Submit" })` |
+| 3 | Text | `getByText("Submit")` |
+| 4 | CSS (last resort) | `table tbody tr` |
 
 ---
 
-## Workarounds connus
+## Authentication for API Tests
 
-### Router Race Condition
-
-**Problème** : `auth()` appelé sans `await` dans `Router.tsx:91` cause des re-renders intempestifs.
-
-**Symptômes** :
-- Page apparaît puis disparaît
-- Redirect inattendu vers `/auth/login`
-- Tests flaky
-
-**Solution temporaire** :
+### Token-based Authentication
 
 ```typescript
-// Avec storageState (cookies déjà chargés)
-await page.waitForTimeout(2000);
+test.describe("Authenticated API", () => {
+  test("should return review status with valid token", async ({ request }) => {
+    const response = await request.get("/api/reviews/123", {
+      headers: {
+        Authorization: `Bearer ${process.env.TEST_API_TOKEN}`,
+      },
+    });
 
-// Après login complet (sans storageState)
-await page.waitForTimeout(10000);
-```
-
-**Fix définitif** : Ajouter `await` à `Router.tsx:91`
-
-### External Scripts Timeout (Firefox)
-
-Google Maps et Hotjar causent des timeouts. **Solution** : Tests uniquement sur Chromium.
-
----
-
-## Authentification
-
-### StorageState Pattern (recommandé)
-
-Le setup (`auth.setup.ts`) s'exécute une fois et sauvegarde la session dans `.auth/school.json`.
-
-```typescript
-// Réutiliser la session pré-authentifiée
-test.use({ storageState: "src/tests/e2e/.auth/school.json" });
-```
-
-**Avantages** :
-- 85-90% plus rapide (pas de login à chaque test)
-- Tests indépendants
-- Cookies et localStorage persistés
-
-### Login manuel (cas spécifiques)
-
-```typescript
-import { loginAsSchool, loginAsStudent } from "../utils/test-helpers";
-
-test("should test login flow", async ({ page }) => {
-  // Vider les cookies pour tester le flow complet
-  await page.context().clearCookies();
-  await loginAsSchool(page);
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body).toHaveProperty("status");
+  });
 });
 ```
 
 ---
 
-## Fixtures et données de test
+## Fixtures and Test Data
 
-### Utiliser les fixtures existantes
+### Use existing fixtures
 
 ```typescript
-import { TEST_USERS, TEST_SELECTIONS, TEST_CAMPUSES } from "../fixtures/test-data";
+import { TEST_WEBHOOKS, TEST_PAYLOADS } from "../fixtures/test-data";
 
-test("should filter by campus", async ({ page }) => {
-  await myPage.applyCampusFilter(TEST_CAMPUSES.paris.name);
+test("should process a GitLab merge request event", async ({ request }) => {
+  const response = await request.post("/webhooks/gitlab", {
+    data: TEST_PAYLOADS.gitlabMergeRequest,
+  });
+
+  expect(response.status()).toBe(200);
 });
 ```
 
-### Ajouter des données
+### Add test data
 
 ```typescript
 // fixtures/test-data.ts
-export const TEST_USERS = {
-  school: {
-    email: process.env.TEST_SCHOOL_EMAIL || "",
-    password: process.env.TEST_SCHOOL_PASSWORD || "",
-    profileName: process.env.TEST_SCHOOL_NAME || "",
+export const TEST_PAYLOADS = {
+  gitlabMergeRequest: {
+    object_kind: "merge_request",
+    object_attributes: {
+      iid: 1,
+      title: "feat: add review automation",
+      action: "open",
+    },
   },
-  // Ajouter ici...
+  githubPullRequest: {
+    action: "opened",
+    pull_request: {
+      number: 42,
+      title: "fix: resolve webhook validation",
+    },
+  },
 };
 ```
 
 ---
 
-## Debug des tests flaky
+## Debugging Flaky Tests
 
-### 1. Mode debug
+### 1. Debug mode
 
 ```bash
-yarn e2e:debug specs/school/my-test.spec.ts
+yarn e2e:debug specs/webhook/my-test.spec.ts
 ```
 
 ### 2. Trace on failure
 
-Les traces sont activées sur le premier retry. Après un échec :
+Traces are enabled on the first retry. After a failure:
 
 ```bash
 yarn test:e2e:report
 ```
 
-### 3. Screenshots et logs
+### 3. Logs
 
 ```typescript
-// Ajouter des points de contrôle
-console.log("🔍 Step: Navigating to page");
-await page.screenshot({ path: "debug-step-1.png" });
+// Add checkpoints
+console.log("Step: Sending webhook payload");
 ```
 
-### 4. Patterns de stabilisation
+### 4. Stabilization Patterns
 
 ```typescript
-// ❌ Flaky : attendre un élément sans timeout explicite
-await page.click("#button");
+// Flaky: not waiting for server readiness
+await request.post("/webhooks/github", { data: payload });
 
-// ✅ Stable : utiliser les méthodes du Page Object
-await myPage.safeClick('[data-testid="button"]');
-
-// ✅ Stable : attendre la réponse API
-await myPage.waitForApiResponse("/api/data");
+// Stable: verify server is ready first
+const health = await request.get("/health");
+expect(health.status()).toBe(200);
+await request.post("/webhooks/github", { data: payload });
 ```
 
 ---
 
-## Checklist nouveau test
+## New Test Checklist
 
-- [ ] Page Object existe ou créé
-- [ ] `storageState` utilisé pour l'auth
-- [ ] Workaround Router (2s wait) ajouté
-- [ ] Sélecteurs `data-testid` ou `role`
-- [ ] Assertions avec `expect()` de Playwright
-- [ ] Test exécuté en mode `e2e:ui`
-- [ ] Pas de données hardcodées (utiliser fixtures)
+- [ ] Test data uses fixtures (not hardcoded)
+- [ ] Assertions use `expect()` from Playwright
+- [ ] Test runs in isolation (no dependency on other tests)
+- [ ] API responses are properly validated (status + body)
+- [ ] Error cases are covered (invalid payloads, missing auth)
 
 ---
 
 ## Anti-patterns
 
-| ❌ Éviter | ✅ Préférer |
-|-----------|-------------|
-| `page.waitForTimeout(5000)` arbitraire | `waitForElement()`, `waitForApiResponse()` |
-| Sélecteurs CSS complexes | `data-testid`, `getByRole()` |
-| Login à chaque test | `storageState` pattern |
-| Données hardcodées | Fixtures `test-data.ts` |
-| Logique dans les tests | Méthodes dans Page Objects |
-| Tests dépendants entre eux | Tests isolés |
+| Avoid | Prefer |
+|-------|--------|
+| Hardcoded test data | Fixtures from `test-data.ts` |
+| Tests dependent on each other | Isolated tests |
+| Missing error case coverage | Test both success and failure paths |
+| Ignoring response body | Validate status AND body structure |
+| Arbitrary `waitForTimeout` | Proper readiness checks |

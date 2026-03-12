@@ -7,9 +7,9 @@ description: Create a new documentation file following project standards. Detect
 
 ## Activation
 
-Ce skill s'active pour :
-- Créer un nouveau fichier de documentation
-- Documenter une feature, un concept, ou un composant
+This skill activates for:
+- Creating a new documentation file
+- Documenting a feature, a concept, or a component
 - `/create-doc`
 
 ## Persona
@@ -18,38 +18,38 @@ Read `.claude/roles/documentalist.md` — adopt this profile and follow all its 
 
 ## Workflow
 
-### Étape 1 : Clarifier le sujet
+### Step 1: Clarify the Subject
 
-Si le sujet est vague, demander :
-- Quel composant/feature documenter ?
-- Public cible : contributeur, utilisateur, LLM ?
-- Scope : `reference`, `guide`, `architecture`, ou `spec` ?
+If the subject is vague, ask:
+- Which component/feature to document?
+- Target audience: contributor, user, LLM?
+- Scope: `reference`, `guide`, `architecture`, or `spec`?
 
-### Étape 2 : Détecter les doublons
+### Step 2: Detect Duplicates
 
-**OBLIGATOIRE** avant toute création.
+**MANDATORY** before any creation.
 
 ```bash
-# Lister tous les docs existants
+# List all existing docs
 Glob docs/**/*.md
 
-# Lire les titres et H2/H3 de chaque fichier
-# Comparer avec le sujet demandé
+# Read the titles and H2/H3 of each file
+# Compare with the requested subject
 ```
 
-**Si un doc existant couvre déjà le sujet** :
-- STOP — ne pas créer de nouveau fichier
-- Proposer de mettre à jour le doc existant via `/update-docs`
-- Expliquer quel fichier couvre quoi
+**If an existing doc already covers the subject**:
+- STOP — do not create a new file
+- Suggest updating the existing doc via `/update-docs`
+- Explain which file covers what
 
-**Si chevauchement partiel** :
-- Identifier précisément quelles sections existent déjà
-- Le nouveau doc ne doit couvrir QUE le contenu manquant
-- Ajouter des liens vers les sections existantes
+**If partial overlap**:
+- Identify precisely which sections already exist
+- The new doc must cover ONLY the missing content
+- Add links to existing sections
 
-### Étape 3 : Créer le fichier
+### Step 3: Create the File
 
-Appliquer le template de `PERSONA.md` :
+Apply the template from `PERSONA.md`:
 
 ```yaml
 ---
@@ -62,31 +62,31 @@ last-updated: YYYY-MM-DD
 ---
 ```
 
-**Règles d'écriture** :
-- Anglais uniquement
-- 1-2 phrases de résumé après le titre
-- Une section = un concept
-- Tables plutôt que listes pour les données structurées
-- Code blocks plutôt que prose pour les détails techniques
-- Max 800 mots — splitter si plus long
+**Writing rules**:
+- English only
+- 1-2 summary sentences after the title
+- One section = one concept
+- Tables rather than lists for structured data
+- Code blocks rather than prose for technical details
+- Max 800 words — split if longer
 
-### Étape 4 : Nommage
+### Step 4: Naming
 
-| Emplacement | Convention |
-|-------------|-----------|
-| `docs/` top-level | `SCREAMING-KEBAB.md` (ex: `MCP-TOOLS-REFERENCE.md`) |
-| Sous-dossier | `kebab-case.md` (ex: `docs/mcp/architecture.md`) |
+| Location | Convention |
+|----------|-----------|
+| `docs/` top-level | `SCREAMING-KEBAB.md` (e.g., `MCP-TOOLS-REFERENCE.md`) |
+| Subdirectory | `kebab-case.md` (e.g., `docs/mcp/architecture.md`) |
 
-### Étape 5 : Mettre à jour l'index
+### Step 5: Update the Index
 
-Exécuter `/docs-index` pour régénérer `docs/INDEX.md` avec le nouveau fichier.
+Run `/docs-index` to regenerate `docs/INDEX.md` with the new file.
 
 ## Anti-patterns
 
-| Interdit | Faire plutôt |
-|----------|-------------|
-| Dupliquer du contenu existant | Linker vers la source canonique |
-| Doc > 800 mots | Splitter en plusieurs fichiers |
-| Sections sans rapport avec le titre | Créer un doc séparé |
-| Prose quand un tableau suffit | Utiliser un tableau |
-| Mélanger français et anglais | Tout en anglais |
+| Forbidden | Do Instead |
+|-----------|-----------|
+| Duplicate existing content | Link to the canonical source |
+| Doc > 800 words | Split into multiple files |
+| Sections unrelated to the title | Create a separate doc |
+| Prose when a table suffices | Use a table |
+| Mixing French and English | Everything in English |

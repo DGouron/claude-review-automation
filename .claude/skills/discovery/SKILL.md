@@ -1,20 +1,20 @@
 ---
 name: discovery
-description: Discovery business avant les specs techniques. Utiliser pour explorer un problème, définir des personas, clarifier la proposition de valeur. Produit Lean Canvas, Personas et Problem Statements dans /docs/business/.
+description: Business discovery before technical specs. Use to explore a problem, define personas, clarify the value proposition. Produces Lean Canvas, Personas, and Problem Statements in /docs/business/.
 ---
 
-# Discovery - Exploration business
+# Discovery - Business Exploration
 
 ## Persona
 
 Read `.claude/roles/specifier.md` — adopt this profile and follow all its rules.
 
-## Philosophie
+## Philosophy
 
-La discovery vient AVANT les specs. On explore :
-- **Le problème** — pas la solution
-- **Les utilisateurs** — leurs douleurs, pas leurs demandes
-- **La valeur** — le bénéfice, pas la feature
+Discovery comes BEFORE specs. We explore:
+- **The problem** — not the solution
+- **The users** — their pain points, not their requests
+- **The value** — the benefit, not the feature
 
 > "Fall in love with the problem, not the solution." — Uri Levine
 
@@ -22,347 +22,347 @@ La discovery vient AVANT les specs. On explore :
 
 ## Activation
 
-Ce skill s'active quand l'utilisateur veut explorer :
-- "Je veux explorer...", "C'est quoi le problème qu'on résout ?"
-- "Qui sont les utilisateurs ?", "Discovery sur..."
-- "Quelle est la proposition de valeur ?"
-- "Lean canvas pour...", "Persona de..."
+This skill activates when the user wants to explore:
+- "I want to explore...", "What problem are we solving?"
+- "Who are the users?", "Discovery on..."
+- "What is the value proposition?"
+- "Lean canvas for...", "Persona of..."
 
 ---
 
-## Artefacts produits
+## Produced artifacts
 
-| Artefact | Fichier | Quand l'utiliser |
-|----------|---------|------------------|
-| **Problem Statement** | `docs/business/problems/<nom>.md` | Définir précisément le problème |
-| **Persona** | `docs/business/personas/<nom>.md` | Comprendre qui a le problème |
-| **Lean Canvas** | `docs/business/canvas/<nom>.md` | Vue d'ensemble d'une opportunité |
+| Artifact | File | When to use |
+|----------|------|-------------|
+| **Problem Statement** | `docs/business/problems/<name>.md` | Define the problem precisely |
+| **Persona** | `docs/business/personas/<name>.md` | Understand who has the problem |
+| **Lean Canvas** | `docs/business/canvas/<name>.md` | Overview of an opportunity |
 
 ---
 
 ## Workflow
 
-### Point d'entrée
+### Entry point
 
 ```
-🔍 DISCOVERY - Démarrage
+DISCOVERY - Start
 
-Tu veux explorer : [sujet]
+You want to explore: [subject]
 
-Par quoi on commence ?
-1. 💢 Problem Statement — Quel problème exactement ?
-2. 👤 Persona — Qui a ce problème ?
-3. 📋 Lean Canvas — Vue d'ensemble de l'opportunité ?
+Where do we begin?
+1. Problem Statement — What problem exactly?
+2. Persona — Who has this problem?
+3. Lean Canvas — Overview of the opportunity?
 
-Choisis ton point d'entrée, ou dis-moi ce que tu sais déjà.
+Choose your entry point, or tell me what you already know.
 ```
 
 ---
 
 ## Problem Statement
 
-### Dialogue de construction
+### Construction dialogue
 
 ```
-💢 PROBLEM STATEMENT - Exploration
+PROBLEM STATEMENT - Exploration
 
-Je vois : [description vague du problème]
+I see: [vague description of the problem]
 
-Creusons :
-1. Qui exactement a ce problème ?
-2. Quand/où se manifeste-t-il ?
-3. Que font-ils aujourd'hui pour le contourner ?
-4. Quelle est la conséquence si on ne le résout pas ?
+Let's dig deeper:
+1. Who exactly has this problem?
+2. When/where does it manifest?
+3. What do they do today to work around it?
+4. What is the consequence if we don't solve it?
 
-Réponds à ce qui te parle, on itère.
+Answer what resonates, we'll iterate.
 ```
 
-### Template de sortie
+### Output template
 
-Fichier : `docs/business/problems/<nom>.md`
+File: `docs/business/problems/<name>.md`
 
 ```markdown
-# Problem Statement : [Titre explicite]
+# Problem Statement: [Explicit title]
 
-## Le problème
+## The problem
 
-[Persona] rencontre [problème] quand [contexte/déclencheur].
+[Persona] encounters [problem] when [context/trigger].
 
-Aujourd'hui, [persona] [comportement actuel / workaround].
+Today, [persona] [current behavior / workaround].
 
-Cela cause [conséquence négative] et [impact mesurable].
+This causes [negative consequence] and [measurable impact].
 
-## Fréquence et sévérité
+## Frequency and severity
 
-| Dimension | Évaluation |
+| Dimension | Assessment |
 |-----------|------------|
-| Fréquence | [quotidien/hebdo/mensuel/ponctuel] |
-| Sévérité | [bloquant/gênant/irritant] |
-| Population touchée | [estimation] |
+| Frequency | [daily/weekly/monthly/occasional] |
+| Severity | [blocking/hindering/irritating] |
+| Affected population | [estimate] |
 
-## Hypothèses à valider
+## Hypotheses to validate
 
-- [ ] [Hypothèse sur l'existence du problème]
-- [ ] [Hypothèse sur la fréquence]
-- [ ] [Hypothèse sur l'impact]
+- [ ] [Hypothesis about the existence of the problem]
+- [ ] [Hypothesis about frequency]
+- [ ] [Hypothesis about impact]
 
-## Ce qui n'est PAS le problème
+## What the problem is NOT
 
-- [Fausse piste 1 — pourquoi c'est une fausse piste]
-- [Fausse piste 2]
+- [Red herring 1 — why it's a red herring]
+- [Red herring 2]
 
-## Questions de recherche
+## Research questions
 
-- [Question ouverte à explorer]
+- [Open question to explore]
 ```
 
 ---
 
 ## Persona
 
-### Dialogue de construction
+### Construction dialogue
 
 ```
-👤 PERSONA - Construction
+PERSONA - Construction
 
-Je vais te poser des questions pour définir ce persona.
+I'm going to ask you questions to define this persona.
 
-1. C'est qui cette personne ? (rôle, contexte, environnement)
-2. Qu'est-ce qu'elle essaie d'accomplir ? (objectifs)
-3. Qu'est-ce qui la frustre aujourd'hui ? (pain points)
-4. Comment gère-t-elle le problème actuellement ? (workarounds)
+1. Who is this person? (role, context, environment)
+2. What are they trying to accomplish? (goals)
+3. What frustrates them today? (pain points)
+4. How do they handle the problem currently? (workarounds)
 
-Commence par me décrire cette personne comme si tu me la présentais.
+Start by describing this person as if you were introducing them to me.
 ```
 
-### Template de sortie
+### Output template
 
-Fichier : `docs/business/personas/<nom>.md`
+File: `docs/business/personas/<name>.md`
 
 ```markdown
-# Persona : [Nom descriptif]
+# Persona: [Descriptive name]
 
-## Identité
+## Identity
 
-| Attribut | Description |
-|----------|-------------|
-| Rôle | [rôle dans le contexte d'usage] |
-| Contexte | [environnement, contraintes, ressources] |
-| Expérience | [niveau d'expertise sur le sujet] |
+| Attribute | Description |
+|-----------|-------------|
+| Role | [role in the usage context] |
+| Context | [environment, constraints, resources] |
+| Experience | [expertise level on the subject] |
 
-## Objectifs (Goals)
+## Goals
 
-Ce que cette personne veut accomplir :
+What this person wants to accomplish:
 
-1. **[Objectif principal]** — [pourquoi c'est important pour elle]
-2. **[Objectif secondaire]** — [pourquoi c'est important]
+1. **[Primary goal]** — [why it matters to them]
+2. **[Secondary goal]** — [why it matters]
 
 ## Frustrations (Pain Points)
 
-Ce qui la bloque ou l'irrite aujourd'hui :
+What blocks or irritates them today:
 
-1. **[Frustration 1]** — Impact : [conséquence concrète]
-2. **[Frustration 2]** — Impact : [conséquence concrète]
+1. **[Frustration 1]** — Impact: [concrete consequence]
+2. **[Frustration 2]** — Impact: [concrete consequence]
 
-## Comportements actuels
+## Current behaviors
 
-Comment elle gère le problème aujourd'hui :
+How they handle the problem today:
 
-- [Workaround 1] — [limites de cette solution]
-- [Workaround 2] — [limites]
+- [Workaround 1] — [limitations of this solution]
+- [Workaround 2] — [limitations]
 
-## Citation typique
+## Typical quote
 
-> "[Une phrase que cette personne dirait, qui capture son état d'esprit]"
+> "[A sentence this person would say, capturing their mindset]"
 
-## Critères de succès
+## Success criteria
 
-Comment sait-elle que son problème est résolu ?
+How do they know their problem is solved?
 
-- [Critère mesurable 1]
-- [Critère mesurable 2]
+- [Measurable criterion 1]
+- [Measurable criterion 2]
 
 ## Anti-persona
 
-Ce persona n'est PAS :
-- [Profil à ne pas confondre — pourquoi]
+This persona is NOT:
+- [Profile not to confuse with — why]
 ```
 
 ---
 
 ## Lean Canvas
 
-### Dialogue de construction
+### Construction dialogue
 
 ```
-📋 LEAN CANVAS - Construction
+LEAN CANVAS - Construction
 
-On va construire le canvas bloc par bloc.
+We're going to build the canvas block by block.
 
-Commençons par le plus important :
-1. C'est quoi le problème principal ? (pas 10, juste 1-3)
-2. Pour qui ? (segment prioritaire)
+Let's start with the most important:
+1. What is the main problem? (not 10, just 1-3)
+2. For whom? (priority segment)
 
-Une fois qu'on a ça, on continue avec la proposition de valeur.
+Once we have that, we continue with the value proposition.
 ```
 
-### Template de sortie
+### Output template
 
-Fichier : `docs/business/canvas/<nom>.md`
+File: `docs/business/canvas/<name>.md`
 
 ```markdown
-# Lean Canvas : [Nom du produit/feature]
+# Lean Canvas: [Product/feature name]
 
-## 1. Problème
+## 1. Problem
 
-Les 3 problèmes principaux :
+The 3 main problems:
 
-1. **[Problème 1]**
-2. **[Problème 2]**
-3. **[Problème 3]**
+1. **[Problem 1]**
+2. **[Problem 2]**
+3. **[Problem 3]**
 
-### Alternatives existantes
+### Existing alternatives
 
-Comment les utilisateurs résolvent ces problèmes aujourd'hui :
+How users solve these problems today:
 
-- [Solution actuelle 1] — [limites]
-- [Solution actuelle 2] — [limites]
-
----
-
-## 2. Segments utilisateurs
-
-| Segment | Caractéristiques | Priorité |
-|---------|------------------|----------|
-| Early Adopters | [qui va adopter en premier et pourquoi] | 🎯 |
-| Marché principal | [qui représente le volume] | ⏳ |
+- [Current solution 1] — [limitations]
+- [Current solution 2] — [limitations]
 
 ---
 
-## 3. Proposition de valeur unique
+## 2. User segments
 
-> [Une phrase qui explique pourquoi c'est différent et pourquoi ça vaut le coup]
+| Segment | Characteristics | Priority |
+|---------|-----------------|----------|
+| Early Adopters | [who will adopt first and why] | Target |
+| Main market | [who represents the volume] | Later |
+
+---
+
+## 3. Unique value proposition
+
+> [One sentence explaining why it's different and why it's worth it]
 
 ### High-Level Concept
 
-"C'est comme [analogie connue] pour [contexte spécifique]"
+"It's like [known analogy] for [specific context]"
 
 ---
 
 ## 4. Solution
 
-Les 3 fonctionnalités clés :
+The 3 key features:
 
-| Feature | Résout |
+| Feature | Solves |
 |---------|--------|
-| [Feature 1] | Problème 1 |
-| [Feature 2] | Problème 2 |
-| [Feature 3] | Problème 3 |
+| [Feature 1] | Problem 1 |
+| [Feature 2] | Problem 2 |
+| [Feature 3] | Problem 3 |
 
 ---
 
-## 5. Canaux
+## 5. Channels
 
-Comment atteindre les utilisateurs :
+How to reach users:
 
-- **Acquisition** : [comment ils découvrent]
-- **Activation** : [comment ils commencent à utiliser]
-- **Rétention** : [comment ils reviennent]
-
----
-
-## 6. Flux de revenus
-
-- [Source de revenu 1] — [modèle : abo, one-shot, freemium...]
-- [Source de revenu 2]
+- **Acquisition**: [how they discover]
+- **Activation**: [how they start using]
+- **Retention**: [how they come back]
 
 ---
 
-## 7. Structure de coûts
+## 6. Revenue streams
 
-| Type | Coût | Récurrence |
+- [Revenue source 1] — [model: subscription, one-shot, freemium...]
+- [Revenue source 2]
+
+---
+
+## 7. Cost structure
+
+| Type | Cost | Recurrence |
 |------|------|------------|
-| [Coût fixe] | [montant] | [mensuel/annuel] |
-| [Coût variable] | [montant/unité] | [par usage] |
+| [Fixed cost] | [amount] | [monthly/yearly] |
+| [Variable cost] | [amount/unit] | [per usage] |
 
 ---
 
-## 8. Métriques clés
+## 8. Key metrics
 
-| Métrique | Objectif | Pourquoi cette métrique |
-|----------|----------|-------------------------|
-| [Métrique 1] | [cible] | [ce qu'elle mesure] |
-| [Métrique 2] | [cible] | [ce qu'elle mesure] |
-
----
-
-## 9. Avantage compétitif
-
-Ce qui ne peut pas être facilement copié :
-
-- [Avantage 1] — [pourquoi c'est défendable]
-- [Avantage 2]
+| Metric | Target | Why this metric |
+|--------|--------|-----------------|
+| [Metric 1] | [target] | [what it measures] |
+| [Metric 2] | [target] | [what it measures] |
 
 ---
 
-## Hypothèses à valider
+## 9. Competitive advantage
 
-| Hypothèse | Risque si fausse | Comment valider | Statut |
-|-----------|------------------|-----------------|--------|
-| [Hypothèse 1] | [impact] | [méthode] | ⏳ |
-| [Hypothèse 2] | [impact] | [méthode] | ⏳ |
+What cannot be easily copied:
+
+- [Advantage 1] — [why it's defensible]
+- [Advantage 2]
+
+---
+
+## Hypotheses to validate
+
+| Hypothesis | Risk if wrong | How to validate | Status |
+|------------|---------------|-----------------|--------|
+| [Hypothesis 1] | [impact] | [method] | Pending |
+| [Hypothesis 2] | [impact] | [method] | Pending |
 ```
 
 ---
 
-## Anti-patterns à bloquer
+## Anti-patterns to block
 
-| Anti-pattern | Exemple | Réaction |
+| Anti-pattern | Example | Reaction |
 |--------------|---------|----------|
-| Sauter aux solutions | "On va faire une app mobile" | Revenir au problème |
-| Persona générique | "Les utilisateurs veulent..." | Demander qui exactement |
-| Problème sans impact | "C'est pas optimal" | Demander la conséquence |
-| Canvas sans hypothèses | "On sait que..." | Challenger les certitudes |
-| Confusion demande/besoin | "Ils veulent un bouton" | Creuser le pourquoi |
+| Jumping to solutions | "We'll build a mobile app" | Go back to the problem |
+| Generic persona | "Users want..." | Ask who exactly |
+| Problem without impact | "It's not optimal" | Ask for the consequence |
+| Canvas without hypotheses | "We know that..." | Challenge the certainties |
+| Confusing request/need | "They want a button" | Dig into the why |
 
 ---
 
-## Exemples de challenges
+## Challenge examples
 
-**Demande** : "On veut faire une fonctionnalité de gamification"
-
-```
-🔍 DISCOVERY - Challenge
-
-"Gamification" c'est une solution, pas un problème.
-
-Questions :
-1. Quel comportement utilisateur veux-tu encourager ?
-2. Pourquoi les utilisateurs ne le font pas naturellement ?
-3. Comment sais-tu que la gamification va marcher ?
-
-On revient au problème avant de parler solution.
-```
-
-**Demande** : "Nos utilisateurs veulent un export Excel"
+**Request**: "We want to add a gamification feature"
 
 ```
-🔍 DISCOVERY - Challenge
+DISCOVERY - Challenge
 
-Attention : ce que les utilisateurs demandent ≠ ce dont ils ont besoin.
+"Gamification" is a solution, not a problem.
 
-Questions :
-1. Qu'est-ce qu'ils font avec cet Excel une fois exporté ?
-2. Si on leur donnait directement ce résultat final, ça marcherait ?
-3. Qui demande ça exactement ? (persona)
+Questions:
+1. What user behavior do you want to encourage?
+2. Why don't users do it naturally?
+3. How do you know gamification will work?
 
-Peut-être que le vrai besoin c'est un dashboard, pas un export.
+Let's go back to the problem before discussing solutions.
+```
+
+**Request**: "Our users want an Excel export"
+
+```
+DISCOVERY - Challenge
+
+Warning: what users ask for is not always what they need.
+
+Questions:
+1. What do they do with that Excel once exported?
+2. If we gave them the end result directly, would that work?
+3. Who is asking for this exactly? (persona)
+
+Maybe the real need is a dashboard, not an export.
 ```
 
 ---
 
-## Intégration avec autres skills
+## Integration with other skills
 
-Après la discovery :
-- `/pm` pour transformer les insights en specs actionables
-- `/ddd` si un nouveau bounded context émerge
+After discovery:
+- `/pm` to turn insights into actionable specs
+- `/ddd` if a new bounded context emerges

@@ -1,9 +1,9 @@
 ---
 name: refactoring-mikado-strangler
-description: Guide pour les refactorings de grande envergure avec Mikado et Strangler Fig. Utiliser pour migration d'architecture, remplacement de librairie, découpage de modules, changement de patterns. Maintient un graph Mikado pour tracker les dépendances.
+description: Guide for large-scale refactorings with Mikado and Strangler Fig. Use for architecture migration, library replacement, module splitting, or pattern changes. Maintains a Mikado graph to track dependencies.
 ---
 
-# Refactoring Large Scale - Mikado & Strangler Fig
+# Large Scale Refactoring - Mikado & Strangler Fig
 
 ## Persona
 
@@ -11,284 +11,284 @@ Read `.claude/roles/senior-dev.md` — adopt this profile and follow all its rul
 
 ## Activation
 
-Ce skill s'active pour les refactorings qui dépassent le scope d'un cycle TDD :
-- Migration d'architecture
-- Remplacement de librairie ou framework
-- Découpage d'un module monolithique
-- Changement de pattern (ex: callbacks → promises → async/await)
-- Restructuration de bounded contexts
+This skill activates for refactorings that exceed a TDD cycle scope:
+- Architecture migration
+- Library or framework replacement
+- Splitting a monolithic module
+- Pattern change (e.g., callbacks -> promises -> async/await)
+- Bounded context restructuring
 
-## Choix de la méthode
+## Choosing the method
 
-| Critère | Mikado | Strangler Fig |
-|---------|--------|---------------|
-| Ancien code reste fonctionnel pendant | ❌ Non | ✅ Oui |
-| Besoin de livrer incrémentalement | ❌ Difficile | ✅ Idéal |
-| Dépendances complexes à démêler | ✅ Idéal | ⚠️ Possible |
-| Remplacement complet d'un système | ⚠️ Possible | ✅ Idéal |
+| Criterion | Mikado | Strangler Fig |
+|-----------|--------|---------------|
+| Old code stays functional during | No | Yes |
+| Need to deliver incrementally | Difficult | Ideal |
+| Complex dependencies to untangle | Ideal | Possible |
+| Complete replacement of a system | Possible | Ideal |
 
-**Demander à l'utilisateur** quelle méthode utiliser si ce n'est pas évident.
+**Ask the user** which method to use if it's not obvious.
 
 ---
 
-## 🌳 Méthode Mikado
+## Mikado Method
 
-### Principe
+### Principle
 
-1. **Essayer** l'objectif final directement
-2. **Observer** ce qui casse
-3. **Revert** immédiatement (pas de code cassé qui traîne)
-4. **Noter** les pré-requis découverts dans le graph
-5. **Récurser** sur chaque pré-requis
-6. **Implémenter** les feuilles du graph (celles sans dépendances)
+1. **Try** the final goal directly
+2. **Observe** what breaks
+3. **Revert** immediately (no broken code left around)
+4. **Note** the discovered prerequisites in the graph
+5. **Recurse** on each prerequisite
+6. **Implement** the leaves of the graph (those with no dependencies)
 
-### Workflow interactif
+### Interactive workflow
 
-#### Étape 1 : Initialisation
+#### Step 1: Initialization
 
 ```
-🌳 MIKADO - Initialisation
+MIKADO - Initialization
 
-Objectif principal : [description]
-Fichier graph : docs/mikado/[nom]-graph.md
+Main goal: [description]
+Graph file: docs/mikado/[name]-graph.md
 
-Je vais créer le fichier de tracking.
-On commence ?
+I will create the tracking file.
+Shall we begin?
 ```
 
-Créer le fichier graph :
+Create the graph file:
 ```markdown
-# Mikado Graph: [Objectif]
+# Mikado Graph: [Goal]
 
-## Statut: EN COURS
+## Status: IN PROGRESS
 
-## Objectif principal
-- [ ] [Description de l'objectif]
+## Main goal
+- [ ] [Goal description]
 
-## Pré-requis découverts
-(Se remplit au fur et à mesure des tentatives)
+## Discovered prerequisites
+(Fills in as attempts are made)
 
-## Historique des tentatives
-(Log des essais et découvertes)
+## Attempt history
+(Log of attempts and discoveries)
 ```
 
-#### Étape 2 : Tentative
+#### Step 2: Attempt
 
 ```
-🌳 MIKADO - Tentative
+MIKADO - Attempt
 
-Je vais essayer : [objectif ou pré-requis]
-Attente : [ce qui devrait casser]
+I will try: [goal or prerequisite]
+Expected: [what should break]
 
-On tente ?
+Shall we try?
 ```
 
-Après validation :
-1. Tenter la modification
-2. Exécuter `yarn test:run`
-3. Noter TOUT ce qui casse
-4. **REVERT IMMÉDIATEMENT** avec `git checkout .`
+After validation:
+1. Attempt the modification
+2. Run `yarn test:run`
+3. Note EVERYTHING that breaks
+4. **REVERT IMMEDIATELY** with `git checkout .`
 
-#### Étape 3 : Analyse
+#### Step 3: Analysis
 
 ```
-🌳 MIKADO - Analyse
+MIKADO - Analysis
 
-Tentative : [ce qu'on a essayé]
-Résultat : [succès / échec]
+Attempt: [what we tried]
+Result: [success / failure]
 
-Erreurs rencontrées :
-- [erreur 1] → Pré-requis : [action nécessaire]
-- [erreur 2] → Pré-requis : [action nécessaire]
+Errors encountered:
+- [error 1] -> Prerequisite: [required action]
+- [error 2] -> Prerequisite: [required action]
 
-Je mets à jour le graph.
-On traite quel pré-requis en premier ?
+I'm updating the graph.
+Which prerequisite do we tackle first?
 ```
 
-#### Étape 4 : Implémentation (feuilles)
+#### Step 4: Implementation (leaves)
 
-Quand un pré-requis n'a pas de dépendance :
+When a prerequisite has no dependencies:
 ```
-🌳 MIKADO - Implémentation
+MIKADO - Implementation
 
-Pré-requis à implémenter : [description]
-C'est une feuille du graph (pas de dépendance).
+Prerequisite to implement: [description]
+This is a leaf of the graph (no dependencies).
 
-→ Activation du skill TDD pour implémenter proprement.
+-> Activating the TDD skill for proper implementation.
 ```
 
-**Basculer sur le skill TDD** pour implémenter le pré-requis avec RED-GREEN-REFACTOR.
+**Switch to the TDD skill** to implement the prerequisite with RED-GREEN-REFACTOR.
 
-#### Étape 5 : Validation
+#### Step 5: Validation
 
-Après chaque implémentation :
+After each implementation:
 ```
-🌳 MIKADO - Validation
+MIKADO - Validation
 
-Pré-requis complété : [description]
-Je mets à jour le graph : ✅
+Prerequisite completed: [description]
+Updating the graph: done
 
-Prochaine action :
-- [ ] [Autre feuille à traiter]
-- [ ] [Retenter un objectif parent]
+Next action:
+- [ ] [Another leaf to process]
+- [ ] [Retry a parent goal]
 
-On continue avec quoi ?
+What do we continue with?
 ```
 
 ---
 
-## 🌿 Méthode Strangler Fig
+## Strangler Fig Method
 
-### Principe
+### Principle
 
-1. **Créer** le nouveau système à côté de l'ancien
-2. **Migrer** progressivement les appels vers le nouveau
-3. **Cohabitation** : les deux systèmes fonctionnent en parallèle
-4. **Supprimer** l'ancien quand plus rien ne l'utilise
+1. **Create** the new system alongside the old one
+2. **Migrate** calls progressively to the new system
+3. **Cohabitation**: both systems run in parallel
+4. **Remove** the old one when nothing uses it anymore
 
-### Workflow interactif
+### Interactive workflow
 
-#### Étape 1 : Planification
+#### Step 1: Planning
 
 ```
-🌿 STRANGLER - Planification
+STRANGLER - Planning
 
-Ancien système : [description]
-Nouveau système : [description]
+Old system: [description]
+New system: [description]
 
-Points d'entrée à migrer :
+Entry points to migrate:
 1. [point 1]
 2. [point 2]
 ...
 
-Je crée le fichier de tracking : docs/strangler/[nom]-migration.md
-On commence par quel point d'entrée ?
+I'm creating the tracking file: docs/strangler/[name]-migration.md
+Which entry point do we start with?
 ```
 
-Créer le fichier de tracking :
+Create the tracking file:
 ```markdown
-# Strangler Migration: [Nom]
+# Strangler Migration: [Name]
 
-## Statut: EN COURS
+## Status: IN PROGRESS
 
-## Ancien système
-- Localisation : [path]
-- Points d'entrée : [liste]
+## Old system
+- Location: [path]
+- Entry points: [list]
 
-## Nouveau système
-- Localisation : [path]
-- Points d'entrée migrés : 0/[total]
+## New system
+- Location: [path]
+- Migrated entry points: 0/[total]
 
-## Plan de migration
+## Migration plan
 
-| Point d'entrée | Statut | Date |
-|----------------|--------|------|
-| [point 1] | ⏳ En attente | - |
-| [point 2] | ⏳ En attente | - |
+| Entry point | Status | Date |
+|-------------|--------|------|
+| [point 1] | Pending | - |
+| [point 2] | Pending | - |
 
-## Checklist suppression ancien système
-- [ ] Tous les points d'entrée migrés
-- [ ] Aucune référence à l'ancien code
-- [ ] Tests de l'ancien système supprimés/migrés
-- [ ] Ancien code supprimé
+## Old system removal checklist
+- [ ] All entry points migrated
+- [ ] No references to old code
+- [ ] Old system tests removed/migrated
+- [ ] Old code deleted
 ```
 
-#### Étape 2 : Création du nouveau
+#### Step 2: Creating the new system
 
 ```
-🌿 STRANGLER - Nouveau système
+STRANGLER - New system
 
-Je vais créer la nouvelle implémentation pour : [point d'entrée]
-Localisation : [path]
+I will create the new implementation for: [entry point]
+Location: [path]
 
-→ Activation du skill TDD pour implémenter proprement.
+-> Activating the TDD skill for proper implementation.
 ```
 
-**Basculer sur le skill TDD** pour créer la nouvelle implémentation.
+**Switch to the TDD skill** to create the new implementation.
 
-#### Étape 3 : Migration d'un point d'entrée
-
-```
-🌿 STRANGLER - Migration
-
-Point d'entrée : [description]
-Ancien : [code/path]
-Nouveau : [code/path]
-
-Plan de migration :
-1. [étape 1]
-2. [étape 2]
-
-On migre ?
-```
-
-#### Étape 4 : Vérification cohabitation
+#### Step 3: Migrating an entry point
 
 ```
-🌿 STRANGLER - Vérification
+STRANGLER - Migration
 
-Migration effectuée : [point d'entrée]
+Entry point: [description]
+Old: [code/path]
+New: [code/path]
 
-Checklist :
-- [ ] Tests passent
-- [ ] Ancien code toujours fonctionnel (si d'autres dépendances)
-- [ ] Nouveau code utilisé par [consommateurs]
+Migration plan:
+1. [step 1]
+2. [step 2]
 
-Je mets à jour le tracking.
-Prochain point d'entrée ?
+Shall we migrate?
 ```
 
-#### Étape 5 : Suppression
+#### Step 4: Cohabitation verification
 
-Quand tous les points d'entrée sont migrés :
 ```
-🌿 STRANGLER - Suppression
+STRANGLER - Verification
 
-Tous les points d'entrée sont migrés ! 🎉
+Migration completed: [entry point]
 
-Ancien code à supprimer :
-- [fichier 1]
-- [fichier 2]
+Checklist:
+- [ ] Tests pass
+- [ ] Old code still functional (if other dependencies exist)
+- [ ] New code used by [consumers]
 
-Tests à supprimer/migrer :
+Updating the tracking file.
+Next entry point?
+```
+
+#### Step 5: Removal
+
+When all entry points are migrated:
+```
+STRANGLER - Removal
+
+All entry points have been migrated!
+
+Old code to remove:
+- [file 1]
+- [file 2]
+
+Tests to remove/migrate:
 - [test 1]
 
-On nettoie ?
+Shall we clean up?
 ```
 
 ---
 
-## Intégration avec le skill TDD
+## Integration with the TDD skill
 
-Chaque fois qu'on doit **implémenter** du code (pré-requis Mikado ou nouveau système Strangler), on bascule sur le skill TDD :
+Every time we need to **implement** code (Mikado prerequisite or new Strangler system), we switch to the TDD skill:
 
 ```
-→ Ce pré-requis nécessite du code.
-→ Activation du skill TDD pour implémenter avec RED-GREEN-REFACTOR.
-→ Retour au skill Refactoring une fois terminé.
+-> This prerequisite requires code.
+-> Activating the TDD skill to implement with RED-GREEN-REFACTOR.
+-> Returning to the Refactoring skill once complete.
 ```
 
 ---
 
-## Fichiers de tracking
+## Tracking files
 
-Les graphs et plans sont stockés dans :
+Graphs and plans are stored in:
 ```
 docs/
 ├── mikado/
-│   └── [nom]-graph.md
+│   └── [name]-graph.md
 └── strangler/
-    └── [nom]-migration.md
+    └── [name]-migration.md
 ```
 
-Ces fichiers servent de documentation vivante et permettent de reprendre un refactoring interrompu.
+These files serve as living documentation and allow resuming an interrupted refactoring.
 
 ---
 
-## Anti-patterns à bloquer
+## Anti-patterns to block
 
-- ❌ Laisser du code cassé non-reverté (Mikado)
-- ❌ Supprimer l'ancien avant que le nouveau soit complet (Strangler)
-- ❌ Implémenter sans tests (toujours passer par le skill TDD)
-- ❌ Plusieurs refactorings en parallèle
-- ❌ Passer une étape sans validation utilisateur
+- Leaving broken un-reverted code (Mikado)
+- Removing the old system before the new one is complete (Strangler)
+- Implementing without tests (always go through the TDD skill)
+- Multiple refactorings in parallel
+- Skipping a step without user validation

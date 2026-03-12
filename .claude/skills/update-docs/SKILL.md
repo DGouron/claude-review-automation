@@ -7,9 +7,9 @@ description: Update documentation after code changes. Scans git diff to find aff
 
 ## Activation
 
-Ce skill s'active pour :
-- Mettre à jour la doc après un changement de code
-- Synchroniser la documentation avec l'état actuel du code
+This skill activates for:
+- Updating docs after a code change
+- Synchronizing documentation with the current code state
 - `/update-docs`
 
 ## Persona
@@ -18,60 +18,60 @@ Read `.claude/roles/documentalist.md` — adopt this profile and follow all its 
 
 ## Workflow
 
-### Étape 1 : Identifier les changements de code
+### Step 1: Identify Code Changes
 
 ```bash
-# Par défaut : 5 derniers commits. L'utilisateur peut spécifier une range.
+# Default: last 5 commits. The user can specify a range.
 git diff --name-only HEAD~5
 ```
 
-Filtrer les fichiers pertinents (ignorer : tests, configs, lock files).
+Filter relevant files (ignore: tests, configs, lock files).
 
-### Étape 2 : Mapper changements → docs
+### Step 2: Map Changes to Docs
 
-Deux stratégies, dans cet ordre :
+Two strategies, in this order:
 
-**Stratégie A — Frontmatter `related`** (prioritaire) :
+**Strategy A — Frontmatter `related`** (priority):
 ```bash
-# Lire le frontmatter de chaque doc
+# Read the frontmatter of each doc
 Glob docs/**/*.md
-# Chercher les fichiers modifiés dans le champ `related`
+# Look for modified files in the `related` field
 ```
 
-**Stratégie B — Recherche par mots-clés** (fallback) :
-- Extraire les noms d'entités/modules des fichiers modifiés
-- Chercher ces termes dans le contenu des docs
-- Ex: si `mcpServerStdio.ts` a changé, chercher "mcp", "server", "stdio" dans les docs
+**Strategy B — Keyword search** (fallback):
+- Extract entity/module names from modified files
+- Search for those terms in the doc content
+- E.g., if `mcpServerStdio.ts` changed, search for "mcp", "server", "stdio" in docs
 
-### Étape 3 : Évaluer l'impact
+### Step 3: Evaluate Impact
 
-Pour chaque doc potentiellement affecté :
+For each potentially affected doc:
 
-| Question | Si oui |
+| Question | If Yes |
 |----------|--------|
-| Le comportement documenté a changé ? | Mise à jour requise |
-| Une API/interface documentée a changé ? | Mise à jour requise |
-| Seule l'implémentation interne a changé ? | Pas de mise à jour |
-| Un nouveau concept est apparu ? | Proposer `/create-doc` |
+| Has the documented behavior changed? | Update required |
+| Has a documented API/interface changed? | Update required |
+| Only internal implementation changed? | No update needed |
+| Has a new concept appeared? | Suggest `/create-doc` |
 
-### Étape 4 : Mettre à jour
+### Step 4: Update
 
-Pour chaque doc à modifier :
+For each doc to modify:
 
-1. Lire le doc entier et le code source modifié
-2. Mettre à jour **uniquement** les sections affectées
-3. Ne JAMAIS ajouter de contenu qui existe dans un autre doc — linker
-4. Mettre à jour `last-updated` dans le frontmatter
-5. Vérifier que les `related` sont à jour (ajouter les nouveaux fichiers si besoin)
+1. Read the entire doc and the modified source code
+2. Update **only** the affected sections
+3. NEVER add content that exists in another doc — link instead
+4. Update `last-updated` in the frontmatter
+5. Verify that `related` entries are up to date (add new files if needed)
 
-### Étape 5 : Ajouter le frontmatter manquant
+### Step 5: Add Missing Frontmatter
 
-Si un doc n'a pas de frontmatter YAML, l'ajouter en respectant le template de `PERSONA.md`.
-C'est une migration progressive — pas besoin de tout faire d'un coup.
+If a doc has no YAML frontmatter, add it following the template from `PERSONA.md`.
+This is a progressive migration — no need to do everything at once.
 
-### Étape 6 : Rapport
+### Step 6: Report
 
-Lister les modifications effectuées :
+List the modifications made:
 
 ```
 ## Docs Updated
@@ -82,9 +82,9 @@ Lister les modifications effectuées :
 | docs/ARCHITECTURE.md | No update needed | Internal refactor only |
 ```
 
-## Règles
+## Rules
 
-- Ne pas traduire les docs French existantes sauf demande explicite
-- Ne pas restructurer un doc entier — modifier uniquement ce qui est affecté
-- Si un doc est massivement obsolète, recommander `/audit-docs` d'abord
-- Toujours garder la structure existante sauf si elle viole le template
+- Do not translate existing French docs unless explicitly requested
+- Do not restructure an entire doc — modify only what is affected
+- If a doc is massively obsolete, recommend `/audit-docs` first
+- Always keep the existing structure unless it violates the template

@@ -534,9 +534,9 @@ Short factual description of the problem in 1-2 sentences.
 add_action({
   jobId: JOB_ID,
   type: "POST_INLINE_COMMENT",
-  filePath: "frontend/src/containers/school/Referents/UpdateReferent.modal.tsx",
+  filePath: "src/interface-adapters/controllers/webhook/gitlab.controller.ts",
   line: 34,
-  body: "🚨 **[BLOCKING] Hook called after early return**\n\n📍 `UpdateReferent.modal.tsx:34`\n\nThe useUpdateReferentModal hook is called after an early return, which violates React's Rules of Hooks.\n\n**Fix**: Move the hook BEFORE the early return."
+  body: "🚨 **[BLOCKING] Hook called after early return**\n\n📍 `gitlab.controller.ts:34`\n\nThe dependency is accessed after an early return, which can cause undefined behavior.\n\n**Fix**: Move the dependency access BEFORE the early return."
 })
 ```
 
@@ -602,7 +602,7 @@ At the end of the report, recommend the appropriate skills based on detected iss
 | SOLID violation detected | `/solid` | Concrete principles and examples |
 | Massive refactoring | `/refactoring` | Mikado Graph, Strangler Fig |
 | Anemic model (DDD) | `/ddd` | Bounded Context, Rich Entities |
-| Styles/UI to review | `/tailwind` | MentorGoal Design System |
+| Styles/UI to review | `/tailwind` | ReviewFlow Design System |
 | Potential secrets | `/security` | Scan before commit |
 
 **Recommendation example**:

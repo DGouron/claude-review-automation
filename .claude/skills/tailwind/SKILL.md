@@ -1,240 +1,223 @@
 ---
-name: tailwind
-description: Guide TailwindCSS et Design System MentorGoal. Utiliser pour créer/modifier des composants UI, optimiser les styles, ou résoudre des problèmes de layout.
+name: dashboard-styling
+description: Guide for ReviewFlow dashboard styling conventions. Use when creating/modifying dashboard UI, optimizing styles, or resolving layout issues.
 ---
 
-# TailwindCSS & Design System Guide
+# Dashboard Styling Guide
+
+> **Note**: ReviewFlow does not use TailwindCSS or React. The dashboard is built with plain HTML, CSS custom properties, and vanilla JavaScript. This skill covers the styling conventions for the dashboard.
 
 ## Activation
 
-Ce skill s'active pour :
-- Création ou modification de composants UI
-- Optimisation des styles et performance
-- Résolution de problèmes de layout/responsive
-- Review des classes Tailwind
+This skill activates for:
+- Creating or modifying dashboard UI elements
+- Optimizing styles and performance
+- Resolving layout/responsive issues
+- Reviewing CSS conventions
 
-## Principes fondamentaux
+## Principles
 
 ```
-Mobile-First → Utility-First → Design Tokens
+CSS Custom Properties → Semantic naming → Consistent spacing
 ```
 
-> Toujours utiliser les tokens du Design System avant d'ajouter des valeurs arbitraires.
+> Always use existing CSS custom properties (design tokens) before adding new values.
 
 ---
 
-## Configuration Design System
+## Design Tokens
 
-### Tokens disponibles
+### Available tokens
 
-Les tokens sont définis dans `tailwind.config.js`. Toujours vérifier les valeurs existantes :
+Tokens are defined as CSS custom properties in `src/interface-adapters/views/dashboard/styles.css`:
 
-```typescript
-// ✅ Utiliser les tokens
-className="bg-primary-700P text-white"
-className="p-sm rounded-md"
+```css
+:root {
+  /* Backgrounds */
+  --nsc-bg-base: #0b1220;
+  --nsc-bg-elevated: #111a2b;
+  --nsc-bg-surface: #162235;
+  --nsc-bg-surface-strong: #1c2a40;
 
-// ❌ Éviter les valeurs arbitraires
-className="bg-[#2a4054] text-[#fff]"
-className="p-[12px] rounded-[6px]"
+  /* Borders */
+  --nsc-border-soft: rgba(163, 192, 224, 0.16);
+  --nsc-border-strong: rgba(163, 192, 224, 0.28);
+
+  /* Text */
+  --nsc-text-primary: #e8efff;
+  --nsc-text-secondary: #b2c1dd;
+  --nsc-text-muted: #8393b0;
+
+  /* Accent colors */
+  --nsc-focus: #7ad8ff;
+  --nsc-action: #60c7ff;
+  --nsc-warning: #f4bc71;
+  --nsc-success: #62d3a8;
+  --nsc-danger: #f07f88;
+}
 ```
 
-### Breakpoints (Mobile-First)
+```css
+/* Use tokens */
+background: var(--nsc-bg-surface);
+color: var(--nsc-text-primary);
+border: 1px solid var(--nsc-border-soft);
 
-```
-default  → Mobile
-md:      → Tablet (768px+)
-lg:      → Desktop (1024px+)
-xl:      → Large Desktop (1280px+)
+/* Avoid hardcoded values */
+background: #162235;
+color: #e8efff;
 ```
 
 ---
 
 ## Best Practices
 
-### Structure des classes
+### Naming conventions
 
-Ordre recommandé :
-1. Layout (`flex`, `grid`, `block`)
-2. Spacing (`p-`, `m-`, `gap-`)
-3. Sizing (`w-`, `h-`, `max-w-`)
-4. Typography (`text-`, `font-`)
-5. Colors (`bg-`, `text-`, `border-`)
-6. States (`hover:`, `focus:`, `active:`)
+Use semantic, BEM-inspired class names:
 
-```typescript
-// ✅ Bien organisé
-className="flex items-center gap-4 p-4 w-full text-sm text-gray-700 bg-white hover:bg-gray-50"
+```css
+/* Good: semantic and descriptive */
+.review-card { }
+.review-card__header { }
+.review-card__score { }
+.review-card--critical { }
+
+/* Bad: generic or cryptic */
+.card1 { }
+.blue-box { }
+.mt20 { }
 ```
 
-### Composants réutilisables
+### Property order
 
-Utiliser `@apply` sparingly - préférer les composants React :
+Recommended order in declarations:
+1. Layout (`display`, `flex`, `grid`)
+2. Positioning (`position`, `top`, `left`)
+3. Box model (`margin`, `padding`, `width`, `height`)
+4. Typography (`font-`, `text-`, `line-height`)
+5. Visual (`background`, `border`, `color`)
+6. Misc (`cursor`, `opacity`, `transition`)
 
-```typescript
-// ✅ Composant Button atomique
-<Button variant="primary" size="sm">
-  Click me
-</Button>
+### Reusable patterns
 
-// ❌ Répéter les classes partout
-<button className="bg-primary-700P text-white px-4 py-2 rounded hover:bg-primary-600">
-  Click me
-</button>
-```
+Extract repeated patterns into shared classes:
 
-### Variantes avec CVA (Class Variance Authority)
+```css
+/* Reusable surface pattern */
+.surface {
+  background: var(--nsc-bg-surface);
+  border: 1px solid var(--nsc-border-soft);
+  border-radius: 8px;
+  padding: 16px;
+}
 
-```typescript
-import { cva } from "class-variance-authority";
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md font-medium transition-colors",
-  {
-    variants: {
-      variant: {
-        primary: "bg-primary-700P text-white hover:bg-primary-600",
-        outline: "border border-primary-150 hover:bg-primary-50",
-        toggle: "border border-primary-700P bg-primary-50 text-primary-700P",
-      },
-      size: {
-        sm: "h-8 px-3 text-sm",
-        md: "h-10 px-4",
-        lg: "h-12 px-6 text-lg",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-    },
-  }
-);
+.surface--elevated {
+  background: var(--nsc-bg-elevated);
+}
 ```
 
 ---
 
 ## Responsive Design
 
-### Mobile-First Approach
+### Mobile-first approach
 
-```typescript
-// ✅ Mobile-first
-className="flex flex-col md:flex-row"
-className="hidden md:block"
-className="w-full md:w-1/2 lg:w-1/3"
+```css
+/* Base styles = mobile */
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-// ❌ Desktop-first (à éviter)
-className="flex flex-row md:flex-col"
-```
+/* Tablet and above */
+@media (min-width: 768px) {
+  .dashboard-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
 
-### Container Queries
-
-Pour les composants qui dépendent de leur container :
-
-```typescript
-className="@container"
-className="@md:flex-row @lg:gap-6"
-```
-
----
-
-## Performance
-
-### PurgeCSS
-
-Tailwind purge automatiquement les classes non utilisées. S'assurer que :
-- Toutes les classes sont écrites en entier (pas de concaténation dynamique)
-- Les fichiers sont dans le `content` de `tailwind.config.js`
-
-```typescript
-// ✅ Purge-safe
-const color = isActive ? "bg-green-500" : "bg-red-500";
-
-// ❌ Non purgeable
-const color = `bg-${status}-500`; // Tailwind ne peut pas détecter
-```
-
-### JIT Mode
-
-Activé par défaut. Permet les valeurs arbitraires quand nécessaire :
-
-```typescript
-// Acceptable quand aucun token n'existe
-className="w-[calc(100%-32px)]"
-className="grid-cols-[1fr_2fr_1fr]"
+/* Desktop */
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 ```
 
 ---
 
-## Design System Atoms
-
-### Localisation dans le projet
+## File structure
 
 ```
-src/
-├── designSystem/
-│   ├── atoms/          # Button, Input, Badge, etc.
-│   ├── molecules/      # FormField, Card, Modal, etc.
-│   └── organisms/      # Header, Sidebar, DataTable, etc.
-└── shared/
-    └── components/
-        └── atoms/      # Composants partagés cross-context
+src/interface-adapters/views/dashboard/
+├── index.html       # Dashboard HTML template
+└── styles.css       # All dashboard styles
 ```
 
-### Avant de créer un composant
+### Before adding styles
 
-1. Vérifier s'il existe dans `designSystem/`
-2. Vérifier s'il existe dans `shared/components/`
-3. Si non, créer dans le bon niveau atomique
+1. Check if a CSS custom property already exists for the value
+2. Check if a similar class already exists in `styles.css`
+3. If not, add using existing naming conventions
 
 ---
 
 ## Anti-patterns
 
-### ❌ À éviter
+### To avoid
 
-```typescript
-// Inline styles
-style={{ backgroundColor: '#2a4054' }}
+```css
+/* Inline styles in HTML */
+style="background-color: #2a4054"
 
-// Classes dupliquées (extraire dans un composant)
-<div className="flex items-center gap-2 p-4 bg-white rounded shadow">
-<div className="flex items-center gap-2 p-4 bg-white rounded shadow">
-<div className="flex items-center gap-2 p-4 bg-white rounded shadow">
+/* Hardcoded colors instead of tokens */
+color: #e8efff;  /* Use var(--nsc-text-primary) */
 
-// Valeurs arbitraires quand un token existe
-className="text-[14px]"  // Utiliser text-sm
+/* !important (except extreme cases) */
+padding: 16px !important;
 
-// Important (sauf cas extrême)
-className="!p-4"
+/* Deep nesting */
+.dashboard .main .section .card .header .title { }
+/* Prefer: .card__title { } */
+
+/* Magic numbers without explanation */
+margin-top: 37px;
 ```
 
-### ✅ Bonnes pratiques
+### Good practices
 
-```typescript
-// Utiliser les composants du Design System
-<Card className="p-4">
-  <CardHeader>Title</CardHeader>
-  <CardContent>Content</CardContent>
-</Card>
+```css
+/* Use custom properties consistently */
+.status-badge {
+  background: var(--nsc-bg-surface-strong);
+  color: var(--nsc-text-secondary);
+  border: 1px solid var(--nsc-border-soft);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
 
-// Utiliser tailwind-merge pour éviter les conflits
-import { cn } from "@/lib/utils";
-className={cn("base-classes", conditionalClass, className)}
+.status-badge--success {
+  color: var(--nsc-success);
+  border-color: var(--nsc-success);
+}
+
+.status-badge--danger {
+  color: var(--nsc-danger);
+  border-color: var(--nsc-danger);
+}
 ```
 
 ---
 
 ## Debugging
 
-### Outils recommandés
+### Recommended tools
 
-- **Tailwind CSS IntelliSense** (VS Code extension)
-- **Browser DevTools** → Inspect element
-- **Tailwind Play** (https://play.tailwindcss.com) pour prototyper
-
-### Classes qui ne s'appliquent pas ?
-
-1. Vérifier l'ordre de spécificité
-2. Vérifier si la classe est purgée
-3. Utiliser `tailwind-merge` pour résoudre les conflits
+- **Browser DevTools** -> Inspect element, computed styles
+- Check CSS custom property values in the `:root` selector
+- Use the Elements panel to verify which styles are being applied or overridden

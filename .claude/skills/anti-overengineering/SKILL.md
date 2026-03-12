@@ -1,6 +1,6 @@
 ---
 name: anti-overengineering
-description: Guide anti-surengineering basé sur YAGNI. Utiliser avant d'ajouter un pattern architectural, lors de code review, ou pour challenger une implémentation trop complexe.
+description: Anti-overengineering guide based on YAGNI. Use before adding an architectural pattern, during code review, or to challenge an overly complex implementation.
 ---
 
 # Anti Over-Engineering Guidelines
@@ -11,13 +11,13 @@ Read `.claude/roles/architect.md` — adopt this profile and follow all its rule
 
 ## Activation
 
-Ce skill s'active pour :
-- Challenger une implémentation proposée
-- Décider si un pattern DDD/Clean Architecture est justifié
-- Review de code avec suspicion de surengineering
-- Refactoring vers plus de simplicité
+This skill activates for:
+- Challenging a proposed implementation
+- Deciding if a DDD/Clean Architecture pattern is justified
+- Code review with suspicion of overengineering
+- Refactoring toward more simplicity
 
-## Principe fondamental
+## Core Principle
 
 > **"The best code is no code"** - Solve problems with the minimum viable complexity.
 
@@ -33,7 +33,7 @@ Progressive Enhancement
 
 ## DDD Pattern Decision Matrix
 
-### Quand appliquer les patterns
+### When to Apply Patterns
 
 | Pattern | ✅ Apply When | ❌ Avoid When |
 |---------|--------------|---------------|
@@ -44,7 +44,7 @@ Progressive Enhancement
 | **Repository** | Complex data access, multiple sources | Simple API calls, single gateway sufficient |
 | **Use Case** | Business workflow orchestration | Single service calls, simple operations |
 
-### Red Flags de surengineering
+### Overengineering Red Flags
 
 - Creating Value Objects for `{name: string, email: string}`
 - Adding Repository when Gateway suffices
@@ -142,7 +142,7 @@ const validateEmail = (email: string) => { /* validation */ };
 
 ---
 
-## Checklist avant d'ajouter un pattern
+## Checklist Before Adding a Pattern
 
 - [ ] **Business Justification**: Does business complexity warrant this?
 - [ ] **Team Understanding**: Can team easily understand and maintain?

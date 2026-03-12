@@ -1,161 +1,135 @@
-# Skill: Principes SOLID en Rust
+# Skill: SOLID Principles in ReviewFlow
 
-> Référence pour appliquer les principes SOLID dans le contexte Rust/Flux
+> Reference for applying SOLID principles in the ReviewFlow TypeScript/Clean Architecture codebase.
 
 ---
 
 ## 1. Single Responsibility Principle (SRP)
 
-**Un module/struct = une seule raison de changer**
+**One module/class = one reason to change**
 
-### En Rust
+### In ReviewFlow
 
-- Séparer les modules par responsabilité
-- Un struct gère une seule préoccupation
-- Le système de ownership renforce naturellement ce principe
+- Each use case handles a single business action
+- Gateways handle only external communication
+- Controllers handle only request translation
+- Entities hold only domain data and invariants
 
-### Exemple
+### Example
 
-```rust
-// BIEN : Responsabilités séparées
-pub struct ConfigLoader {
-    path: PathBuf,
+```typescript
+// GOOD: Separated responsibilities
+// src/usecases/triggerReview.usecase.ts
+export class TriggerReviewUseCase implements UseCase<TriggerReviewInput, void> {
+  constructor(private reviewGateway: ReviewGateway) {}
+
+  async execute(input: TriggerReviewInput): Promise<void> {
+    // Only handles triggering a review
+  }
 }
 
-impl ConfigLoader {
-    pub fn load(&self) -> Result<Config, ConfigError> {
-        let contents = fs::read_to_string(&self.path)?;
-        toml::from_str(&contents).map_err(Into::into)
-    }
+// src/interface-adapters/gateways/gitlabThread.gateway.ts
+export class GitLabThreadFetchGateway implements ThreadFetchGateway {
+  // Only handles fetching threads from GitLab API
 }
 
-pub struct SessionManager {
-    config: Config,
-}
-
-impl SessionManager {
-    pub fn start(&mut self) -> Result<Session, SessionError> {
-        // Gère uniquement la logique de session
-    }
-}
-
-// MAL : Struct "god object"
-pub struct App {
-    config_path: PathBuf,
-    running: bool,
-    blocked_sites: Vec<String>,
-    // Fait tout : config, session, blocage, stats...
+// BAD: God class doing everything
+export class ReviewService {
+  // Fetches threads, triggers reviews, tracks assignments, posts comments...
 }
 ```
 
-### Application Flux
+### ReviewFlow modules
 
-| Module | Responsabilité unique |
-|--------|----------------------|
-| `config.rs` | Chargement/sauvegarde configuration |
-| `timer.rs` | Gestion des timers |
-| `blocker.rs` | Manipulation /etc/hosts |
-| `notifier.rs` | Envoi de notifications |
-| `stats.rs` | Persistance des statistiques |
+| Module | Single responsibility |
+|--------|---------------------|
+| `entities/reviewContext/` | Review context data shape and validation |
+| `usecases/triggerReview.usecase.ts` | Triggering a code review |
+| `usecases/tracking/` | MR assignment tracking |
+| `gateways/claudeInvoker.ts` | Invoking Claude CLI |
+| `controllers/webhook/` | Translating webhook payloads to use case calls |
 
 ---
 
 ## 2. Open/Closed Principle (OCP)
 
-**Ouvert à l'extension, fermé à la modification**
+**Open for extension, closed for modification**
 
-### En Rust
+### In ReviewFlow
 
-- **Traits** pour les points d'extension
-- **Enums** pour les ensembles fermés (exhaustive matching)
-- Trait objects (`dyn Trait`) ou génériques pour l'extensibilité
+- **Interfaces** for extension points (gateway contracts)
+- Use case inputs/outputs are typed but the pipeline is extensible
+- New platform support (e.g., Bitbucket) = new gateway, no changes to use cases
 
-### Exemple
+### Example
 
-```rust
-// BIEN : Extensible via trait
-pub trait OutputFormatter {
-    fn format(&self, stats: &Stats) -> String;
+```typescript
+// GOOD: Extensible via interface
+export interface ThreadFetchGateway {
+  fetchThreads(mergeRequestId: MergeRequestId): Promise<Thread[]>;
 }
 
-pub struct JsonFormatter;
-pub struct TextFormatter;
-pub struct CsvFormatter;
-
-impl OutputFormatter for JsonFormatter {
-    fn format(&self, stats: &Stats) -> String {
-        serde_json::to_string_pretty(stats).unwrap()
-    }
+// GitLab implementation
+export class GitLabThreadFetchGateway implements ThreadFetchGateway {
+  async fetchThreads(mergeRequestId: MergeRequestId): Promise<Thread[]> {
+    // GitLab-specific API calls
+  }
 }
 
-// Ajouter un nouveau format = créer un nouveau struct
-// Pas besoin de modifier le code existant
-
-// Pour les sets fermés, utiliser enum
-pub enum CheckInResponse {
-    Continue,
-    Pause { duration_min: u32 },
-    Stop,
-    NoResponse,
+// GitHub implementation — no existing code modified
+export class GitHubThreadFetchGateway implements ThreadFetchGateway {
+  async fetchThreads(mergeRequestId: MergeRequestId): Promise<Thread[]> {
+    // GitHub-specific API calls
+  }
 }
+
+// For closed sets, use union types
+type ReviewPhase = "initializing" | "agents-running" | "synthesizing" | "publishing" | "completed";
 ```
 
-### Application Flux
+### ReviewFlow extension points
 
-- `trait Blocker` → permet d'avoir HostsBlocker, FirewallBlocker, etc.
-- `trait Notifier` → permet desktop, sound, webhook...
-- `enum FocusMode` → prompting, review, architecture (set fermé)
+- `ThreadFetchGateway` -> GitLab, GitHub (new platforms add a new class)
+- `ExecutionGateway` -> CLI execution abstraction
+- `ReviewContextGateway` -> different sources of review context
 
 ---
 
 ## 3. Liskov Substitution Principle (LSP)
 
-**Les implémentations doivent respecter le contrat du trait**
+**Implementations must honor the contract of the interface**
 
-### En Rust
+### In ReviewFlow
 
-- Une impl de trait ne doit jamais panic si le trait ne le spécifie pas
-- Comportement cohérent entre toutes les implémentations
-- Utiliser les types associés pour contraindre
+- A gateway implementation must never throw unexpected errors
+- Behavior must be consistent across all implementations
+- Use discriminated return types instead of exceptions for expected failures
 
-### Exemple
+### Example
 
-```rust
-// BIEN : Toutes les implémentations respectent le contrat
-pub trait Storage {
-    type Error: std::error::Error;
-
-    /// Sauvegarde une session. Ne panic jamais.
-    fn save(&self, session: &Session) -> Result<(), Self::Error>;
+```typescript
+// GOOD: All implementations respect the contract
+export interface ReviewContextGateway {
+  fetchContext(mergeRequestId: MergeRequestId): Promise<ReviewContext | null>;
 }
 
-impl Storage for SqliteStorage {
-    type Error = rusqlite::Error;
-
-    fn save(&self, session: &Session) -> Result<(), Self::Error> {
-        // Retourne Err, ne panic pas
-        self.conn.execute(...)?;
-        Ok(())
-    }
+export class GitLabReviewContextGateway implements ReviewContextGateway {
+  async fetchContext(mergeRequestId: MergeRequestId): Promise<ReviewContext | null> {
+    // Returns null if not found — does not throw
+  }
 }
 
-impl Storage for MemoryStorage {
-    type Error = std::convert::Infallible;
-
-    fn save(&self, session: &Session) -> Result<(), Self::Error> {
-        self.data.push(session.clone());
-        Ok(())
-    }
+export class GitHubReviewContextGateway implements ReviewContextGateway {
+  async fetchContext(mergeRequestId: MergeRequestId): Promise<ReviewContext | null> {
+    // Same contract: returns null if not found
+  }
 }
 
-// MAL : Viole le contrat
-impl Storage for BrokenStorage {
-    fn save(&self, session: &Session) -> Result<(), Self::Error> {
-        if !self.ready {
-            panic!("Not ready!"); // VIOLATION LSP
-        }
-        Ok(())
-    }
+// BAD: Violates the contract
+export class BrokenReviewContextGateway implements ReviewContextGateway {
+  async fetchContext(mergeRequestId: MergeRequestId): Promise<ReviewContext | null> {
+    throw new Error("Not implemented"); // LSP VIOLATION — callers expect null, not an exception
+  }
 }
 ```
 
@@ -163,72 +137,47 @@ impl Storage for BrokenStorage {
 
 ## 4. Interface Segregation Principle (ISP)
 
-**Petits traits focalisés plutôt que gros traits**
+**Small focused interfaces rather than large ones**
 
-### En Rust
+### In ReviewFlow
 
-- Créer des traits avec peu de méthodes
-- Composer les traits selon les besoins
-- Les clients dépendent uniquement de ce qu'ils utilisent
+- Separate gateway interfaces by concern
+- Controllers depend only on the use cases they need
+- Clients depend only on what they use
 
-### Exemple
+### Example
 
-```rust
-// BIEN : Traits séparés
-pub trait Startable {
-    fn start(&mut self) -> Result<(), Error>;
+```typescript
+// GOOD: Focused interfaces
+export interface ThreadFetchGateway {
+  fetchThreads(mergeRequestId: MergeRequestId): Promise<Thread[]>;
 }
 
-pub trait Stoppable {
-    fn stop(&mut self) -> Result<(), Error>;
+export interface ReviewContextGateway {
+  fetchContext(mergeRequestId: MergeRequestId): Promise<ReviewContext | null>;
 }
 
-pub trait Pausable {
-    fn pause(&mut self) -> Result<(), Error>;
-    fn resume(&mut self) -> Result<(), Error>;
+export interface TrackingGateway {
+  track(mergeRequestId: MergeRequestId, assignee: string): Promise<void>;
+  getTracked(mergeRequestId: MergeRequestId): Promise<TrackedMr | null>;
 }
 
-// Composer selon les besoins
-pub struct FocusSession;
-impl Startable for FocusSession { /* ... */ }
-impl Stoppable for FocusSession { /* ... */ }
-impl Pausable for FocusSession { /* ... */ }
-
-pub struct QuickTimer;
-impl Startable for QuickTimer { /* ... */ }
-impl Stoppable for QuickTimer { /* ... */ }
-// Pas Pausable - un quick timer ne se met pas en pause
-
-// MAL : Trait "fat"
-pub trait SessionManager {
-    fn start(&mut self);
-    fn stop(&mut self);
-    fn pause(&mut self);
-    fn resume(&mut self);
-    fn get_stats(&self) -> Stats;
-    fn export_csv(&self) -> String;
-    fn sync_to_cloud(&self);  // Pas tous les managers sync
-    fn enable_ai_mode(&mut self); // Pas pertinent pour tous
-}
-```
-
-### Application Flux
-
-```rust
-// Traits fins pour le daemon
-pub trait TimerControl {
-    fn start(&mut self, duration: Duration);
-    fn stop(&mut self);
-    fn remaining(&self) -> Duration;
+// Controller depends only on what it needs
+export interface GitLabWebhookDependencies {
+  reviewContextGateway: ReviewContextGateway;
+  threadFetchGateway: ThreadFetchGateway;
+  trackAssignment: TrackAssignmentUseCase;
 }
 
-pub trait BlockerControl {
-    fn block(&mut self, domain: &str) -> Result<()>;
-    fn unblock(&mut self, domain: &str) -> Result<()>;
-}
-
-pub trait NotificationSender {
-    fn send(&self, message: &str) -> Result<()>;
+// BAD: Fat interface
+export interface ReviewPlatformGateway {
+  fetchThreads(id: MergeRequestId): Promise<Thread[]>;
+  fetchContext(id: MergeRequestId): Promise<ReviewContext | null>;
+  postComment(id: MergeRequestId, body: string): Promise<void>;
+  resolveThread(threadId: string): Promise<void>;
+  track(id: MergeRequestId, assignee: string): Promise<void>;
+  getStats(): Promise<Stats>;
+  // Not all consumers need all of these
 }
 ```
 
@@ -236,88 +185,66 @@ pub trait NotificationSender {
 
 ## 5. Dependency Inversion Principle (DIP)
 
-**Dépendre des abstractions (traits), pas des implémentations concrètes**
+**Depend on abstractions (interfaces), not on concrete implementations**
 
-### En Rust
+### In ReviewFlow
 
-- Injection de dépendances via génériques ou trait objects
-- Les modules de haut niveau définissent les traits
-- Les modules de bas niveau implémentent les traits
+- Use cases define the interfaces they need (gateway contracts)
+- Concrete implementations live in `interface-adapters/gateways/`
+- The composition root (`src/main/routes.ts`) wires everything together
 
-### Exemple
+### Example
 
-```rust
-// BIEN : Le service dépend d'un trait
-pub trait ConfigSource {
-    fn get(&self, key: &str) -> Option<String>;
+```typescript
+// GOOD: Use case depends on an interface
+export class TriggerReviewUseCase implements UseCase<TriggerReviewInput, void> {
+  constructor(
+    private reviewContextGateway: ReviewContextGateway,  // Interface
+    private threadFetchGateway: ThreadFetchGateway,      // Interface
+  ) {}
+
+  async execute(input: TriggerReviewInput): Promise<void> {
+    const context = await this.reviewContextGateway.fetchContext(input.mergeRequestId);
+    const threads = await this.threadFetchGateway.fetchThreads(input.mergeRequestId);
+    // Business logic using abstractions
+  }
 }
 
-pub struct DaemonService<C: ConfigSource, N: NotificationSender> {
-    config: C,
-    notifier: N,
-}
+// Composition root (routes.ts) — only place for concrete instantiation
+app.post('/webhooks/gitlab', async (request, reply) => {
+  await handleWebhook(request, reply, logger, {
+    reviewContextGateway: new GitLabReviewContextGateway(httpClient),
+    threadFetchGateway: new GitLabThreadFetchGateway(executor),
+    trackAssignment: new TrackAssignmentUseCase(trackingGateway),
+  });
+});
 
-impl<C: ConfigSource, N: NotificationSender> DaemonService<C, N> {
-    pub fn new(config: C, notifier: N) -> Self {
-        Self { config, notifier }
-    }
-
-    pub fn start_focus(&self) -> Result<()> {
-        let duration = self.config.get("default_duration")
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(25);
-
-        self.notifier.send(&format!("Focus démarré pour {} min", duration))?;
-        Ok(())
-    }
-}
-
-// Facile à tester avec des mocks
-#[cfg(test)]
-mod tests {
-    struct MockConfig(HashMap<String, String>);
-    impl ConfigSource for MockConfig { /* ... */ }
-
-    struct MockNotifier(Vec<String>);
-    impl NotificationSender for MockNotifier { /* ... */ }
-
-    #[test]
-    fn test_start_focus() {
-        let config = MockConfig::new();
-        let notifier = MockNotifier::new();
-        let service = DaemonService::new(config, notifier);
-
-        service.start_focus().unwrap();
-        // Assert sur notifier.messages
-    }
-}
-
-// MAL : Dépendance concrète
-pub struct DaemonService {
-    config: TomlConfig,        // Couplé à TOML
-    notifier: DesktopNotifier, // Couplé à desktop
+// BAD: Concrete dependency
+export class TriggerReviewUseCase {
+  private gateway = new GitLabReviewContextGateway(); // Coupled to GitLab
 }
 ```
 
-### Application Flux
+### ReviewFlow architecture
 
 ```
-flux-core/
-├── traits.rs      # Définit ConfigSource, Storage, Notifier...
-├── session.rs     # Utilise les traits, pas les impls
-
-flux-daemon/
-├── sqlite_storage.rs   # impl Storage for SqliteStorage
-├── desktop_notifier.rs # impl Notifier for DesktopNotifier
-├── main.rs             # Assemble les dépendances concrètes
+src/
+├── entities/              # Domain types and validation (no dependencies)
+├── usecases/              # Business logic (depends on gateway interfaces)
+├── interface-adapters/
+│   ├── gateways/          # Concrete implementations of gateway interfaces
+│   ├── controllers/       # Inbound: webhook/HTTP -> use case calls
+│   └── presenters/        # Outbound: domain -> external format
+└── main/
+    └── routes.ts          # Composition root — wires concrete deps
 ```
 
 ---
 
-## Checklist SOLID pour review
+## SOLID checklist for review
 
-- [ ] **SRP** : Ce module a-t-il une seule raison de changer ?
-- [ ] **OCP** : Puis-je ajouter un comportement sans modifier l'existant ?
-- [ ] **LSP** : Toutes les impls de ce trait sont-elles interchangeables ?
-- [ ] **ISP** : Ce trait pourrait-il être découpé en traits plus fins ?
-- [ ] **DIP** : Ce module dépend-il de traits ou de types concrets ?
+- [ ] **SRP**: Does this module have a single reason to change?
+- [ ] **OCP**: Can I add behavior without modifying existing code?
+- [ ] **LSP**: Are all implementations of this interface interchangeable?
+- [ ] **ISP**: Could this interface be split into smaller, more focused ones?
+- [ ] **DIP**: Does this module depend on interfaces or concrete types?

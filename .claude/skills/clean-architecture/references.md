@@ -1,18 +1,18 @@
-# Références Clean Architecture
+# Clean Architecture References
 
-Sources : *Clean Architecture* (Robert C. Martin, 2017)
+Sources: *Clean Architecture* (Robert C. Martin, 2017)
 
 ---
 
-## Chapitres clés
+## Key Chapters
 
-| Chapitre | Concept | Application projet |
-|----------|---------|-------------------|
-| Ch. 20 | Business Rules | Entities dans `entities/` |
-| Ch. 21 | Screaming Architecture | Structure `modules/<context>/` |
-| Ch. 22 | The Clean Architecture | Couches concentriques |
-| Ch. 23 | Presenters & Humble Objects | Séparation Presenter/View |
-| Ch. 26 | The Main Component | `dependencies.ts` |
+| Chapter | Concept | Project Application |
+|---------|---------|---------------------|
+| Ch. 20 | Business Rules | Entities in `src/entities/` |
+| Ch. 21 | Screaming Architecture | Structure `src/entities/`, `src/usecases/`, `src/interface-adapters/` |
+| Ch. 22 | The Clean Architecture | Concentric layers |
+| Ch. 23 | Presenters & Humble Objects | Presenter/ViewModel separation |
+| Ch. 26 | The Main Component | `src/main/routes.ts` and `src/main/dependencies.ts` |
 
 ---
 
@@ -24,20 +24,21 @@ Sources : *Clean Architecture* (Robert C. Martin, 2017)
 Entities ← Use Cases ← Interface Adapters ← Frameworks
 ```
 
-**Conséquence** : Une Entity ne doit jamais importer depuis `interface-adapters/`.
+**Consequence**: An Entity must never import from `interface-adapters/`.
 
 ---
 
 ## Humble Object Pattern (Ch. 23, p. 212-213)
 
-Sépare le code testable du code difficile à tester.
+Separates testable code from code that is hard to test.
 
-| Composant | Testable | Logique |
-|-----------|----------|---------|
-| Presenter | ✅ Oui | Transformation données → ViewModel |
-| View | ❌ Non (humble) | Affichage pur du ViewModel |
+| Component | Testable | Logic |
+|-----------|----------|-------|
+| Presenter | Yes | Transform data into ViewModel |
+| Controller | Yes | Orchestrate use cases |
+| View (HTTP Response) | No (humble) | Pure rendering of ViewModel |
 
-**Règle** : Si tu écris un `if` dans une View, il devrait être dans le Presenter.
+**Rule**: If you write an `if` in a Fastify route handler, it should probably be in the Controller or Presenter.
 
 ---
 
@@ -45,28 +46,29 @@ Sépare le code testable du code difficile à tester.
 
 > "Use cases contain application-specific business rules."
 
-Un Use Case :
-- Représente UNE intention utilisateur
-- Orchestre les Entities
-- Ne connaît pas l'UI
+A Use Case:
+- Represents ONE user intention
+- Orchestrates Entities
+- Knows nothing about the UI or transport
 
-**Naming** : `<verbe>-<entity>.usecase.ts`
-- `complete-quest.usecase.ts`
-- `assign-quest.usecase.ts`
+**Naming**: `<verb><Entity>.usecase.ts`
+- `triggerReview.usecase.ts`
+- `trackAssignment.usecase.ts`
+- `cancelReview.usecase.ts`
 
 ---
 
 ## Boundaries & Gateways (Ch. 22)
 
-Les Gateways implémentent l'inversion de dépendance.
+Gateways implement dependency inversion.
 
 ```
-Use Case → Gateway Interface (dans entities/)
+Use Case → Gateway Interface (in entities/)
                 ↑
-Gateway Implementation (dans interface-adapters/)
+Gateway Implementation (in interface-adapters/)
 ```
 
-Le Use Case dépend de l'abstraction, pas de l'implémentation.
+The Use Case depends on the abstraction, not the implementation.
 
 ---
 
@@ -74,17 +76,21 @@ Le Use Case dépend de l'abstraction, pas de l'implémentation.
 
 > "Main is the dirtiest component in the system."
 
-Le composant `main` (ou `dependencies.ts`) :
-- Instancie les implémentations concrètes
-- Configure l'injection de dépendances
-- Est le seul à connaître les détails d'infrastructure
+The `main` component (`src/main/routes.ts` and `src/main/dependencies.ts`):
+- Instantiates concrete implementations
+- Configures dependency injection
+- Is the only place that knows infrastructure details
 
 ```typescript
-// shared/dependencies.ts - The "dirty" component
-export const createDependencies = (): Dependencies => ({
-  questGateway: new QuestInLocalStorageGateway(),
-  uuidService: new CryptoUuidService(),
-})
+// main/routes.ts — The "dirty" component
+app.post('/webhooks/github', async (request, reply) => {
+  await handleGitHubWebhook(request, reply, deps.logger, trackingGw, {
+    reviewContextGateway: deps.reviewContextGateway,
+    threadFetchGateway: new GitHubThreadFetchGateway(defaultGitHubExecutor),
+    trackAssignment: new TrackAssignmentUseCase(trackingGw),
+    recordCompletion: new RecordReviewCompletionUseCase(trackingGw),
+  });
+});
 ```
 
 ---
@@ -93,9 +99,9 @@ export const createDependencies = (): Dependencies => ({
 
 | Aspect | Entity | Use Case |
 |--------|--------|----------|
-| Portée | Enterprise-wide | Application-specific |
-| Dépendances | Aucune externe | Entities + Gateways |
-| Exemple | `Quest.complete()` | `completeQuest()` qui sauvegarde |
+| Scope | Enterprise-wide | Application-specific |
+| Dependencies | No external dependencies | Entities + Gateways |
+| Example | `ReviewScore.severity` | `triggerReview()` which enqueues and tracks |
 
 ---
 
@@ -103,9 +109,10 @@ export const createDependencies = (): Dependencies => ({
 
 > "Your architecture should tell readers about the system, not about the frameworks."
 
-La structure de dossiers crie l'intention métier :
+The folder structure screams the business intent:
 
 ```
-✅ modules/family-quests/     → On comprend le domaine
-❌ src/components/            → On ne comprend que le framework
+✅ src/entities/reviewContext/     → You understand the domain
+✅ src/usecases/tracking/          → You understand the business actions
+❌ src/components/                 → You only understand the framework
 ```

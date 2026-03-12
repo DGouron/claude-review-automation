@@ -3,7 +3,7 @@ name: auto-review
 description: Local auto-review of modified code (no GitLab/GitHub). Runs 5 sequential audits and generates a local report. Ideal for validating code before creating a MR/PR.
 ---
 
-# Auto-Review Locale
+# Local Auto-Review
 
 ## Context
 
@@ -71,7 +71,7 @@ This includes: use cases, guards, presenters, gateways, services, pure functions
 ## Activation
 
 This skill activates when the user requests:
-- "/auto-review", "Auto-review", "Review mon code"
+- "/auto-review", "Auto-review", "Review my code"
 - "Check my code", "Self-review"
 
 ---

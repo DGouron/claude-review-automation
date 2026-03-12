@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Guide interactif pour le TDD Detroit School. Utiliser dès que l'utilisateur demande d'écrire ou modifier du code - nouvelle feature, bug fix, debug, refactoring, modification. Active un workflow RED-GREEN-REFACTOR avec validation à chaque étape.
+description: Interactive guide for Detroit School TDD. Use whenever the user asks to write or modify code - new feature, bug fix, debug, refactoring, modification. Activates a RED-GREEN-REFACTOR workflow with validation at each step.
 ---
 
 # TDD Interactive Guide - Detroit School
@@ -9,25 +9,25 @@ description: Guide interactif pour le TDD Detroit School. Utiliser dès que l'ut
 
 Read `.claude/roles/senior-dev.md` — adopt this profile and follow all its rules.
 
-## Philosophie Detroit School
+## Detroit School Philosophy
 
-**State-based testing** : On teste le résultat observable, pas les interactions internes.
+**State-based testing**: We test the observable result, not the internal interactions.
 
-| Principe | Explication |
-|----------|-------------|
-| **Tester l'état** | Vérifier le résultat final, pas comment on y arrive |
-| **Inside-Out** | Commencer par le domaine, remonter vers l'extérieur |
-| **Mocks minimaux** | Uniquement pour les I/O externes (gateways, API, DB) |
-| **Tests robustes** | Résistants au refactoring interne |
+| Principle | Explanation |
+|-----------|-------------|
+| **Test state** | Verify the final result, not how we got there |
+| **Inside-Out** | Start from the domain, work outward |
+| **Minimal mocks** | Only for external I/O (gateways, API, DB) |
+| **Robust tests** | Resistant to internal refactoring |
 
-**Quand mocker :**
-- ✅ Gateways (API, base de données, fichiers)
-- ✅ Services externes (email, paiement)
-- ❌ Logique métier interne
-- ❌ Collaborations entre objets du domaine
+**When to mock:**
+- Gateways (API, database, file system)
+- External services (email, notifications)
+- Internal business logic
+- Collaborations between domain objects
 
 ```typescript
-// ✅ Detroit : on teste l'état final
+// Detroit: we test the final state
 it("should add item to cart", () => {
   const cart = new Cart()
   cart.add(product)
@@ -36,7 +36,7 @@ it("should add item to cart", () => {
   expect(cart.total).toBe(10)
 })
 
-// ❌ London : on teste les interactions (à éviter)
+// London: we test interactions (avoid this)
 it("should call inventory.reserve", () => {
   const inventory = mock<Inventory>()
   cart.add(product)
@@ -44,82 +44,76 @@ it("should call inventory.reserve", () => {
 })
 ```
 
-**Exemple Solife** (test réel du projet) :
+**ReviewFlow example** (project-relevant test):
 
 ```typescript
-// modules/__test__/domain/membership/usecases/submitMembershipForm.test.ts
-describe("submitMembershipForm", () => {
-  let mockFormData: IMembershipFormData;
+// src/tests/units/entities/reviewScore.test.ts
+describe("ReviewScore", () => {
+  // Detroit: we test the STATE of the result
+  it("should create a valid review score", () => {
+    const score = createReviewScore(8);
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockFormData = createDefaultMembershipFormData();
-    mockFormData.candidateIdentity.firstName = "John";
-    mockFormData.candidateIdentity.lastName = "Doe";
+    expect(score.value).toBe(8);
+    expect(score.label).toBe("good");
   });
 
-  // ✅ Detroit : on teste l'ÉTAT du résultat
-  it("should submit form data successfully", async () => {
-    mockFetchJson({ ok: true, jsonData: { message: "Succès" } });
+  // Validation before use
+  it("should reject a score below 0", () => {
+    const result = createReviewScore(-1);
 
-    const result = await submitMembershipForm(mockFormData);
-
-    expect(result.success).toBe(true);  // État final
+    expect(result).toBeNull(); // Final state
   });
 
-  // ✅ Validation avant soumission
-  it("should validate form data before submission", async () => {
-    const invalidData = {} as IMembershipFormData;
+  // Boundary validation
+  it("should reject a score above 10", () => {
+    const result = createReviewScore(11);
 
-    const result = await submitMembershipForm(invalidData);
-
-    expect(global.fetch).not.toHaveBeenCalled();  // Side-effect vérifiable
-    expect(result.success).toBe(false);           // État final
+    expect(result).toBeNull(); // Final state
   });
 });
 ```
 
 ---
 
-## Manifeste TDD
+## TDD Manifesto
 
-Le TDD respecte ces principes fondamentaux :
+TDD follows these fundamental principles:
 
-| Principe | Signification |
-|----------|---------------|
-| **Baby steps** | Petits pas pour feedback rapide et régulier |
-| **Continuous refactoring** | On améliore maintenant, pas "plus tard" |
-| **Evolutionary design** | On développe le nécessaire et suffisant |
-| **Executable documentation** | Les tests SONT la documentation vivante |
-| **Minimalist code** | Simple et fonctionnel > surdimensionné |
+| Principle | Meaning |
+|-----------|---------|
+| **Baby steps** | Small steps for fast and regular feedback |
+| **Continuous refactoring** | We improve now, not "later" |
+| **Evolutionary design** | We develop what is necessary and sufficient |
+| **Executable documentation** | Tests ARE the living documentation |
+| **Minimalist code** | Simple and functional > over-dimensioned |
 
-## Principe du test minimal
+## Minimal Test Principle
 
 > "The simplest thing that could possibly work." — Kent Beck
 
 > "As the tests get more specific, the code gets more generic." — Robert C. Martin
 
-**Règles :**
-1. **Un seul comportement par test**
-2. **Du naïf au complet** : cas simple d'abord, edge cases après
-3. **Pas d'anticipation** : un cycle à la fois
+**Rules:**
+1. **One behavior per test**
+2. **From naive to complete**: simple case first, edge cases after
+3. **No anticipation**: one cycle at a time
 
-**Progression type :**
+**Typical progression:**
 ```
-Cycle 1: "should create a completion" (cas nominal)
-Cycle 2: "should have a rating" (propriété)
+Cycle 1: "should create a completion" (nominal case)
+Cycle 2: "should have a rating" (property)
 Cycle 3: "should reject rating below 1" (validation)
 Cycle 4: "should reject rating above 5" (validation)
 ```
 
-**Anti-pattern :**
+**Anti-pattern:**
 ```typescript
-// ❌ Test trop large
+// Test too broad
 it("should validate a completion with rating 1-5 and ISO datetime", () => {
-  // teste rating min, max, format date, cas nominal...
+  // tests rating min, max, date format, nominal case...
 })
 
-// ✅ Un comportement par test
+// One behavior per test
 it("should create a completion", () => { ... })
 it("should reject rating below 1", () => { ... })
 ```
@@ -128,174 +122,174 @@ it("should reject rating below 1", () => { ... })
 
 ## Activation
 
-Ce skill s'active dès que l'utilisateur demande de toucher au code :
-- Nouvelles features : "Implémente...", "Ajoute...", "Crée..."
-- Bug fixes : "Corrige...", "Fix...", "Répare..."
-- Debug : "Pourquoi ça...", "Ça ne marche pas..."
-- Modifications : "Modifie...", "Change...", "Met à jour..."
-- Refactoring : "Refactor...", "Améliore...", "Nettoie..."
+This skill activates whenever the user asks to touch code:
+- New features: "Implement...", "Add...", "Create..."
+- Bug fixes: "Fix...", "Correct...", "Repair..."
+- Debug: "Why does...", "It doesn't work..."
+- Modifications: "Modify...", "Change...", "Update..."
+- Refactoring: "Refactor...", "Improve...", "Clean up..."
 
 ---
 
-## Workflow obligatoire
+## Mandatory Workflow
 
-À chaque cycle, suivre ces 3 phases avec **arrêt et validation utilisateur** entre chaque.
+At each cycle, follow these 3 phases with **stop and user validation** between each.
 
-### 🔴 Phase RED
+### Phase RED
 
-**Objectif** : Écrire UN test qui échoue
+**Goal**: Write ONE failing test
 
-**Actions** :
-1. Annoncer : "RED: Je vais tester [comportement précis]"
-2. Identifier le plus petit test possible (baby step)
-3. Proposer le test SANS l'écrire
-4. Attendre validation
-5. Écrire le test après validation
-6. Exécuter `yarn test:run` pour confirmer l'échec
-7. Demander : "Le test échoue comme attendu. On passe en GREEN ?"
+**Actions**:
+1. Announce: "RED: I will test [specific behavior]"
+2. Identify the smallest possible test (baby step)
+3. Propose the test WITHOUT writing it
+4. Wait for validation
+5. Write the test after validation
+6. Run `yarn test:run` to confirm failure
+7. Ask: "The test fails as expected. Move to GREEN?"
 
-**Template :**
+**Template:**
 ```
-🔴 RED - Proposition de test
+RED - Test Proposal
 
-Comportement à tester : [description]
-Fichier : [path]
+Behavior to test: [description]
+File: [path]
 
-Test proposé :
-[code du test - state-based, vérifie le résultat]
+Proposed test:
+[test code - state-based, verifies the result]
 
-Ce test vérifie que [explication de l'état attendu].
-On valide ce test ?
-```
-
----
-
-### 🟢 Phase GREEN
-
-**Objectif** : Faire passer le test avec le code MINIMAL
-
-**Actions** :
-1. Annoncer : "GREEN: Je vais faire passer le test avec le minimum de code"
-2. Proposer l'implémentation minimale SANS l'écrire
-3. Attendre validation
-4. Écrire le code après validation
-5. Exécuter `yarn test:run` pour confirmer le succès
-6. Demander : "Le test passe. On refactor ou prochain cycle ?"
-
-**Règles** :
-- Code MINIMAL qui fait passer le test
-- Pas d'optimisation prématurée
-- Valeurs en dur acceptées si suffisantes
-
-**Template :**
-```
-🟢 GREEN - Proposition d'implémentation
-
-Pour faire passer le test, je propose :
-[code minimal]
-
-C'est volontairement minimal car [explication].
-On valide cette implémentation ?
+This test verifies that [explanation of expected state].
+Validate this test?
 ```
 
 ---
 
-### 🔵 Phase REFACTOR
+### Phase GREEN
 
-**Objectif** : Simplifier sans changer le comportement
+**Goal**: Make the test pass with MINIMAL code
 
-**Principes** :
-- **KISS** : La solution la plus simple
-- **YAGNI** : Supprimer ce qui n'est pas nécessaire
-- **DRY** : Factoriser uniquement si duplication réelle
+**Actions**:
+1. Announce: "GREEN: I will make the test pass with minimum code"
+2. Propose the minimal implementation WITHOUT writing it
+3. Wait for validation
+4. Write the code after validation
+5. Run `yarn test:run` to confirm success
+6. Ask: "The test passes. Refactor or next cycle?"
 
-**Actions** :
-1. Annoncer : "REFACTOR: Analyse des opportunités de simplification"
-2. Chercher : code mort, abstractions prématurées, complexité accidentelle
-3. Proposer les refactorings un par un
-4. Attendre validation pour chaque
-5. Exécuter `yarn test:run` après chaque refactoring
-6. Demander : "Refactor terminé. Prochain cycle RED ?"
+**Rules**:
+- MINIMAL code that makes the test pass
+- No premature optimization
+- Hardcoded values accepted if sufficient
 
-**Ordre de priorité** : Supprimer > Simplifier > Réorganiser
-
-**Template :**
+**Template:**
 ```
-🔵 REFACTOR - Analyse
+GREEN - Implementation Proposal
 
-Code smells détectés :
-- [smell 1] : [explication]
+To make the test pass, I propose:
+[minimal code]
 
-Refactoring proposé :
-[description du changement]
-
-On applique ce refactoring ?
+This is intentionally minimal because [explanation].
+Validate this implementation?
 ```
 
 ---
 
-## Cas particulier : Debug / Bug Fix
+### Phase REFACTOR
 
-1. **Comprendre** : Comportement attendu vs actuel
-2. **RED** : Test qui reproduit le bug (doit échouer)
-3. **GREEN** : Corriger pour que le test passe
-4. **REFACTOR** : Nettoyer si nécessaire
+**Goal**: Simplify without changing behavior
 
-Le test devient une régression protectrice.
+**Principles**:
+- **KISS**: The simplest solution
+- **YAGNI**: Remove what is not necessary
+- **DRY**: Factor out only if there is real duplication
+
+**Actions**:
+1. Announce: "REFACTOR: Analyzing simplification opportunities"
+2. Look for: dead code, premature abstractions, accidental complexity
+3. Propose refactorings one by one
+4. Wait for validation for each
+5. Run `yarn test:run` after each refactoring
+6. Ask: "Refactor complete. Next RED cycle?"
+
+**Priority order**: Remove > Simplify > Reorganize
+
+**Template:**
+```
+REFACTOR - Analysis
+
+Code smells detected:
+- [smell 1]: [explanation]
+
+Proposed refactoring:
+[description of change]
+
+Apply this refactoring?
+```
 
 ---
 
-## Checkpoints obligatoires
+## Special Case: Debug / Bug Fix
 
-Jamais passer à la phase suivante sans :
-- ✅ Validation explicite de l'utilisateur
-- ✅ Tests exécutés et résultat conforme
+1. **Understand**: Expected behavior vs actual
+2. **RED**: Test that reproduces the bug (must fail)
+3. **GREEN**: Fix so the test passes
+4. **REFACTOR**: Clean up if necessary
 
-## Specs et tickets : pas de code prédéterminé
-
-Le TDD repose sur la **découverte progressive du design**. Les specs/tickets ne doivent PAS contenir :
-
-| Interdit | Pourquoi |
-|----------|----------|
-| Noms de tests | Le test émerge du besoin, pas l'inverse |
-| Noms de fichiers | L'architecture se révèle par itération |
-| Signatures de méthodes | Le design naît du code le plus simple |
-| Commandes d'installation | Les dépendances viennent quand nécessaire |
-
-**Principe** : On ne prédit pas le code final. On procède par baby steps, de l'implémentation la plus naïve au cas final.
-
-```
-❌ Ticket avec "Tests à implémenter : should_create_user_with_email"
-❌ Ticket avec "Fichiers : src/services/user.service.ts"
-❌ Ticket avec "Méthode : createUser(email: string): User"
-
-✅ Ticket avec critères Gherkin décrivant le COMPORTEMENT attendu
-```
-
-Le cycle RED-GREEN-REFACTOR fait émerger le design. Le ticket décrit le QUOI (comportement), pas le COMMENT (implémentation).
+The test becomes a protective regression test.
 
 ---
 
-## Anti-patterns à bloquer
+## Mandatory Checkpoints
 
-- ❌ Code prod sans test rouge
-- ❌ Plusieurs tests d'un coup
-- ❌ Implémenter plus que nécessaire en GREEN
-- ❌ Refactorer sans tests verts
-- ❌ Passer une phase sans validation
-- ❌ Mocker la logique métier interne
-- ❌ Prédéterminer le code dans les specs/tickets
+Never move to the next phase without:
+- Explicit user validation
+- Tests executed and result confirmed
+
+## Specs and tickets: no predetermined code
+
+TDD relies on **progressive design discovery**. Specs/tickets must NOT contain:
+
+| Forbidden | Why |
+|-----------|-----|
+| Test names | The test emerges from the need, not the other way around |
+| File names | Architecture reveals itself through iteration |
+| Method signatures | Design comes from the simplest code |
+| Installation commands | Dependencies come when necessary |
+
+**Principle**: We don't predict the final code. We proceed by baby steps, from the most naive implementation to the final case.
+
+```
+Ticket with "Tests to implement: should_create_user_with_email"
+Ticket with "Files: src/services/user.service.ts"
+Ticket with "Method: createUser(email: string): User"
+
+Ticket with Gherkin criteria describing the expected BEHAVIOR
+```
+
+The RED-GREEN-REFACTOR cycle makes the design emerge. The ticket describes the WHAT (behavior), not the HOW (implementation).
 
 ---
 
-## Fin de cycle
+## Anti-patterns to Block
+
+- Production code without a red test
+- Multiple tests at once
+- Implementing more than necessary in GREEN
+- Refactoring without green tests
+- Skipping a phase without validation
+- Mocking internal business logic
+- Predetermining code in specs/tickets
+
+---
+
+## End of Cycle
 
 ```
-📊 Cycle terminé
+Cycle Complete
 
-Tests ajoutés : [nombre]
-Comportements couverts : [liste]
-Prochain comportement suggéré : [suggestion]
+Tests added: [number]
+Behaviors covered: [list]
+Next suggested behavior: [suggestion]
 
-On continue ?
+Continue?
 ```

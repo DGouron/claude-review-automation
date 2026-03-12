@@ -1,9 +1,9 @@
 ---
 name: commit
-description: Commit et push sécurisé. Crée un commit conforme aux conventions et push. Husky se charge des vérifications (TypeScript, Biome, tests).
+description: Safe commit and push workflow. Creates a commit following conventions and pushes. Husky handles verifications (TypeScript, Biome, tests).
 ---
 
-# Commit - Workflow Git sécurisé
+# Commit - Safe Git Workflow
 
 ## Persona
 
@@ -11,151 +11,122 @@ Read `.claude/roles/senior-dev.md` — adopt this profile and follow all its rul
 
 ## Activation
 
-Ce skill s'active :
-- Sur demande explicite (`/commit`)
-- Quand l'utilisateur demande de committer/pusher du code
+This skill activates:
+- On explicit request (`/commit`)
+- When the user asks to commit/push code
 
-## Hooks Husky (automatiques)
+## Husky Hooks (automatic)
 
-Le projet utilise Husky qui exécute automatiquement :
+The project uses Husky which automatically runs:
 
 | Hook | Action |
 |------|--------|
-| `pre-commit` | TypeScript check + Biome lint (fichiers modifiés) |
-| `commit-msg` | commitlint (format du message) |
-| `pre-push` | Tests vitest (fichiers modifiés depuis `test`) |
+| `pre-commit` | TypeScript check + Biome lint (modified files) |
+| `commit-msg` | commitlint (message format) |
+| `pre-push` | Vitest tests (modified files since `test`) |
 
-**Pas besoin de lancer `yarn verify` manuellement !**
+**No need to run `yarn verify` manually!**
 
 ## Workflow
 
-### Étape 1 : Analyse des changements
+### Step 1: Analyze Changes
 
 ```bash
 git status --short
 ```
 
-Si rien n'est staged, proposer :
+If nothing is staged, suggest:
 ```bash
-git add <fichiers>
+git add <files>
 ```
 
-### Étape 1.5 : Vérification backend (si fichiers backend modifiés)
+### Step 2: Create the Commit
 
-Si des fichiers dans `backend/` sont modifiés ou staged, exécuter PHPStan :
-
-```bash
-cd backend && ./vendor/bin/phpstan analyse --level=max
-```
-
-**Si PHPStan échoue** : corriger les erreurs avant de continuer. Erreurs courantes :
-| Erreur | Solution |
-|--------|----------|
-| `empty() is not allowed` | Utiliser `=== []` ou `=== ''` |
-| `Cannot cast mixed to X` | Ajouter `/** @var type */` ou typer les closures |
-| `getDQLPart returns mixed` | Ajouter `/** @var array<...> */` avant la variable |
-| `Match arm always true` | Supprimer le `default` si tous les cas sont couverts |
-
-### Étape 2 : Création du commit
-
-#### Format du message (Conventional Commits)
+#### Message Format (Conventional Commits)
 
 ```
 <type>(<scope>): <description>
 ```
 
-**Types autorisés** :
+**Allowed types**:
 | Type | Usage |
 |------|-------|
-| `feat` | Nouvelle fonctionnalité |
-| `fix` | Correction de bug |
-| `docs` | Documentation uniquement |
-| `style` | Formatage (pas de changement de code) |
-| `refactor` | Refactoring (pas de nouvelle feature ni fix) |
-| `perf` | Amélioration de performance |
-| `test` | Ajout ou correction de tests |
-| `build` | Changements du système de build |
-| `ci` | Changements CI/CD |
-| `chore` | Maintenance, dépendances |
-| `revert` | Revert d'un commit précédent |
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `style` | Formatting (no code change) |
+| `refactor` | Refactoring (no new feature or fix) |
+| `perf` | Performance improvement |
+| `test` | Adding or fixing tests |
+| `build` | Build system changes |
+| `ci` | CI/CD changes |
+| `chore` | Maintenance, dependencies |
+| `revert` | Revert a previous commit |
 
-**Règles** :
-- Header max **72 caractères**
-- Description en minuscules, sans point final
-- Scope optionnel entre parenthèses
+**Rules**:
+- Header max **72 characters**
+- Description in lowercase, no trailing period
+- Scope optional in parentheses
 
-#### Exemples
+#### Examples
 
 ```
-feat(cvboard): add isInitialized flag to fix race condition
-fix(auth): resolve token refresh loop
-refactor(companies): extract reload logic to hook
-test(filters): add unit tests for filter presenter
+feat(webhook): add GitHub signature validation
+fix(review): resolve score calculation overflow
+refactor(gateway): extract GitLab API client
+test(usecase): add unit tests for track assignment
 ```
 
-### Étape 3 : Commit
+### Step 3: Commit
 
 ```bash
 git commit -m "<type>(<scope>): <description>"
 ```
 
-Husky exécutera automatiquement :
+Husky will automatically run:
 1. TypeScript check
 2. Biome lint
 3. commitlint
 
-### Étape 4 : Push (optionnel)
+### Step 4: Push (optional)
 
 ```bash
 git push origin <current-branch>
 ```
 
-Husky exécutera automatiquement les tests avant le push.
+Husky will automatically run tests before pushing.
 
-## Règles de sécurité
+## Security Rules
 
-- **JAMAIS** de `--force` sans demande explicite
-- **JAMAIS** de push sur `main` ou `test` directement
-- **JAMAIS** de `--no-verify` sauf demande explicite de l'utilisateur
-- **TOUJOURS** vérifier qu'on est sur une feature branch
-- **JAMAIS** de mention de Claude, Anthropic, ou Co-Authored-By dans les commits
+- **NEVER** use `--force` without explicit request
+- **NEVER** push to `main` or `master` directly
+- **NEVER** use `--no-verify` unless explicitly requested by the user
+- **ALWAYS** verify you are on a feature branch
+- **NEVER** mention Claude, Anthropic, or Co-Authored-By in commits
 
-## Si Husky échoue
+## If Husky Fails
 
-| Erreur | Solution |
-|--------|----------|
-| TypeScript | Corriger les erreurs de type |
-| Biome | `yarn fix` pour auto-corriger |
-| commitlint | Reformuler le message de commit |
-| Tests (push) | Corriger les tests qui échouent |
+| Error | Solution |
+|-------|----------|
+| TypeScript | Fix type errors |
+| Biome | `yarn lint:fix` to auto-correct |
+| commitlint | Reword the commit message |
+| Tests (push) | Fix failing tests |
 
-## Template de sortie
+## Output Template
 
 ```
-📦 COMMIT
+COMMIT
 
-Branche : <branch>
-Fichiers staged :
-  - <fichier 1>
-  - <fichier 2>
+Branch: <branch>
+Staged files:
+  - <file 1>
+  - <file 2>
 
-Message : <type>(<scope>): <description>
+Message: <type>(<scope>): <description>
 
-Vérifications :
-  - Husky (frontend) : TypeScript ✓ Biome ✓ commitlint ✓
-  - Backend (si modifié) : PHPStan ✓
+Verifications:
+  - Husky: TypeScript / Biome / commitlint
 
-Confirmer commit ? (oui/non)
-```
-
-## Monorepo : Frontend + Backend
-
-Ce projet est un monorepo avec :
-- `/frontend/` : React + TypeScript (vérifié par Husky)
-- `/backend/` : Symfony + PHP (vérifié manuellement par PHPStan)
-
-**IMPORTANT** : Husky ne vérifie que le frontend. Si des fichiers backend sont modifiés, lancer PHPStan manuellement AVANT de commit :
-
-```bash
-cd backend && ./vendor/bin/phpstan analyse --level=max
+Confirm commit? (yes/no)
 ```

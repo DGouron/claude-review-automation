@@ -1,9 +1,9 @@
 ---
 name: security
-description: Scan du code pour détecter les secrets avant commit. Utiliser avant git add/commit/push ou sur demande. Vérifie tokens, API keys, credentials, et autres données sensibles.
+description: Code scan to detect secrets before commit. Use before git add/commit/push or on demand. Checks for tokens, API keys, credentials, and other sensitive data.
 ---
 
-# Security - Détection de secrets
+# Security - Secret Detection
 
 ## Persona
 
@@ -11,16 +11,16 @@ Read `.claude/roles/code-reviewer.md` — adopt this profile and follow all its 
 
 ## Activation
 
-Ce skill s'active :
-- Avant un `git commit` ou `git push`
-- Sur demande explicite (`/security`)
-- Via la commande CLI `flux security-scan` (scan repo complet)
+This skill activates:
+- Before a `git commit` or `git push`
+- On explicit request (`/security`)
+- Via the CLI command `flux security-scan` (full repo scan)
 
-## Patterns détectés
+## Detected Patterns
 
 ### Tokens & API Keys
 
-| Pattern | Exemple | Regex |
+| Pattern | Example | Regex |
 |---------|---------|-------|
 | GitLab PAT | `glpat-xxxx` | `glpat-[a-zA-Z0-9_-]{20,}` |
 | GitHub PAT | `ghp_xxxx` | `gh[ps]_[a-zA-Z0-9]{36,}` |
@@ -28,102 +28,102 @@ Ce skill s'active :
 | OpenAI | `sk-xxxx` | `sk-[a-zA-Z0-9]{32,}` |
 | Anthropic | `sk-ant-xxxx` | `sk-ant-[a-zA-Z0-9-]{32,}` |
 | AWS Access Key | `AKIA...` | `AKIA[0-9A-Z]{16}` |
-| AWS Secret | - | `[a-zA-Z0-9/+=]{40}` (contexte AWS) |
+| AWS Secret | - | `[a-zA-Z0-9/+=]{40}` (AWS context) |
 | Slack Token | `xox[baprs]-` | `xox[baprs]-[a-zA-Z0-9-]+` |
 | Discord Token | - | `[MN][a-zA-Z0-9]{23,}\.[a-zA-Z0-9-_]{6}\.[a-zA-Z0-9-_]{27}` |
 
-### Credentials génériques
+### Generic Credentials
 
-| Pattern | Contexte |
-|---------|----------|
-| `password\s*=\s*["'][^"']+["']` | Mots de passe en dur |
-| `secret\s*=\s*["'][^"']+["']` | Secrets en dur |
-| `token\s*=\s*["'][^"']+["']` | Tokens en dur |
-| `api[_-]?key\s*=\s*["'][^"']+["']` | Clés API en dur |
+| Pattern | Context |
+|---------|---------|
+| `password\s*=\s*["'][^"']+["']` | Hardcoded passwords |
+| `secret\s*=\s*["'][^"']+["']` | Hardcoded secrets |
+| `token\s*=\s*["'][^"']+["']` | Hardcoded tokens |
+| `api[_-]?key\s*=\s*["'][^"']+["']` | Hardcoded API keys |
 | `Bearer [a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+` | JWT tokens |
 
-### Fichiers suspects
+### Suspicious Files
 
-| Fichier | Risque |
-|---------|--------|
-| `.env` | Variables d'environnement (souvent secrets) |
-| `*.pem`, `*.key` | Clés privées |
-| `secrets.*`, `credentials.*` | Fichiers de secrets |
-| `config.toml` avec section `[secrets]` | Config avec secrets intégrés |
-| `id_rsa`, `id_ed25519` | Clés SSH privées |
+| File | Risk |
+|------|------|
+| `.env` | Environment variables (often secrets) |
+| `*.pem`, `*.key` | Private keys |
+| `secrets.*`, `credentials.*` | Secret files |
+| `config.toml` with `[secrets]` section | Config with embedded secrets |
+| `id_rsa`, `id_ed25519` | Private SSH keys |
 
 ## Workflow
 
-### Scan avant commit (git diff --staged)
+### Pre-commit scan (git diff --staged)
 
 ```
-🔒 SECURITY - Scan pre-commit
+SECURITY - Pre-commit Scan
 
-Analyse du diff staged...
+Analyzing staged diff...
 
-Résultat :
-- Fichiers scannés : X
-- Secrets détectés : Y
+Result:
+- Files scanned: X
+- Secrets detected: Y
 
-[Si secrets trouvés]
-⚠️ ALERTE : Secrets détectés !
+[If secrets found]
+WARNING: Secrets detected!
 
-Fichier : src/config.rs
-Ligne 42 : token = "glpat-..." (GitLab PAT)
+File: src/config.ts
+Line 42: token = "glpat-..." (GitLab PAT)
 
-Action : Corriger avant de commit.
-Suggestions :
-- Utiliser une variable d'environnement
-- Déplacer dans ~/.config/flux/secrets.toml
+Action: Fix before committing.
+Suggestions:
+- Use an environment variable
+- Move to a secure configuration file
 ```
 
-### Scan repo complet (flux security-scan)
+### Full repo scan (flux security-scan)
 
 ```
-🔒 SECURITY - Scan complet
+SECURITY - Full Scan
 
-Scan de tout le repository...
+Scanning entire repository...
 
-Résultat :
-- Fichiers scannés : X
-- Fichiers ignorés (.gitignore) : Y
-- Secrets détectés : Z
+Result:
+- Files scanned: X
+- Files ignored (.gitignore): Y
+- Secrets detected: Z
 
-[Liste des fichiers avec secrets]
+[List of files with secrets]
 ```
 
-## Commandes
+## Commands
 
 ### Git diff staged
 
 ```bash
-git diff --cached --name-only  # Liste des fichiers staged
-git diff --cached              # Contenu du diff
+git diff --cached --name-only  # List of staged files
+git diff --cached              # Diff content
 ```
 
 ### Scan patterns
 
 ```bash
-# Exemple avec grep (le skill utilise des outils plus avancés)
+# Example with grep (the skill uses more advanced tools)
 git diff --cached | grep -E "(glpat-|ghp_|sk-|password\s*=)"
 ```
 
-## Faux positifs
+## False Positives
 
-Ignorer si :
-- Dans un fichier de test avec des valeurs factices (`test_token`, `fake_key`)
-- Dans la documentation (exemples avec `xxxx` ou `your-token-here`)
-- Pattern dans un commentaire expliquant le format attendu
+Ignore if:
+- In a test file with dummy values (`test_token`, `fake_key`)
+- In documentation (examples with `xxxx` or `your-token-here`)
+- Pattern in a comment explaining the expected format
 
-## Intégration CLAUDE.md
+## CLAUDE.md Integration
 
-Ce skill applique la règle de sécurité :
-> **Règle absolue** : Jamais de token, clé API, ou secret en clair dans le code ou les fichiers versionnés.
+This skill applies the security rule:
+> **Absolute rule**: Never store tokens, API keys, or secrets in plain text in code or versioned files.
 
-## Rapport
+## Report
 
-Le scan produit un rapport avec :
-1. Statut global (✅ OK / ⚠️ ALERTE)
-2. Nombre de fichiers scannés
-3. Liste des secrets détectés (fichier, ligne, type)
-4. Suggestions de correction
+The scan produces a report with:
+1. Overall status (OK / WARNING)
+2. Number of files scanned
+3. List of detected secrets (file, line, type)
+4. Correction suggestions

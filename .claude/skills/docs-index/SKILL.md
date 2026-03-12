@@ -7,9 +7,9 @@ description: Generate or update the centralized documentation index (docs/INDEX.
 
 ## Activation
 
-Ce skill s'active pour :
-- Générer ou regénérer `docs/INDEX.md`
-- Mettre à jour l'index après ajout/suppression de docs
+This skill activates for:
+- Generating or regenerating `docs/INDEX.md`
+- Updating the index after adding/removing docs
 - `/docs-index`
 
 ## Persona
@@ -18,22 +18,22 @@ Read `.claude/roles/documentalist.md` — adopt this profile and follow all its 
 
 ## Workflow
 
-### Étape 1 : Scanner les docs
+### Step 1: Scan Docs
 
 ```bash
 Glob docs/**/*.md
 ```
 
-Pour chaque fichier :
-- Lire le frontmatter (`title`, `scope`, `last-updated`)
-- Lire le premier paragraphe (résumé)
-- Si pas de frontmatter : utiliser le H1 comme titre, noter "no frontmatter"
+For each file:
+- Read the frontmatter (`title`, `scope`, `last-updated`)
+- Read the first paragraph (summary)
+- If no frontmatter: use the H1 as title, note "no frontmatter"
 
-### Étape 2 : Générer l'index
+### Step 2: Generate the Index
 
-**Toujours régénérer depuis zéro** — ne jamais patcher un index existant.
+**Always regenerate from scratch** — never patch an existing index.
 
-Structure cible de `docs/INDEX.md` :
+Target structure for `docs/INDEX.md`:
 
 ```markdown
 ---
@@ -78,15 +78,15 @@ Read in this order:
 1. QUICKSTART → 2. ARCHITECTURE → 3. UBIQUITOUS-LANGUAGE → 4. CONFIG-REFERENCE
 ```
 
-### Étape 3 : Vérifier les liens
+### Step 3: Verify Links
 
-Pour chaque lien dans l'index, vérifier que le fichier cible existe.
-Reporter les liens cassés comme erreurs.
+For each link in the index, verify the target file exists.
+Report broken links as errors.
 
-## Règles
+## Rules
 
-- L'index NE CONTIENT PAS de contenu documentaire — uniquement des liens et résumés d'une phrase
-- Les résumés sont extraits des docs, jamais inventés
-- Les topics sont regroupés par proximité thématique, pas par ordre alphabétique
-- Le "New Contributor Path" est un parcours de lecture ordonné, pas une simple liste
-- Fichiers sans frontmatter : afficher un warning `⚠ no frontmatter` dans la colonne Updated
+- The index DOES NOT contain documentary content — only links and one-sentence summaries
+- Summaries are extracted from docs, never made up
+- Topics are grouped by thematic proximity, not alphabetical order
+- The "New Contributor Path" is an ordered reading path, not a simple list
+- Files without frontmatter: display a warning `no frontmatter` in the Updated column

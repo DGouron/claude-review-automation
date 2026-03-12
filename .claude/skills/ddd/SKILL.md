@@ -1,9 +1,9 @@
 ---
 name: ddd
-description: Guide DDD stratégique pour ce projet. Utiliser pour découper le domaine en bounded contexts, définir l'ubiquitous language, créer un nouveau module métier, analyser les frontières entre contextes. Les patterns tactiques suivent Clean Architecture (voir skill architecture).
+description: Strategic DDD guide for this project. Use to split the domain into bounded contexts, define ubiquitous language, create new business modules, or analyze context boundaries. Tactical patterns follow Clean Architecture (see architecture skill).
 ---
 
-# Domain-Driven Design - Guide Stratégique
+# Domain-Driven Design - Strategic Guide
 
 ## Persona
 
@@ -11,24 +11,24 @@ Read `.claude/roles/architect.md` — adopt this profile and follow all its rule
 
 ## Activation
 
-Ce skill s'active pour les décisions de haut niveau sur le domaine :
-- Découpage en Bounded Contexts
-- Définition de l'Ubiquitous Language
-- Création d'un nouveau module métier
-- Analyse des relations entre contextes
+This skill activates for high-level domain decisions:
+- Splitting into Bounded Contexts
+- Defining the Ubiquitous Language
+- Creating a new business module
+- Analyzing relationships between contexts
 
-## Clarification importante
+## Important clarification
 
-> **Les définitions Clean Architecture priment sur les définitions DDD tactique.**
+> **Clean Architecture definitions take precedence over DDD tactical definitions.**
 
-On utilise DDD uniquement au niveau **stratégique** (découpage domaine, langage). Les patterns tactiques (Entities, Use Cases, Gateways, Presenters) suivent **Clean Architecture**.
+We use DDD only at the **strategic** level (domain splitting, language). Tactical patterns (Entities, Use Cases, Gateways, Presenters) follow **Clean Architecture**.
 
-| Ce qu'on prend du DDD | Ce qu'on NE prend PAS |
-|-----------------------|-----------------------|
+| What we take from DDD | What we do NOT take |
+|------------------------|---------------------|
 | Bounded Contexts | Aggregates |
-| Ubiquitous Language | Repositories (on a Gateways) |
+| Ubiquitous Language | Repositories (we have Gateways) |
 | Context Mapping | Domain Events |
-| Découpage modules | Value Objects complexes |
+| Module splitting | Complex Value Objects |
 
 ---
 
@@ -36,68 +36,68 @@ On utilise DDD uniquement au niveau **stratégique** (découpage domaine, langag
 
 > "A Bounded Context delimits the applicability of a particular model." — Eric Evans
 
-Un Bounded Context = un module dans `modules/<context-name>/`
+A Bounded Context = a module in `modules/<context-name>/`
 
-Chaque BC est un **package autonome** avec sa propre API publique.
+Each BC is an **autonomous package** with its own public API.
 
-### Identifier un Bounded Context
+### Identifying a Bounded Context
 
-**Signes qu'un nouveau BC est nécessaire :**
-- Un même terme a des significations différentes selon le contexte
-- Une équipe différente pourrait gérer cette partie
-- Le modèle devient trop complexe
-- Les règles métier divergent
+**Signs that a new BC is needed:**
+- The same term has different meanings depending on context
+- A different team could manage this part
+- The model is becoming too complex
+- Business rules are diverging
 
-**Exemple Solife :**
+**ReviewFlow example:**
 
-| Bounded Context | Responsabilité |
+| Bounded Context | Responsibility |
 |-----------------|----------------|
-| `membership` | Gestion des adhésions et candidatures |
-| `spamDetection` | Détection anti-spam et modération |
-| `documents` | Gestion documentaire et téléchargements |
-| `payment` | Paiements Stripe et dons |
-| `email` | Communications et templates emails |
-| `support` | Formulaires de soutien (bénévolat, matériel) |
+| `review` | Code review orchestration and result handling |
+| `tracking` | MR/PR assignment tracking and follow-up |
+| `webhook` | Inbound webhook processing (GitLab/GitHub) |
+| `mcp` | Model Context Protocol server and tools |
+| `dashboard` | Review statistics and visualization |
+| `security` | Secret detection and access control |
 
 ---
 
-## Communication entre Bounded Contexts
+## Communication between Bounded Contexts
 
-Les BC communiquent **via leurs APIs publiques**, comme deux packages indépendants.
+BCs communicate **via their public APIs**, like two independent packages.
 
 ```typescript
-// modules/spamDetection/index.ts (API publique)
-export { ValidateSubmissionUseCase } from "./application/usecases/ValidateSubmissionUseCase"
-export { createSpamFlag } from "./domain/factories/spamFlagFactory"
-export type { ISpamScoringService } from "./application/ports/services/ISpamScoringService"
+// modules/tracking/index.ts (public API)
+export { TrackAssignmentUseCase } from "./application/usecases/trackAssignment.usecase"
+export { createTrackedMr } from "./domain/factories/trackedMrFactory"
+export type { TrackingGateway } from "./application/ports/gateways/trackingGateway"
 
-// modules/membership/ importe depuis l'API publique
-import { ValidateSubmissionUseCase } from "@/modules/spamDetection"
+// modules/review/ imports from the public API
+import { TrackAssignmentUseCase } from "@/modules/tracking"
 ```
 
-### Règles de communication
+### Communication rules
 
-| ✅ Autorisé | ❌ Interdit |
-|-------------|-------------|
-| Importer depuis `index.ts` d'un autre BC | Importer directement un fichier interne |
-| Passer des données (DTO, primitifs) | Partager des entités mutables |
-| Appeler un Use Case exposé | Accéder au state interne |
+| Allowed | Forbidden |
+|---------|-----------|
+| Import from another BC's `index.ts` | Directly import an internal file |
+| Pass data (DTO, primitives) | Share mutable entities |
+| Call an exposed Use Case | Access internal state |
 
-### Exemple concret
+### Concrete example
 
 ```typescript
-// modules/membership/application/usecases/submitMembershipForm.ts
-import { ValidateSubmissionUseCase } from "@/modules/spamDetection"  // ✅ API publique
+// modules/review/application/usecases/triggerReview.usecase.ts
+import { TrackAssignmentUseCase } from "@/modules/tracking"  // Public API
 
-export const submitMembershipForm = async (data) => {
-  const spamCheck = new ValidateSubmissionUseCase(spamService);
+export const triggerReview = async (data) => {
+  const trackAssignment = new TrackAssignmentUseCase(trackingGateway);
   // ...
 }
 ```
 
 ```typescript
-// ❌ INTERDIT - import interne
-import { analyzeSpamIndicators } from "@/modules/spamDetection/domain/validators/nameSpamValidator"
+// FORBIDDEN - internal import
+import { parseTrackingData } from "@/modules/tracking/domain/validators/trackingValidator"
 ```
 
 ---
@@ -106,122 +106,122 @@ import { analyzeSpamIndicators } from "@/modules/spamDetection/domain/validators
 
 > "Use the model as the backbone of a language." — Eric Evans
 
-Le vocabulaire métier doit être :
-- **Cohérent** : même terme = même concept dans un contexte donné
-- **Explicite** : pas d'ambiguïté
-- **Partagé** : compris par devs ET métier
+Business vocabulary must be:
+- **Consistent**: same term = same concept within a given context
+- **Explicit**: no ambiguity
+- **Shared**: understood by devs AND business stakeholders
 
-### Dans le code
+### In code
 
 ```typescript
-// ✅ Ubiquitous Language respecté
-class Member { ... }
-class SpamFlag { ... }
-function validateSubmission() { ... }
-function createMembership() { ... }
+// Ubiquitous Language respected
+class ReviewContext { ... }
+class TrackedMr { ... }
+function triggerReview() { ... }
+function trackAssignment() { ... }
 
-// ❌ Vocabulaire technique ou ambigu
-class User { ... }           // "User" n'est pas le terme métier (on dit "Member")
-class MembershipRequest { }  // "Request" vs "Candidature" ?
-function checkSpam() { }     // "check" vs "validate" ?
+// Technical or ambiguous vocabulary
+class Data { ... }           // "Data" is not a business term
+class ReviewRequest { }      // "Request" vs "ReviewContext"?
+function doReview() { }      // "do" vs "trigger"?
 ```
 
-### Documentation du langage
+### Language documentation
 
-Chaque BC maintient son glossaire dans `/docs/business/glossary/<context>.md`
+Each BC maintains its glossary in `/docs/business/glossary/<context>.md`
 
 ```markdown
-# Glossaire - Membership
+# Glossary - Review
 
-| Terme | Définition |
-|-------|------------|
-| Member | Une personne adhérente à l'association |
-| Candidature | Demande d'adhésion en attente de validation |
-| SpamFlag | Marqueur de soumission suspecte (anti-spam) |
-| Donation | Don financier à l'association |
+| Term | Definition |
+|------|------------|
+| ReviewContext | The full context for a code review (diff, MR metadata, threads) |
+| TrackedMr | A merge request being tracked for review assignments |
+| ReviewAction | An action to perform on the platform (comment, resolve, reply) |
+| DiffMetadata | Parsed metadata from a merge request diff |
 ```
 
 ---
 
-## Workflow : Créer un nouveau Bounded Context
+## Workflow: Creating a new Bounded Context
 
-### Étape 1 : Identifier le domaine
-
-```
-🎯 DDD - Identification
-
-Nouveau domaine identifié : [nom]
-
-Questions à valider :
-1. Quel problème métier résout-il ?
-2. Quels sont les termes spécifiques ?
-3. Quelles entités principales ?
-4. Quels BC existants vont l'utiliser ?
-
-On explore ces questions ?
-```
-
-### Étape 2 : Définir le langage
+### Step 1: Identify the domain
 
 ```
-📖 DDD - Ubiquitous Language
+DDD - Identification
 
-Glossaire proposé pour [context] :
+New domain identified: [name]
 
-| Terme | Définition |
-|-------|------------|
+Questions to validate:
+1. What business problem does it solve?
+2. What are the specific terms?
+3. What are the main entities?
+4. Which existing BCs will use it?
+
+Shall we explore these questions?
+```
+
+### Step 2: Define the language
+
+```
+DDD - Ubiquitous Language
+
+Proposed glossary for [context]:
+
+| Term | Definition |
+|------|------------|
 | ... | ... |
 
-Ces termes sont-ils alignés avec le vocabulaire métier ?
+Are these terms aligned with the business vocabulary?
 ```
 
-### Étape 3 : Définir l'API publique
+### Step 3: Define the public API
 
 ```
-📡 DDD - API Publique
+DDD - Public API
 
-Exports prévus pour [context] :
+Planned exports for [context]:
 
-Entities : [liste]
-Use Cases : [liste]
-Types : [liste]
+Entities: [list]
+Use Cases: [list]
+Types: [list]
 
-Quels autres BC consommeront cette API ?
+Which other BCs will consume this API?
 ```
 
-### Étape 4 : Créer la structure
+### Step 4: Create the structure
 
 ```
-📁 DDD - Structure
+DDD - Structure
 
-Je vais créer :
+I will create:
 modules/[context]/
-├── index.ts           # API publique
+├── index.ts           # Public API
 ├── entities/
 ├── use-cases/
 ├── interface-adapters/
 └── testing/
 
-+ Glossaire : docs/business/glossary/[context].md
++ Glossary: docs/business/glossary/[context].md
 
-On crée cette structure ?
+Shall we create this structure?
 ```
 
-Après validation → **Basculer sur le skill Architecture** pour les détails tactiques.
+After validation -> **Switch to the Architecture skill** for tactical details.
 
 ---
 
-## Anti-patterns à éviter
+## Anti-patterns to avoid
 
-- ❌ Un seul gros module "domain" fourre-tout
-- ❌ Mélanger les vocabulaires de plusieurs contextes
-- ❌ Dépendances circulaires entre contextes
-- ❌ Importer les fichiers internes d'un autre BC
-- ❌ Nommer les modules par aspect technique ("services", "models")
+- A single catch-all "domain" module
+- Mixing vocabulary from multiple contexts
+- Circular dependencies between contexts
+- Importing internal files from another BC
+- Naming modules by technical aspect ("services", "models")
 
 ---
 
-## Références
+## References
 
-- *Domain-Driven Design* (Eric Evans, 2003) - Chapitres 1-4 (stratégique)
-- Pour les patterns tactiques → voir skill **architecture** (Clean Architecture)
+- *Domain-Driven Design* (Eric Evans, 2003) - Chapters 1-4 (strategic)
+- For tactical patterns -> see **architecture** skill (Clean Architecture)

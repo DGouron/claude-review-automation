@@ -1,9 +1,9 @@
 ---
 name: architecture
-description: Guide Clean Architecture (Uncle Bob) pour ce projet. Utiliser pour créer module, entité, use case, presenter, controller, gateway, guard, service, view model. Contient les patterns tactiques et conventions de structure.
+description: Clean Architecture (Uncle Bob) guide for this project. Use when creating modules, entities, use cases, presenters, controllers, gateways, guards, services. Contains tactical patterns and structure conventions.
 ---
 
-# Clean Architecture - Guide Tactique
+# Clean Architecture - Tactical Guide
 
 ## Persona
 
@@ -11,19 +11,19 @@ Read `.claude/roles/architect.md` — adopt this profile and follow all its rule
 
 ## Activation
 
-Ce skill s'active pour toute création ou modification de composants architecturaux :
+This skill activates for any creation or modification of architectural components:
 - Entities, Use Cases, Presenters
 - Controllers, Gateways, Guards
-- ViewModels, Services
-- Structure de modules
+- Services
+- Module structure
 
-## Principe fondamental
+## Core Principle
 
 > "The architecture should scream the intent of the system." — Uncle Bob
 
 ```
 ┌─────────────────────────────────────┐
-│       Interface Adapters            │  ← Controllers, Presenters, Gateways, Views
+│       Interface Adapters            │  ← Controllers, Presenters, Gateways
 ├─────────────────────────────────────┤
 │           Use Cases                 │  ← Application Business Rules
 ├─────────────────────────────────────┤
@@ -31,256 +31,272 @@ Ce skill s'active pour toute création ou modification de composants architectur
 └─────────────────────────────────────┘
 ```
 
-**Dependency Rule** : Les dépendances pointent vers l'intérieur. Le domaine ne connaît pas l'infrastructure.
+**Dependency Rule**: Dependencies point inward. The domain knows nothing about infrastructure.
 
 ---
 
-## Structure d'un module
+## Module Structure
 
 ```
-modules/<bounded-context>/
+src/
 ├── entities/
 │   └── <entity>/
-│       ├── <entity>.ts              # Entité + logique métier
+│       ├── <entity>.ts              # Entity + business logic
 │       ├── <entity>.schema.ts       # Zod schema
-│       ├── <entity>.guard.ts        # Validation aux frontières
+│       ├── <entity>.guard.ts        # Boundary validation
 │       └── <entity>.gateway.ts      # Interface (port)
-├── use-cases/
-│   └── <action>-<entity>.usecase.ts
+├── usecases/
+│   └── <action><Entity>.usecase.ts
 ├── interface-adapters/
 │   ├── controllers/
-│   │   └── <feature>.controller.ts
+│   │   ├── webhook/
+│   │   │   └── <platform>.controller.ts
+│   │   ├── http/
+│   │   │   └── <feature>.routes.ts
+│   │   └── mcp/
+│   │       └── <action>.handler.ts
 │   ├── presenters/
 │   │   └── <feature>.presenter.ts
 │   ├── gateways/
-│   │   └── <entity>.in-<source>.gateway.ts
-│   ├── views/
-│   │   └── <feature>.view.tsx       # Humble object
-│   └── services/
-│       └── <service>.service.ts
-└── testing/
-    ├── good-path/
-    │   └── stub.<entity>.gateway.ts
-    └── bad-path/
-        └── failing.<entity>.gateway.ts
+│   │   └── <entity>.<source>.gateway.ts
+│   └── adapters/
+│       └── <platform>.adapter.ts
+├── shared/
+│   └── foundation/
+│       ├── usecase.base.ts
+│       ├── guard.base.ts
+│       ├── gateway.base.ts
+│       └── presenter.base.ts
+└── tests/
+    ├── units/
+    ├── factories/
+    ├── stubs/
+    └── mocks/
 ```
 
 ---
 
-## Composants
+## Components
 
 ### Entity
 
-Logique métier pure, indépendante de tout framework.
+Pure business logic, independent of any framework.
 
 ```typescript
-// entities/quest/quest.ts
-export class Quest {
-  private constructor(private readonly props: QuestProps) {}
+// entities/review/reviewScore.valueObject.ts
+export class ReviewScore {
+  private constructor(private readonly props: ReviewScoreProps) {}
 
-  static create(props: QuestProps): Quest {
-    return new Quest(props)
+  static create(props: ReviewScoreProps): ReviewScore {
+    const validated = ReviewScoreSchema.parse(props);
+    return new ReviewScore(validated);
   }
 
-  get title(): string {
-    return this.props.title
+  get blocking(): number {
+    return this.props.blocking;
   }
 
-  complete(rating: number): QuestCompletion {
-    // Logique métier ici
+  get severity(): Severity {
+    if (this.blocking > 0) return 'critical';
+    if (this.warnings > 0) return 'warning';
+    if (this.suggestions > 0) return 'info';
+    return 'clean';
+  }
+
+  get hasBlockingIssues(): boolean {
+    return this.blocking > 0;
   }
 }
 ```
 
 ### Use Case
 
-Orchestration d'une action métier. Un use case = une intention utilisateur.
+Orchestrates a business action. One use case = one user intention.
 
 ```typescript
-// use-cases/complete-quest.usecase.ts
-export const completeQuest = (questId: string, rating: number) =>
-  async (dispatch: AppDispatch, getState: AppGetState, dependencies: Dependencies) => {
-    const quest = await dependencies.questGateway.getById(questId)
-    const completion = quest.complete(rating)
-    await dependencies.questGateway.saveCompletion(completion)
-    dispatch(questCompleted(completion))
+// usecases/triggerReview.usecase.ts
+export function triggerReview(
+  params: TriggerReviewParams,
+  deps: TriggerReviewDependencies
+): TriggerReviewResult {
+  const { queuePort, reviewRequestTrackingGateway, logger } = deps;
+
+  const jobId = queuePort.createJobId(params.platform, params.projectPath, params.reviewRequestNumber);
+
+  if (queuePort.hasActiveJob(jobId)) {
+    return { status: 'deduplicated', reason: 'Review already in progress' };
   }
+
+  const enqueued = queuePort.enqueue(job);
+  if (!enqueued) {
+    return { status: 'failed', reason: 'Queue full or job rejected' };
+  }
+
+  reviewRequestTrackingGateway.recordPush(params.localPath, params.reviewRequestNumber, params.platform);
+  return { status: 'success', jobId };
+}
 ```
 
 ### Presenter
 
-Transforme les données métier en ViewModel. Contient TOUTE la logique de présentation.
+Transforms business data into a ViewModel. Contains ALL presentation logic.
 
 ```typescript
-// interface-adapters/presenters/quest-list.presenter.ts
-export class QuestListPresenter {
-  present(quests: Quest[]): QuestListViewModel {
+// interface-adapters/presenters/reviewList.presenter.ts
+export class ReviewListPresenter {
+  constructor(private jobPresenter: JobStatusPresenter) {}
+
+  present(active: JobStatus[], recent: JobStatus[]): ReviewListViewModel {
+    const activeJobs = active.map(job => this.jobPresenter.present(job));
+    const recentJobs = recent.map(job => this.jobPresenter.present(job));
+    const totalCount = activeJobs.length + recentJobs.length;
+
     return {
-      quests: quests.map(quest => ({
-        identifier: quest.identifier,
-        title: quest.title,
-        statusLabel: this.formatStatus(quest.status),
-        statusColor: this.getStatusColor(quest.status),
-      })),
-      isEmpty: quests.length === 0,
-      emptyMessage: "Aucune quête disponible",
-    }
+      activeJobs,
+      recentJobs,
+      totalCount,
+      isEmpty: totalCount === 0,
+      emptyMessage: 'No active reviews',
+    };
   }
 }
 ```
 
 ### ViewModel
 
-Structure de données simple. Strings formatés, booleans UI. Défini avec Zod.
+Simple data structure. Formatted strings, UI booleans. Defined with a TypeScript interface.
 
 ```typescript
-// interface-adapters/presenters/quest-list.view-model.ts
-export const questListViewModelSchema = z.object({
-  quests: z.array(z.object({
-    identifier: z.string(),
-    title: z.string(),
-    statusLabel: z.string(),
-    statusColor: z.string(),
-  })),
-  isEmpty: z.boolean(),
-  emptyMessage: z.string(),
-})
-
-export type QuestListViewModel = z.infer<typeof questListViewModelSchema>
-```
-
-### View (Humble Object)
-
-Zéro logique. Affiche le ViewModel. Pas de tests React.
-
-```typescript
-// interface-adapters/views/quest-list.view.tsx
-export function QuestListView({ viewModel }: { viewModel: QuestListViewModel }) {
-  if (viewModel.isEmpty) {
-    return <p>{viewModel.emptyMessage}</p>
-  }
-  return (
-    <ul>
-      {viewModel.quests.map(quest => (
-        <li key={quest.identifier} style={{ color: quest.statusColor }}>
-          {quest.title} - {quest.statusLabel}
-        </li>
-      ))}
-    </ul>
-  )
+// interface-adapters/presenters/reviewList.presenter.ts
+export interface ReviewListViewModel {
+  activeJobs: JobStatusViewModel[];
+  recentJobs: JobStatusViewModel[];
+  activeCount: number;
+  recentCount: number;
+  totalCount: number;
+  isEmpty: boolean;
+  emptyMessage: string;
 }
 ```
 
 ### Controller
 
-Orchestre Use Case + Presenter. Point d'entrée pour une action.
+Orchestrates Use Case + Presenter. Entry point for an action.
 
 ```typescript
-// interface-adapters/controllers/quest-list.controller.ts
-export class QuestListController {
-  constructor(
-    private readonly presenter: QuestListPresenter,
-    private readonly dispatch: AppDispatch,
-  ) {}
+// interface-adapters/controllers/webhook/github.controller.ts
+export async function handleGitHubWebhook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  logger: Logger,
+  trackingGateway: ReviewRequestTrackingGateway,
+  deps: GitHubWebhookDependencies
+): Promise<void> {
+  const { trackAssignment, recordCompletion } = deps;
 
-  async load(): Promise<QuestListViewModel> {
-    await this.dispatch(getQuests())
-    const quests = selectQuests(store.getState())
-    return this.presenter.present(quests)
+  const verification = verifyGitHubSignature(request);
+  if (!verification.valid) {
+    reply.status(401).send({ error: verification.error });
+    return;
   }
+
+  // Orchestrate use cases...
 }
 ```
 
 ### Gateway
 
-Interface (port) dans entities, implémentation dans interface-adapters.
+Interface (port) in entities, implementation in interface-adapters.
 
 ```typescript
-// entities/quest/quest.gateway.ts (CONTRAT)
-export interface QuestGateway {
-  getAll(): Promise<Quest[]>
-  getById(identifier: string): Promise<Quest>
-  save(quest: Quest): Promise<void>
+// entities/reviewContext/reviewContext.gateway.ts (CONTRACT)
+export interface ReviewContextGateway {
+  create(input: CreateReviewContextInput): CreateReviewContextResult;
+  read(localPath: string, mergeRequestId: string): ReviewContext | null;
+  exists(localPath: string, mergeRequestId: string): boolean;
+  appendAction(localPath: string, mergeRequestId: string, action: ReviewContextAction): UpdateResult;
 }
 
-// interface-adapters/gateways/quest.in-local-storage.gateway.ts (IMPL)
-export class QuestInLocalStorageGateway implements QuestGateway {
-  async getAll(): Promise<Quest[]> {
-    const data = localStorage.getItem('quests')
-    return parseQuestCollection(JSON.parse(data ?? '[]'))
+// interface-adapters/gateways/reviewContext.fileSystem.gateway.ts (IMPLEMENTATION)
+export class ReviewContextFileSystemGateway implements ReviewContextGateway {
+  read(localPath: string, mergeRequestId: string): ReviewContext | null {
+    const filePath = this.getFilePath(localPath, mergeRequestId);
+    if (!existsSync(filePath)) return null;
+    const content = readFileSync(filePath, 'utf-8');
+    return JSON.parse(content) as ReviewContext;
   }
 }
 ```
 
 ### Guard
 
-Validation aux frontières avec Zod.
+Boundary validation with Zod.
 
 ```typescript
-// entities/quest/quest.guard.ts
-export function isValidQuest(data: unknown): data is QuestProps {
-  return questSchema.safeParse(data).success
+// entities/reviewContext/reviewContextAction.guard.ts
+export const reviewContextActionGuard = createGuard(reviewContextActionSchema);
+
+export function parseReviewContextAction(data: unknown): ReviewContextAction {
+  return reviewContextActionGuard.parse(data);
 }
 
-export function parseQuest(data: unknown): QuestProps {
-  return questSchema.parse(data)
+export function isValidReviewContextAction(data: unknown): data is ReviewContextAction {
+  return reviewContextActionGuard.safeParse(data).success;
 }
 
-export function safeParseQuest(data: unknown): SafeParseReturnType<unknown, QuestProps> {
-  return questSchema.safeParse(data)
-}
-
-export function parseQuestCollection(data: unknown): QuestProps[] {
-  return z.array(questSchema).parse(data)
+export function parseReviewContextActions(data: unknown): ReviewContextAction[] {
+  return reviewContextActionsGuard.parse(data);
 }
 ```
 
 ### Service
 
-Utilitaires injectés via Dependencies.
+Utilities injected via Dependencies.
 
-| Scope | Emplacement |
-|-------|-------------|
-| Cross-contextes | `shared/services/` |
-| Spécifique BC | `modules/<context>/interface-adapters/services/` |
+| Scope | Location |
+|-------|----------|
+| Cross-context | `shared/services/` |
+| Specific to bounded context | `interface-adapters/gateways/` or `services/` |
 
 ---
 
-## Injection de dépendances
+## Dependency Injection
 
-Via Redux Toolkit `extraArgument`. Voir [references.md](references.md) pour les détails.
+Via composition root in `src/main/routes.ts`. See [references.md](references.md) for details.
 
 ```typescript
-// shared/dependencies.ts
-export interface Dependencies {
-  questGateway: QuestGateway
-  uuidService: UuidService
-}
-
-// Usage dans Use Case
-const quests = await dependencies.questGateway.getAll()
+// main/routes.ts — the "dirty" component (Uncle Bob Ch. 26)
+app.post('/webhooks/github', async (request, reply) => {
+  await handleGitHubWebhook(request, reply, deps.logger, trackingGw, {
+    reviewContextGateway: deps.reviewContextGateway,
+    threadFetchGateway: new GitHubThreadFetchGateway(defaultGitHubExecutor),
+    trackAssignment: new TrackAssignmentUseCase(trackingGw),
+    recordCompletion: new RecordReviewCompletionUseCase(trackingGw),
+  });
+});
 ```
 
 ---
 
-## Test doubles
+## Test Doubles
 
 ```
-testing/
-├── good-path/
-│   └── stub.quest.gateway.ts    # Happy path
-└── bad-path/
-    └── failing.quest.gateway.ts # Error scenarios
+tests/
+├── stubs/
+│   └── reviewContextGateway.stub.ts    # Happy path
+├── factories/
+│   └── reviewContext.factory.ts         # Test data creation
+└── mocks/
 ```
 
-Voir [examples.md](examples.md) pour des exemples concrets.
+See [examples.md](examples.md) for concrete examples.
 
 ---
 
-## Anti-patterns à éviter
+## Anti-patterns to Avoid
 
-- ❌ Logique métier dans les Views
-- ❌ Logique de présentation dans les Use Cases
-- ❌ Entités qui connaissent l'infrastructure
-- ❌ Dépendances qui pointent vers l'extérieur
-- ❌ Tests React pour les Views (Humble Object Pattern)
+- No business logic in Controllers
+- No presentation logic in Use Cases
+- No infrastructure awareness in Entities
+- No outward-pointing dependencies
+- No `as Type` assertions — use guards with Zod

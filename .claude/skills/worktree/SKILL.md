@@ -1,71 +1,71 @@
 ---
 name: worktree
-description: Gestion des worktrees Git pour travailler sur plusieurs branches en parallèle. Créer, lister, supprimer et synchroniser les worktrees. Protège contre les push directs sur master.
+description: Git worktree management for working on multiple branches in parallel. Create, list, remove, and synchronize worktrees. Protects against direct pushes to master.
 ---
 
-# Commande /worktree - Gestion des worktrees Git
+# Command /worktree - Git Worktree Management
 
-Gère les worktrees Git pour travailler sur plusieurs branches en parallèle dans différentes sessions Claude Code.
+Manages Git worktrees for working on multiple branches in parallel across different Claude Code sessions.
 
-## Règles de sécurité ABSOLUES
+## Absolute Security Rules
 
 ```
-🚨 JAMAIS de push direct sur `master` !
-🚨 JAMAIS de commit direct sur `master` !
-✅ Seule action autorisée sur `master` : git pull origin master
-✅ Toujours créer une PR pour merger vers `master`
+NEVER push directly to `master`!
+NEVER commit directly to `master`!
+Only allowed action on `master`: git pull origin master
+Always create a PR to merge into `master`
 ```
 
 ---
 
 ## Configuration
 
-| Paramètre | Valeur |
-|-----------|--------|
-| Dossier worktrees | `.claude/worktrees/` |
-| Branche principale | `master` |
-| Branche par défaut pour `--from` | `master` |
+| Parameter | Value |
+|-----------|-------|
+| Worktrees directory | `.claude/worktrees/` |
+| Main branch | `master` |
+| Default `--from` branch | `master` |
 
 ---
 
-## Sous-commandes
+## Subcommands
 
-### `/worktree` ou `/worktree list`
-Liste tous les worktrees existants avec leur branche et statut.
+### `/worktree` or `/worktree list`
+Lists all existing worktrees with their branch and status.
 
-### `/worktree add <nom> [--from <branche>]`
-Crée un nouveau worktree avec une branche "home-base".
-- Par défaut, basé sur `master`
-- Chemin : `.claude/worktrees/<nom>`
+### `/worktree add <name> [--from <branch>]`
+Creates a new worktree with a "home-base" branch.
+- By default, based on `master`
+- Path: `.claude/worktrees/<name>`
 
-### `/worktree remove <nom>`
-Supprime un worktree (demande confirmation si non propre).
+### `/worktree remove <name>`
+Removes a worktree (asks for confirmation if not clean).
 
-### `/worktree sync [nom]`
-Synchronise le worktree avec `master` (pull only).
+### `/worktree sync [name]`
+Synchronizes the worktree with `master` (pull only).
 
-### `/worktree connect <nom>`
-Change le répertoire de travail de la session actuelle vers le worktree spécifié.
-- Vérifie que le worktree existe
-- Se positionne dans `<chemin_worktree>`
-- Affiche le statut git du worktree
+### `/worktree connect <name>`
+Changes the current session's working directory to the specified worktree.
+- Verifies the worktree exists
+- Moves into `<worktree_path>`
+- Displays the worktree's git status
 
 ---
 
-## Architecture des worktrees
+## Worktree Architecture
 
 ```
-claude-review-automation/             ← Worktree principal (master)
+claude-review-automation/             <- Main worktree (master)
 ├── src/
 ├── .claude/
 │   └── worktrees/
-│       ├── refactor/                 ← Worktree refactor
+│       ├── refactor/                 <- Refactor worktree
 │       │   ├── src/
 │       │   └── ...
-│       ├── debug/                    ← Worktree debug
+│       ├── debug/                    <- Debug worktree
 │       │   ├── src/
 │       │   └── ...
-│       └── feature-x/               ← Worktree feature
+│       └── feature-x/               <- Feature worktree
 │           ├── src/
 │           └── ...
 └── ...
@@ -73,119 +73,119 @@ claude-review-automation/             ← Worktree principal (master)
 
 ---
 
-## Concept : Branches "Home-Base"
+## Concept: "Home-Base" Branches
 
-Chaque worktree a une branche "home-base" qui sert de point de départ.
+Each worktree has a "home-base" branch that serves as a starting point.
 
-| Branche | Rôle |
-|---------|------|
-| `refactor`, `debug`, etc. | Home-base du worktree (synchro avec `master`) |
-| `feat/xxx-*`, `fix/xxx-*` | Branches de travail |
+| Branch | Role |
+|--------|------|
+| `refactor`, `debug`, etc. | Worktree home-base (synced with `master`) |
+| `feat/xxx-*`, `fix/xxx-*` | Working branches |
 
-**Workflow dans un worktree :**
+**Workflow inside a worktree:**
 
 ```bash
-# 1. Tu es sur la home-base (ex: refactor)
-git status  # Sur la branche refactor
+# 1. You are on the home-base (e.g., refactor)
+git status  # On the refactor branch
 
-# 2. Créer une feature branch pour ton ticket
+# 2. Create a feature branch for your ticket
 git checkout -b feat/xxx-description
 
-# 3. Travailler, committer...
+# 3. Work, commit...
 git add .
 git commit -m "feat(scope): description"
 
-# 4. Push la feature branch (JAMAIS la home-base)
+# 4. Push the feature branch (NEVER the home-base)
 git push origin feat/xxx-description
 
-# 5. Créer une PR vers master (via gh CLI)
+# 5. Create a PR to master (via gh CLI)
 
-# 6. Une fois mergé, revenir à la home-base et sync
+# 6. Once merged, return to home-base and sync
 git checkout refactor
 git pull origin master
 ```
 
 ---
 
-## Commandes de synchronisation
+## Synchronization Commands
 
-### Sync un worktree avec master
+### Sync a worktree with master
 
 ```bash
-# Dans le worktree concerné
+# Inside the relevant worktree
 git checkout <home-base>  # refactor, debug...
 git fetch origin
 git reset --hard origin/master
 ```
 
-**ATTENTION** : Cette commande écrase la branche home-base locale. C'est volontaire car elle ne doit contenir aucun travail direct.
+**WARNING**: This command overwrites the local home-base branch. This is intentional because it should never contain direct work.
 
 ---
 
-## Template de sortie
+## Output Templates
 
-### Liste des worktrees
+### Worktree List
 
 ```
-🌳 WORKTREES
+WORKTREES
 
-Repo : claude-review-automation
+Repo: claude-review-automation
 
-| Usage | Chemin | Home-base | Branche actuelle |
-|-------|--------|-----------|------------------|
-| principal | .../claude-review-automation | - | master |
+| Usage | Path | Home-base | Current Branch |
+|-------|------|-----------|----------------|
+| main | .../claude-review-automation | - | master |
 | refactor | .../.claude/worktrees/refactor | refactor | refactor |
 
-💡 Ouvrir une session :
-   cd <chemin> && claude
+Tip - Open a session:
+   cd <path> && claude
 
-🔄 Synchroniser avec master :
+Sync with master:
    git checkout <home-base> && git pull origin master
 ```
 
-### Création de worktree
+### Worktree Creation
 
 ```
-🌳 WORKTREE CRÉÉ
+WORKTREE CREATED
 
-Nom       : <nom>
-Chemin    : <chemin>
-Home-base : <nom> (basée sur master)
+Name      : <name>
+Path      : <path>
+Home-base : <name> (based on master)
 
-⚠️  Installer les dépendances :
-   cd <chemin> && yarn install
+Warning - Install dependencies:
+   cd <path> && yarn install
 
-💡 Lancer une session :
-   cd <chemin> && claude
+Tip - Start a session:
+   cd <path> && claude
 
-🚨 Rappel : JAMAIS push sur master, toujours créer une PR !
+Reminder: NEVER push to master, always create a PR!
 ```
 
-### Connexion à un worktree
+### Worktree Connection
 
 ```
-🔌 CONNECTÉ AU WORKTREE
+CONNECTED TO WORKTREE
 
-Worktree : <nom>
-Chemin   : <chemin>
-Branche  : <branche_actuelle>
-Statut   : <propre|modifié>
+Worktree : <name>
+Path     : <path>
+Branch   : <current_branch>
+Status   : <clean|modified>
 
-📍 Vous êtes maintenant dans le worktree <nom>
+You are now in the <name> worktree
 
-🔄 Sync avec master : git pull origin master
-🚨 Rappel : JAMAIS push sur master, toujours créer une PR !
+Sync with master: git pull origin master
+Reminder: NEVER push to master, always create a PR!
 ```
 
 ---
 
-## Règles
+## Rules
 
-- 🚨 **JAMAIS** push direct sur `master`
-- 🚨 **JAMAIS** commit sur `master`
-- ✅ **TOUJOURS** créer une PR pour merger vers `master`
-- ✅ **SEULE** action sur `master` : `git pull origin master`
-- **TOUJOURS** créer les worktrees dans `.claude/worktrees/`
-- **TOUJOURS** utiliser des chemins absolus dans les commandes affichées
-- **TOUJOURS** rappeler de lancer `yarn install` après création
-- **VÉRIFIER** que la branche n'est pas déjà checkout dans un autre worktree
+- **NEVER** push directly to `master`
+- **NEVER** commit on `master`
+- **ALWAYS** create a PR to merge into `master`
+- **ONLY** allowed action on `master`: `git pull origin master`
+- **ALWAYS** create worktrees in `.claude/worktrees/`
+- **ALWAYS** use absolute paths in displayed commands
+- **ALWAYS** remind to run `yarn install` after creation
+- **VERIFY** that the branch is not already checked out in another worktree
