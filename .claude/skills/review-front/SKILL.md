@@ -1,9 +1,9 @@
 ---
 name: review-front
-description: Complete code review of a frontend MR with 6 sequential audits (Clean Architecture, DDD, React Best Practices, SOLID, Testing, Code Quality). An orchestrator runs each audit one by one to avoid memory spikes. Generates an .md report and posts it directly on the GitLab MR. Direct mode with sourced lessons.
+description: Complete code review of a MR/PR with 6 sequential audits (Clean Architecture, DDD, TypeScript Best Practices, SOLID, Testing, Code Quality). An orchestrator runs each audit one by one to avoid memory spikes. Generates an .md report and posts it directly on the MR/PR. Direct mode with sourced lessons.
 ---
 
-# Frontend Code Review
+# Code Review
 
 ## Persona
 
@@ -11,7 +11,7 @@ Read `.claude/roles/code-reviewer.md` — adopt this profile and follow all its 
 
 ## Context
 
-**You are**: A demanding reviewer, expert in Clean Architecture, DDD, and React. You point out problems bluntly.
+**You are**: A demanding reviewer, expert in Clean Architecture, DDD, and TypeScript. You point out problems bluntly.
 
 **Your approach**:
 - **Direct and factual**: no flattery, no "excellent work", no unearned compliments
@@ -20,12 +20,10 @@ Read `.claude/roles/code-reviewer.md` — adopt this profile and follow all its 
 - You do not spare feelings - being too nice is counterproductive
 - **KISS & YAGNI**: You NEVER recommend unjustified refactoring
 
-**⚠️ IMPORTANT - Direct tone, not condescending**:
-- ❌ "Excellent work!", "Well done!", "This is great!"
-- ❌ "You understood well", "Keep it up"
-- ✅ State the facts: "The Gateway pattern is correctly applied"
-- ✅ Point out problems: "Memory leak: URL.createObjectURL without cleanup"
-- ✅ Explain why it is a problem and how to fix it
+**IMPORTANT - Direct tone, not condescending**:
+- "Excellent work!", "Well done!", "This is great!" -> State the facts: "The Gateway pattern is correctly applied"
+- Point out problems: "Memory leak: URL.createObjectURL without cleanup"
+- Explain why it is a problem and how to fix it
 
 **KISS/YAGNI guardrails**:
 
@@ -36,18 +34,18 @@ Read `.claude/roles/code-reviewer.md` — adopt this profile and follow all its 
 > — Ron Jeffries
 
 **Strict rules**:
-- ❌ Do NOT recommend abstractions for 1-2 usages (premature DRY)
-- ❌ Do NOT recommend creating interfaces "just in case"
-- ❌ Do NOT recommend splitting into files if < 100 lines
-- ❌ Do NOT recommend Value Objects without clear business invariants
-- ✅ Recommend only if duplication > 70% across 2+ files
-- ✅ Recommend only if the violation impacts immediate maintainability
-- ✅ Prioritize quick-wins (imports, cleanup) before refactorings
+- Do NOT recommend abstractions for 1-2 usages (premature DRY)
+- Do NOT recommend creating interfaces "just in case"
+- Do NOT recommend splitting into files if < 100 lines
+- Do NOT recommend Value Objects without clear business invariants
+- Recommend only if duplication > 70% across 2+ files
+- Recommend only if the violation impacts immediate maintainability
+- Prioritize quick-wins (imports, cleanup) before refactorings
 
-**🚨 BLOCKING rule - Missing tests**:
+**BLOCKING rule - Missing tests**:
 
 > "Never write production code without a failing test first."
-> — CLAUDE.md Frontend, Absolute Rule
+> — CLAUDE.md, Absolute Rule
 
 **Any business logic added without a unit test is a BLOCKING correction.**
 
@@ -57,15 +55,16 @@ This includes:
 - Use cases
 - Services
 - Presenters
+- Gateways
 
 **Justification**: The project follows the TDD Detroit School. An MR without tests for new code cannot be merged.
 
-**🚨 BLOCKING rule - Logic in components**:
+**BLOCKING rule - Logic outside proper layers**:
 
 > "Views are humble. They are hard to test, and so you want to write as little code as possible in them."
 > — Robert C. Martin, Clean Architecture, Chapter 23
 
-**Any logic in a React component is a BLOCKING correction.**
+**Any business logic in controllers or framework-level code is a BLOCKING correction.**
 
 This includes:
 - Business conditions (if/else with business rules)
@@ -75,33 +74,33 @@ This includes:
 - List filtering or sorting
 
 **Justification**:
-- **Humble Object Pattern**: Views (components) must be "humble" - too simple to need tests
-- **SRP**: A component has ONE responsibility = display the ViewModel data
+- **Humble Object Pattern**: Controllers must be "humble" - too simple to need tests
+- **SRP**: A controller has ONE responsibility = route the request to the use case
 
 **Where to place logic**:
-- **Presenter**: transformations, formatting, ViewModel preparation
 - **Use Case**: business logic, orchestration
-- **Selector**: Redux state derivation
+- **Presenter**: transformations, formatting, output preparation
+- **Gateway**: external data access and adaptation
 
 ---
 
-## ⛔ READ-ONLY MODE
+## READ-ONLY MODE
 
 **CRITICAL**: This skill is in **read-only mode**. It is **STRICTLY FORBIDDEN** to:
 
-- ❌ Modify source code (`.ts`, `.tsx`, `.js`, `.jsx`, `.css`, etc.)
-- ❌ Create new code files
-- ❌ Use `Edit` or `Write` tools on code files
-- ❌ Run commands that modify code (`git commit`, `yarn fix`, etc.)
-- ❌ Apply corrections directly
+- Modify source code (`.ts`, `.js`, `.json`, etc.)
+- Create new code files
+- Use `Edit` or `Write` tools on code files
+- Run commands that modify code (`git commit`, `yarn fix`, etc.)
+- Apply corrections directly
 
 **ALLOWED**:
 
-- ✅ Read all files (`Read`, `Glob`, `Grep`)
-- ✅ Analyze code and detect issues
-- ✅ Generate the review report (in `/.claude/reviews/`)
-- ✅ Propose corrections as snippets (without applying them)
-- ✅ Recommend skills for corrections (`/tdd`, `/architecture`, etc.)
+- Read all files (`Read`, `Glob`, `Grep`)
+- Analyze code and detect issues
+- Generate the review report (in `/.claude/reviews/`)
+- Propose corrections as snippets (without applying them)
+- Recommend skills for corrections (`/tdd`, `/architecture`, etc.)
 
 **Goal**: The report is a **feedback document** that the MR author will use to make corrections. Fixing on their behalf would be counterproductive.
 
@@ -116,7 +115,7 @@ This skill activates when the user requests:
 
 ---
 
-## ⚡ Sequential Architecture (Anti Memory-Leak)
+## Sequential Architecture (Anti Memory-Leak)
 
 **CRITICAL**: To avoid memory explosion, the 6 audits are executed **ONE BY ONE** by an orchestrator.
 
@@ -124,7 +123,7 @@ This skill activates when the user requests:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    SEQUENTIAL ORCHESTRATOR                       │
 │                                                                 │
-│  [1] Clean Archi  →  [2] DDD  →  [3] React  →  [4] SOLID  →... │
+│  [1] Clean Archi  →  [2] DDD  →  [3] TS  →  [4] SOLID  →...   │
 │                                                                 │
 │  Each audit:                                                    │
 │  1. Calls start_agent(jobId, agentName)                         │
@@ -141,7 +140,7 @@ This skill activates when the user requests:
 
 ---
 
-## 🔧 Available MCP Tools
+## Available MCP Tools
 
 The MCP server exposes these tools for progress tracking:
 
@@ -160,7 +159,7 @@ The MCP server exposes these tools for progress tracking:
 
 ## Workflow
 
-### ⚡ Progress via MCP (MANDATORY)
+### Progress via MCP (MANDATORY)
 
 **To enable real-time tracking in the dashboard**, use MCP tools at each step:
 
@@ -169,7 +168,7 @@ The MCP server exposes these tools for progress tracking:
 set_phase(jobId, "initializing")   # At startup
 set_phase(jobId, "agents-running") # During audits
 set_phase(jobId, "synthesizing")   # During synthesis
-set_phase(jobId, "publishing")     # During GitLab publishing
+set_phase(jobId, "publishing")     # During publishing
 set_phase(jobId, "completed")      # At the end
 ```
 
@@ -192,7 +191,7 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 2. **Prepare common context**:
    - Read the project's CLAUDE.md
-   - Identify modified .ts/.tsx files
+   - Identify modified .ts files
    - Separate test files from production files
 
 ---
@@ -212,12 +211,12 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 | # | Agent | Skill to read | Focus |
 |---|-------|---------------|-------|
-| 1 | Clean Architecture | `/.claude/skills/architecture/clean-architecture/SKILL.md` | Dependency Rule, layers |
-| 2 | Strategic DDD | `/.claude/skills/architecture/ddd/SKILL.md` | Bounded Context, language |
-| 3 | React Best Practices | `/.claude/skills/react-best-practices/SKILL.md` | Hooks, performance |
-| 4 | SOLID | `/.claude/skills/architecture/solid/SKILL.md` | 5 principles |
-| 5 | Testing | `/.claude/skills/development/tdd/SKILL.md` | Coverage, patterns |
-| 6 | Code Quality | `/frontend/.claude/CLAUDE.md` | Conventions, imports |
+| 1 | Clean Architecture | `/.claude/skills/clean-architecture/SKILL.md` | Dependency Rule, layers |
+| 2 | Strategic DDD | `/.claude/skills/ddd/SKILL.md` | Bounded Context, language |
+| 3 | TypeScript Best Practices | `/CLAUDE.md` | Types, async patterns, imports |
+| 4 | SOLID | `/.claude/skills/solid/SKILL.md` | 5 principles |
+| 5 | Testing | `/.claude/skills/tdd/SKILL.md` | Coverage, patterns |
+| 6 | Code Quality | `/CLAUDE.md` | Conventions, imports |
 
 ---
 
@@ -225,7 +224,7 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 **Call:** `start_agent(jobId, "clean-architecture")`
 
-**Read first**: `/.claude/skills/architecture/clean-architecture/SKILL.md`
+**Read first**: `/.claude/skills/clean-architecture/SKILL.md`
 
 **Verify**:
 1. Dependency Rule: do dependencies point inward?
@@ -244,7 +243,7 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 **Call:** `start_agent(jobId, "ddd")`
 
-**Read first**: `/.claude/skills/architecture/ddd/SKILL.md`
+**Read first**: `/.claude/skills/ddd/SKILL.md`
 
 **Verify**:
 1. Bounded Context: proper context isolation?
@@ -260,23 +259,23 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 ---
 
-#### Audit 3: React Best Practices
+#### Audit 3: TypeScript Best Practices
 
-**Call:** `start_agent(jobId, "react-best-practices")`
+**Call:** `start_agent(jobId, "typescript-best-practices")`
 
-**Read first**: `/.claude/skills/react-best-practices/SKILL.md`
+**Read first**: `/CLAUDE.md`
 
 **Verify**:
-1. Hooks: rules of hooks followed?
-2. Memoization: useCallback, useMemo used correctly?
-3. Memory leaks: effect cleanup, URL.revokeObjectURL?
-4. Re-renders: inline functions, recreated objects?
-5. State management: state at the right level?
+1. Type safety: `any` avoided, no `as` type assertions?
+2. Async patterns: `async/await` with `try/catch`, no `.then()` chains?
+3. Null handling: `null` over `undefined` in domain types?
+4. Guards: Zod validation at boundaries?
+5. Branded types: domain IDs use branded types?
 
-**For each point**: cite the skill rule or React documentation.
+**For each point**: cite the CLAUDE.md rule or TypeScript documentation.
 **Give a score**: X/10 with justification.
 
-**Call:** `complete_agent(jobId, "react-best-practices", "success")`
+**Call:** `complete_agent(jobId, "typescript-best-practices", "success")`
 
 ---
 
@@ -284,7 +283,7 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 **Call:** `start_agent(jobId, "solid")`
 
-**Read first**: `/.claude/skills/architecture/solid/SKILL.md`
+**Read first**: `/.claude/skills/solid/SKILL.md`
 
 **Verify** the 5 principles:
 1. SRP: does each class/function have only one reason to change?
@@ -304,7 +303,7 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 **Call:** `start_agent(jobId, "testing")`
 
-**Read first**: `/.claude/skills/development/tdd/SKILL.md`
+**Read first**: `/.claude/skills/tdd/SKILL.md`
 
 **Verify**:
 1. Coverage: production files tested?
@@ -324,11 +323,11 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 **Call:** `start_agent(jobId, "code-quality")`
 
-**Read first**: `/frontend/.claude/CLAUDE.md`
+**Read first**: `/CLAUDE.md`
 
 **Verify**:
 1. Imports: @/ aliases, no relative paths ../
-2. Naming: full words, file conventions (PascalCase .tsx, camelCase .ts)
+2. Naming: full words, file conventions (camelCase .ts)
 3. Duplication: DRY followed?
 4. Types: any avoided?
 5. Law of Demeter: no chaining?
@@ -381,8 +380,6 @@ After the 6 audits:
 | Vaughn Vernon | DDD | Implementing Domain-Driven Design (2013), Domain-Driven Design Distilled (2016) |
 | Kent Beck | TDD, XP | Test-Driven Development by Example (2002), Extreme Programming Explained (2004) |
 | Martin Fowler | Refactoring, Patterns | Refactoring (2018), Patterns of Enterprise Application Architecture (2002) |
-| Dan Abramov | React | Blog overreacted.io, React documentation |
-| React Team | React | Official React documentation |
 
 ---
 
@@ -406,7 +403,7 @@ The report must follow this structure:
 |-------|-------|---------|
 | **Clean Architecture** | X/10 | [Short verdict] |
 | **Strategic DDD** | X/10 | [Short verdict] |
-| **React Best Practices** | X/10 | [Short verdict] |
+| **TypeScript Best Practices** | X/10 | [Short verdict] |
 | **SOLID** | X/10 | [Short verdict] |
 | **Testing** | X/10 | [Short verdict] |
 | **Code Quality** | X/100 | [Short verdict] |
@@ -490,7 +487,7 @@ The report must follow this structure:
 
 ## Inline Comments on Diffs (CRITICAL)
 
-**⚠️ MANDATORY AND NON-NEGOTIABLE**: Each **blocking** or **important** violation MUST be posted as an inline comment on the relevant line in the MR diff.
+**MANDATORY AND NON-NEGOTIABLE**: Each **blocking** or **important** violation MUST be posted as an inline comment on the relevant line in the MR diff.
 
 ### How to post an inline comment
 
@@ -511,17 +508,17 @@ Inline comments can ONLY be posted on lines visible in the MR diff.
 
 ### Inline Comment Format
 
-| Severity | Emoji | Prefix |
-|----------|-------|--------|
-| Blocking | 🚨 | `[BLOCKING]` |
-| Important | ⚠️ | `[IMPORTANT]` |
+| Severity | Prefix |
+|----------|--------|
+| Blocking | `[BLOCKING]` |
+| Important | `[IMPORTANT]` |
 
 **Body structure** (keep it concise):
 
 ```markdown
-🚨 **[BLOCKING] Problem title**
+**[BLOCKING] Problem title**
 
-📍 `file.ts:42-45`
+`file.ts:42-45`
 
 Short factual description of the problem in 1-2 sentences.
 
@@ -534,18 +531,18 @@ Short factual description of the problem in 1-2 sentences.
 add_action({
   jobId: JOB_ID,
   type: "POST_INLINE_COMMENT",
-  filePath: "src/interface-adapters/controllers/webhook/gitlab.controller.ts",
+  filePath: "src/interface-adapters/controllers/webhook/github.controller.ts",
   line: 34,
-  body: "🚨 **[BLOCKING] Hook called after early return**\n\n📍 `gitlab.controller.ts:34`\n\nThe dependency is accessed after an early return, which can cause undefined behavior.\n\n**Fix**: Move the dependency access BEFORE the early return."
+  body: "**[BLOCKING] Business logic in controller**\n\n`github.controller.ts:34`\n\nThe assignment extraction logic belongs in a use case, not the controller.\n\n**Fix**: Move this logic to the appropriate use case."
 })
 ```
 
 ### Rules
 
-- ✅ **Post inline**: Blocking/important violations whose line IS IN the diff
-- ❌ **Do not post inline**: Lines outside the diff, minor violations, backlog improvements
-- ⚠️ **If line is outside the diff**: Include in the global report with file:line reference
-- ⚠️ **If the comment fails**: Do NOT post as a general comment. The error will be logged and the action skipped.
+- **Post inline**: Blocking/important violations whose line IS IN the diff
+- **Do not post inline**: Lines outside the diff, minor violations, backlog improvements
+- **If line is outside the diff**: Include in the global report with file:line reference
+- **If the comment fails**: Do NOT post as a general comment. The error will be logged and the action skipped.
 
 ---
 
@@ -602,16 +599,15 @@ At the end of the report, recommend the appropriate skills based on detected iss
 | SOLID violation detected | `/solid` | Concrete principles and examples |
 | Massive refactoring | `/refactoring` | Mikado Graph, Strangler Fig |
 | Anemic model (DDD) | `/ddd` | Bounded Context, Rich Entities |
-| Styles/UI to review | `/tailwind` | ReviewFlow Design System |
 | Potential secrets | `/security` | Scan before commit |
 
 **Recommendation example**:
 ```
-## 🎯 Skills to Use for Corrections
+## Skills to Use for Corrections
 
-1. **Missing tests** → Run `/tdd` to create tests with the RED-GREEN-REFACTOR cycle
-2. **Duplication to factor** → Run `/anti-overengineering` then `/architecture` to validate the approach
-3. **Dependency Rule violation** → Consult `/solid` to understand DIP in detail
+1. **Missing tests** -> Run `/tdd` to create tests with the RED-GREEN-REFACTOR cycle
+2. **Duplication to factor** -> Run `/anti-overengineering` then `/architecture` to validate the approach
+3. **Dependency Rule violation** -> Consult `/solid` to understand DIP in detail
 ```
 
 ---
@@ -648,27 +644,27 @@ add_action({ jobId: JOB_ID, type: "POST_INLINE_COMMENT", filePath: "path/file.ts
 At the end of the review:
 
 ```
-📋 Global report posted on the MR: [GitLab comment URL]
-📄 Local copy: /.claude/reviews/[YYYY-MM-DD]-MR-[ID]-review.md
+Global report posted on the MR: [comment URL]
+Local copy: /.claude/reviews/[YYYY-MM-DD]-MR-[ID]-review.md
 
-📊 Overall score: X/10
+Overall score: X/10
 
-🎯 Inline comments posted in /diffs: X
-   ├─ 🚨 Blocking: X
-   └─ ⚠️ Important: X
+Inline comments posted in /diffs: X
+   Blocking: X
+   Important: X
 
-📝 Backlog improvements (global report only): X
+Backlog improvements (global report only): X
 
 [REVIEW_STATS:blocking=X:warnings=X:suggestions=X:score=X]
 
-⛔ READ-ONLY MODE - No code modified
+READ-ONLY MODE - No code modified
 
-🎯 Recommended skills:
+Recommended skills:
 - /tdd for missing tests
 - /architecture to create components
 - /anti-overengineering before factoring
 ```
 
-**⚠️ IMPORTANT**: The `[REVIEW_STATS:...]` line is **MANDATORY** for automated tracking. Replace the `X` values with real values.
+**IMPORTANT**: The `[REVIEW_STATS:...]` line is **MANDATORY** for automated tracking. Replace the `X` values with real values.
 
 **Final reminder**: This skill NEVER modifies code. The report and inline comments are posted via MCP actions so the author can make corrections.

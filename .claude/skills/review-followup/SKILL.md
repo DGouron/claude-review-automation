@@ -148,7 +148,7 @@ Check only the **critical rules** from CLAUDE.md:
 **Do not check** (out of scope for follow-up):
 - Global architecture
 - Strategic DDD
-- React performance
+- Framework-specific performance
 - Full SOLID
 
 **Call:** `complete_agent(jobId, "scan", "success")`
