@@ -2,10 +2,12 @@ import type { Config } from '../config/loader.js';
 import type { ReviewRequestTrackingGateway } from '../interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { StatsGateway } from '../interface-adapters/gateways/stats.gateway.js';
 import type { ReviewFileGateway } from '../interface-adapters/gateways/reviewFile.gateway.js';
+import type { ReviewLogFileGateway } from '../interface-adapters/gateways/reviewLogFile.gateway.js';
 import type { ReviewContextGateway } from '../entities/reviewContext/reviewContext.gateway.js';
 import { FileSystemReviewRequestTrackingGateway } from '../interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { FileSystemStatsGateway } from '../interface-adapters/gateways/fileSystem/stats.fileSystem.js';
 import { FileSystemReviewFileGateway } from '../interface-adapters/gateways/fileSystem/reviewFile.fileSystem.js';
+import { FileSystemReviewLogFileGateway } from '../interface-adapters/gateways/fileSystem/reviewLogFile.fileSystem.gateway.js';
 import { ReviewContextFileSystemGateway } from '../interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { ReviewContextWatcherService } from '../services/reviewContextWatcher.service.js';
 import { ReviewContextProgressPresenter } from '../interface-adapters/presenters/reviewContextProgress.presenter.js';
@@ -18,6 +20,7 @@ export interface Dependencies {
   reviewRequestTrackingGateway: ReviewRequestTrackingGateway;
   statsGateway: StatsGateway;
   reviewFileGateway: ReviewFileGateway;
+  reviewLogFileGateway: ReviewLogFileGateway;
   reviewContextGateway: ReviewContextGateway;
   reviewContextWatcher: ReviewContextWatcherService;
   progressPresenter: ReviewContextProgressPresenter;
@@ -63,6 +66,7 @@ export function createDependencies(config: Config): Dependencies {
     reviewRequestTrackingGateway: new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator()),
     statsGateway: new FileSystemStatsGateway(),
     reviewFileGateway: new FileSystemReviewFileGateway(),
+    reviewLogFileGateway: new FileSystemReviewLogFileGateway(),
     reviewContextGateway,
     reviewContextWatcher: new ReviewContextWatcherService(reviewContextGateway),
     progressPresenter: new ReviewContextProgressPresenter(),
