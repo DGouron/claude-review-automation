@@ -2578,7 +2578,28 @@ input:focus-visible,
   backdrop-filter: blur(12px);
   display: flex;
   justify-content: flex-end;
+  margin-top: auto;
 }
+/* Sheet footer (shared: logs + MR) */
+.sheet-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(130, 170, 220, 0.08);
+  background: rgba(14, 22, 38, 0.95);
+  backdrop-filter: blur(12px);
+  margin-top: auto;
+}
+.sheet-footer-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.sheet-footer-actions .btn-action {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+}
+
 .sheet-clear-btn {
   color: var(--nsc-danger);
   border-color: rgba(240, 127, 136, 0.2);

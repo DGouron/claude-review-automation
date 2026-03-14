@@ -19,9 +19,10 @@ const COLORS = {
 /**
  * @param {object} mr
  * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @param {string} [mrType]
  * @returns {string}
  */
-export function renderMrSheetContent(mr, translate) {
+export function renderMrSheetContent(mr, translate, mrType) {
   const mrPrefix = mr.platform === 'github' ? '#' : '!';
   const assigneeDisplay = mr.assignment?.displayName || mr.assignment?.username || '';
   const assigneeInitial = assigneeDisplay ? assigneeDisplay.charAt(0).toUpperCase() : '?';
@@ -152,9 +153,12 @@ export function renderMrSheetContent(mr, translate) {
       </div>
     </div>
 
-    <div class="sheet-actions">
-      <button class="btn-action" onclick="triggerFollowup('${encodedMrId}')"><i data-lucide="refresh-cw"></i> ${translate('button.followup')}</button>
-      <a href="${sanitizeHttpUrl(mr.url)}" target="_blank" rel="noopener noreferrer" class="btn-action open" onclick="return onUsefulLinkAction()"><i data-lucide="external-link"></i> ${translate('button.open')}</a>
+    <div class="sheet-footer">
+      <div class="sheet-footer-actions">
+        <button class="btn-action" onclick="triggerFollowup('${encodedMrId}')"><i data-lucide="refresh-cw"></i> ${translate('button.followup')}</button>
+        ${mrType === 'pending-approval' ? `<button class="btn-action approve" onclick="approveMr('${encodedMrId}')"><i data-lucide="check-circle"></i> ${translate('sheet.approve')}</button>` : ''}
+        <a href="${sanitizeHttpUrl(mr.url)}" target="_blank" rel="noopener noreferrer" class="btn-action open" onclick="return onUsefulLinkAction()"><i data-lucide="external-link"></i> ${translate('button.open')}</a>
+      </div>
     </div>
   `;
 }

@@ -258,6 +258,7 @@ const translations = {
     'sheet.blocking': 'Blocking',
     'sheet.outOf10': '/10',
     'sheet.target': 'Target: {{target}}/10',
+    'sheet.approve': 'Approve',
 
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
@@ -520,6 +521,7 @@ const translations = {
     'sheet.blocking': 'Bloquants',
     'sheet.outOf10': '/10',
     'sheet.target': 'Cible : {{target}}/10',
+    'sheet.approve': 'Terminer',
 
     // Version update
     // Collapsible lists

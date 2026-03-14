@@ -1383,9 +1383,9 @@
       const queueLanesModel = buildQueueLanesModel(rankedPendingFix, currentData.pendingApproval);
 
       mrDataStore.clear();
-      if (queueLanesModel.nowLaneItem) mrDataStore.set(queueLanesModel.nowLaneItem.id, queueLanesModel.nowLaneItem);
-      queueLanesModel.needsFixItems.forEach(mr => mrDataStore.set(mr.id, mr));
-      queueLanesModel.readyToApproveItems.forEach(mr => mrDataStore.set(mr.id, mr));
+      if (queueLanesModel.nowLaneItem) mrDataStore.set(queueLanesModel.nowLaneItem.id, { ...queueLanesModel.nowLaneItem, _sheetType: 'pending-fix' });
+      queueLanesModel.needsFixItems.forEach(mr => mrDataStore.set(mr.id, { ...mr, _sheetType: 'pending-fix' }));
+      queueLanesModel.readyToApproveItems.forEach(mr => mrDataStore.set(mr.id, { ...mr, _sheetType: 'pending-approval' }));
       sessionMetrics = updatePriorityItemTracking(sessionMetrics, {
         nowLaneItemId: queueLanesModel.nowLaneItem?.id ?? null,
         pendingFixIds: rankedPendingFix.map((mergeRequest) => String(mergeRequest.id)),
@@ -2214,7 +2214,7 @@
       if (!mr) return;
 
       const contentEl = document.getElementById('mr-sheet-content');
-      contentEl.innerHTML = renderMrSheetContent(mr, t);
+      contentEl.innerHTML = renderMrSheetContent(mr, t, mr._sheetType);
 
       document.getElementById('mr-sheet-overlay').classList.add('open');
       document.getElementById('mr-sheet').classList.add('open');
