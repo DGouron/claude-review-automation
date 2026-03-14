@@ -720,21 +720,13 @@
     }
 
     function updateLogs() {
-      const logsEl = document.getElementById('logs-content');
-      const errorCount = currentData.logs.filter(l => l.level === 'error' || l.level === 'warn').length;
-      const errorBadge = document.getElementById('error-count');
-
-      if (errorCount > 0) {
-        errorBadge.textContent = t('logs.errorCount', { count: errorCount });
-        errorBadge.classList.remove('hidden');
-      } else {
-        errorBadge.classList.add('hidden');
-      }
-
-      if (currentData.logs.length === 0) {
-        logsEl.innerHTML = `<div class="empty-state">${t('empty.logs')}</div>`;
-      } else {
-        logsEl.innerHTML = currentData.logs.slice().reverse().map(renderLog).join('');
+      const sheetLogsEl = document.querySelector('.sheet-logs-content');
+      if (sheetLogsEl && logsVisible) {
+        if (currentData.logs.length === 0) {
+          sheetLogsEl.innerHTML = `<div class="empty-state">${t('empty.logs')}</div>`;
+        } else {
+          sheetLogsEl.innerHTML = currentData.logs.slice().reverse().map(renderLog).join('');
+        }
       }
     }
 
@@ -1065,19 +1057,46 @@
     }
 
     function toggleLogs() {
-      logsVisible = !logsVisible;
-      const logsSection = document.getElementById('logs-section');
-      const btn = document.getElementById('toggle-logs-btn');
+      const sheetPanel = document.getElementById('mr-sheet');
+      const isOpen = sheetPanel.classList.contains('open') && logsVisible;
 
-      if (logsVisible) {
-        logsSection.classList.remove('hidden');
-        btn.innerHTML = `<i data-lucide="scroll-text"></i> ${t('header.hideLogs')}`;
-        fetchLogs();
-      } else {
-        logsSection.classList.add('hidden');
-        btn.innerHTML = `<i data-lucide="scroll-text"></i> ${t('header.logs')}`;
+      if (isOpen) {
+        closeMrSheet();
+        logsVisible = false;
+        return;
       }
-      refreshIcons();
+
+      logsVisible = true;
+      const openLogsSheet = () => {
+        const contentEl = document.getElementById('mr-sheet-content');
+        contentEl.innerHTML = renderLogsSheetContent();
+        document.getElementById('mr-sheet-overlay').classList.add('open');
+        sheetPanel.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        refreshIcons();
+      };
+      fetchLogs().then(openLogsSheet).catch(openLogsSheet);
+    }
+
+    function renderLogsSheetContent() {
+      const errorCount = currentData.logs.filter(l => l.level === 'error' || l.level === 'warn').length;
+      const errorBadge = errorCount > 0
+        ? ` <span class="section-header badge-count">${t('logs.errorCount', { count: errorCount })}</span>`
+        : '';
+
+      const logsHtml = currentData.logs.length === 0
+        ? `<div class="empty-state">${t('empty.logs')}</div>`
+        : currentData.logs.slice().reverse().map(renderLog).join('');
+
+      return `
+        <button class="sheet-close" onclick="closeMrSheet()"><i data-lucide="x"></i></button>
+        <div class="sheet-mr-header">
+          <div>
+            <div class="sheet-mr-title"><i data-lucide="scroll-text"></i> ${t('section.logs')}${errorBadge}</div>
+          </div>
+        </div>
+        <div class="sheet-logs-content section-content logs">${logsHtml}</div>
+      `;
     }
 
     function toggleStats() {
@@ -2204,6 +2223,7 @@
       document.getElementById('mr-sheet-overlay').classList.remove('open');
       document.getElementById('mr-sheet').classList.remove('open');
       document.body.style.overflow = '';
+      logsVisible = false;
     }
 
     document.addEventListener('keydown', (e) => {

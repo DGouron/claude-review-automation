@@ -2557,6 +2557,16 @@ input:focus-visible,
   height: 14px;
 }
 
+/* Sheet logs */
+.sheet-logs-content {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding: 0;
+}
+.sheet-logs-content .log-entry {
+  padding: 0.55rem 0.5rem;
+}
+
 /* Smoother status dot animation */
 @keyframes pulse-smooth {
   0%, 100% { opacity: 1; transform: scale(1); }
