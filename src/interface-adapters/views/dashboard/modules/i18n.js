@@ -237,6 +237,10 @@ const translations = {
     'error.selectOrEnterPath': 'Select or enter a path',
     'error.projectNotLoaded': 'Load a project first',
 
+    // Collapsible lists
+    'collapsible.showMore': 'Show {{count}} more...',
+    'collapsible.showLess': 'Show less',
+
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
     'version.checking': 'Checking...',
@@ -482,6 +486,10 @@ const translations = {
     'error.projectNotLoaded': "Charger un projet d'abord",
 
     // Version update
+    // Collapsible lists
+    'collapsible.showMore': 'Afficher {{count}} de plus...',
+    'collapsible.showLess': 'Réduire',
+
     'version.updateAvailable': 'Mettre à jour vers v{{version}}',
     'version.checking': 'Vérification...',
     'version.updating': 'Mise à jour...',

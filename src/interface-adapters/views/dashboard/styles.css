@@ -2526,6 +2526,37 @@ input:focus-visible,
   border-radius: 12px;
 }
 
+/* --- Collapsible list toggle --- */
+.collapsible-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.6rem 0;
+  margin-top: 0.25rem;
+  background: transparent;
+  border: 1px dashed rgba(130, 170, 220, 0.12);
+  border-radius: 10px;
+  color: var(--nsc-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.collapsible-toggle:hover {
+  background: rgba(122, 216, 255, 0.04);
+  border-color: rgba(122, 216, 255, 0.2);
+  color: var(--nsc-focus);
+}
+.collapsible-toggle:active {
+  transform: scale(0.98);
+}
+.collapsible-toggle [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
 /* Smoother status dot animation */
 @keyframes pulse-smooth {
   0%, 100% { opacity: 1; transform: scale(1); }

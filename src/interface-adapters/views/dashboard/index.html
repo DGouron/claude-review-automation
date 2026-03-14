@@ -250,6 +250,7 @@
     import { createSessionMetricsState, trackSessionAction, updatePriorityItemTracking, getSessionMetricsSnapshot } from './modules/sessionMetrics.js';
     import { renderCleanupSection, handleCleanupClick } from './modules/cleanup.js';
     import { renderVersionUpdateArea, setVersionCheckState } from './modules/versionUpdate.js';
+    import { renderCollapsibleList, toggleCollapsibleList } from './modules/collapsibleList.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -895,7 +896,10 @@
       }
 
       completedSection?.classList.remove('hidden');
-      recentEl.innerHTML = currentData.reviewFiles.map(renderReviewFile).join('');
+      recentEl.innerHTML = renderCollapsibleList(
+        currentData.reviewFiles.map(renderReviewFile),
+        'completed-reviews', t
+      );
       applySectionExpansion('completed-reviews-section');
       refreshIcons();
     }
@@ -1269,10 +1273,16 @@
         ? renderNowLane(queueLanesModel.nowLaneItem)
         : `<div class="empty-state">${t('queueLane.emptyNow')}</div>`;
       const needsFixContent = queueLanesModel.needsFixItems.length > 0
-        ? queueLanesModel.needsFixItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-fix')).join('')
+        ? renderCollapsibleList(
+            queueLanesModel.needsFixItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-fix')),
+            'needs-fix', t
+          )
         : `<div class="empty-state">${t('queueLane.emptyNeedsFix')}</div>`;
       const readyToApproveContent = queueLanesModel.readyToApproveItems.length > 0
-        ? queueLanesModel.readyToApproveItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-approval')).join('')
+        ? renderCollapsibleList(
+            queueLanesModel.readyToApproveItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-approval')),
+            'ready-to-approve', t
+          )
         : `<div class="empty-state">${t('queueLane.emptyReadyToApprove')}</div>`;
 
       return `
@@ -2158,6 +2168,7 @@
     // Expose functions to HTML onclick handlers
     window.checkForUpdates = checkForUpdates;
     window.triggerVersionUpdate = triggerVersionUpdate;
+    window.toggleCollapsibleList = toggleCollapsibleList;
     window.checkClaudeStatus = checkClaudeStatus;
     window.toggleLogs = toggleLogs;
     window.toggleStats = toggleStats;
