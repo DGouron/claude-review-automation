@@ -13,6 +13,7 @@
       <div class="logo"><i data-lucide="bot"></i></div>
       <h1>Reviewflow</h1>
       <div class="header-actions">
+        <div id="version-update-area" class="version-update-area"></div>
         <button id="check-claude-btn" class="btn btn-primary" onclick="checkClaudeStatus()">
           <i data-lucide="search"></i> <span id="i18n-check-claude"></span>
         </button>
@@ -248,6 +249,7 @@
     import { getQualityProgress, getQualityTrend } from './modules/quality.js';
     import { createSessionMetricsState, trackSessionAction, updatePriorityItemTracking, getSessionMetricsSnapshot } from './modules/sessionMetrics.js';
     import { renderCleanupSection, handleCleanupClick } from './modules/cleanup.js';
+    import { renderVersionUpdateArea, setVersionCheckState } from './modules/versionUpdate.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -1577,6 +1579,14 @@
         currentData.activeReviews = data.jobs?.active || [];
         currentData.recentReviews = data.jobs?.recent || [];
         dispatchReviewNotifications(currentData.activeReviews, currentData.recentReviews);
+        const versionUpdateArea = document.getElementById('version-update-area');
+        if (versionUpdateArea) {
+          versionUpdateArea.innerHTML = renderVersionUpdateArea(
+            { currentVersion: data.version || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            t
+          );
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
         if (!wsConnected) updateConnectionStatus('online', 'connection.onlinePolling');
         updateUI();
       } catch (error) {
@@ -2088,7 +2098,66 @@
       updateProjectSelect();
     }
 
+    async function checkForUpdates() {
+      setVersionCheckState('checking', t);
+      try {
+        const response = await fetch(`${API_URL}/api/version/check`);
+        const data = await response.json();
+        const versionUpdateArea = document.getElementById('version-update-area');
+        if (versionUpdateArea) {
+          versionUpdateArea.innerHTML = renderVersionUpdateArea(
+            { currentVersion: data.currentVersion || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            t
+          );
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        if (!data.updateAvailable) {
+          showToast(t('version.upToDate'), 'success');
+        }
+      } catch (error) {
+        console.error('Error checking for updates:', error);
+        showToast(t('version.updateFailed'), 'error');
+      } finally {
+        setVersionCheckState('idle', t);
+      }
+    }
+
+    async function triggerVersionUpdate() {
+      setVersionCheckState('updating', t);
+      try {
+        const response = await fetch(`${API_URL}/api/version/update`, { method: 'POST' });
+        const data = await response.json();
+        if (data.status === 'started') {
+          setVersionCheckState('restarting', t);
+          showToast(t('version.restarting'), 'info');
+          setTimeout(() => {
+            const checkInterval = setInterval(async () => {
+              try {
+                const healthResponse = await fetch(`${API_URL}/health`);
+                if (healthResponse.ok) {
+                  clearInterval(checkInterval);
+                  window.location.reload();
+                }
+              } catch {
+                // Server still restarting, keep polling
+              }
+            }, 2000);
+            setTimeout(() => clearInterval(checkInterval), 60000);
+          }, 3000);
+        } else {
+          showToast(data.error || t('version.updateFailed'), 'error');
+          setVersionCheckState('idle', t);
+        }
+      } catch (error) {
+        console.error('Error triggering update:', error);
+        showToast(t('version.updateFailed'), 'error');
+        setVersionCheckState('idle', t);
+      }
+    }
+
     // Expose functions to HTML onclick handlers
+    window.checkForUpdates = checkForUpdates;
+    window.triggerVersionUpdate = triggerVersionUpdate;
     window.checkClaudeStatus = checkClaudeStatus;
     window.toggleLogs = toggleLogs;
     window.toggleStats = toggleStats;

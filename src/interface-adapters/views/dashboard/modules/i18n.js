@@ -236,6 +236,15 @@ const translations = {
     'error.cancelReview': 'Error cancelling review',
     'error.selectOrEnterPath': 'Select or enter a path',
     'error.projectNotLoaded': 'Load a project first',
+
+    // Version update
+    'version.updateAvailable': 'Update to v{{version}}',
+    'version.checking': 'Checking...',
+    'version.updating': 'Updating...',
+    'version.upToDate': 'Up to date',
+    'version.updateFailed': 'Update failed',
+    'version.restarting': 'Restarting server...',
+    'version.checkTooltip': 'Check for updates',
   },
   fr: {
     // Time
@@ -471,6 +480,15 @@ const translations = {
     'error.cancelReview': "Erreur lors de l'annulation",
     'error.selectOrEnterPath': 'Sélectionnez ou entrez un chemin',
     'error.projectNotLoaded': "Charger un projet d'abord",
+
+    // Version update
+    'version.updateAvailable': 'Mettre à jour vers v{{version}}',
+    'version.checking': 'Vérification...',
+    'version.updating': 'Mise à jour...',
+    'version.upToDate': 'À jour',
+    'version.updateFailed': 'Échec de la mise à jour',
+    'version.restarting': 'Redémarrage du serveur...',
+    'version.checkTooltip': 'Vérifier les mises à jour',
   },
 };
 
