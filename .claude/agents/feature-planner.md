@@ -7,6 +7,7 @@ maxTurns: 15
 permissionMode: default
 skills:
   - clean-architecture
+  - product-manager
 ---
 
 # Feature Planner
