@@ -2146,3 +2146,388 @@ body.compact-density .quality-trend {
     width: 100%;
   }
 }
+
+/* =====================================================
+   DESIGN UPGRADE — Premium polish layer
+   Applied on top of base styles for visual refinement.
+   ===================================================== */
+
+/* Font smoothing + better background */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background:
+    radial-gradient(ellipse 1400px 900px at 8% -12%, rgba(30, 58, 110, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 600px 500px at 92% 105%, rgba(40, 20, 80, 0.25) 0%, transparent 50%),
+    linear-gradient(155deg, #080e1a 0%, #0b1220 40%, #0d1528 100%);
+}
+
+/* Top accent gradient line */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(96, 199, 255, 0.4) 20%,
+    rgba(98, 211, 168, 0.4) 50%,
+    rgba(244, 188, 113, 0.3) 80%,
+    transparent 100%
+  );
+  z-index: 9999;
+}
+
+/* Wider container */
+.container { max-width: 1100px; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(130, 160, 200, 0.18); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(130, 160, 200, 0.3); }
+
+/* Text selection */
+::selection {
+  background: rgba(96, 199, 255, 0.25);
+  color: #fff;
+}
+
+/* --- Header --- */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 0;
+  margin: -0.5rem 0 1.5rem;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  background: rgba(11, 18, 32, 0.72);
+  border-bottom: 1px solid rgba(130, 170, 220, 0.08);
+}
+
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-size: 1.6rem;
+}
+
+.logo {
+  background: linear-gradient(145deg, #5ec8ff 0%, #3b8fd4 50%, #2a6db0 100%);
+  box-shadow: 0 2px 12px rgba(90, 190, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+}
+
+.version-label {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  background: rgba(122, 216, 255, 0.06);
+  border-color: rgba(122, 216, 255, 0.15);
+  color: rgba(122, 216, 255, 0.7);
+}
+
+.status-indicator {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.85rem;
+  backdrop-filter: blur(8px);
+}
+.status-indicator.online {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* --- Cards --- */
+.card {
+  background: linear-gradient(170deg, rgba(22, 34, 53, 0.85) 0%, rgba(14, 23, 40, 0.95) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(130, 170, 220, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+}
+.card:hover {
+  border-color: rgba(130, 170, 220, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.card-priority::before {
+  width: 3px;
+  background: linear-gradient(180deg, rgba(122, 216, 255, 0.8) 0%, rgba(122, 216, 255, 0.1) 100%);
+}
+
+.card-value {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* --- Sections --- */
+.section {
+  background: linear-gradient(178deg, rgba(17, 26, 43, 0.9) 0%, rgba(12, 20, 35, 0.95) 100%);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(130, 170, 220, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.section-header {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 0.95rem;
+  padding: 1rem 1.25rem;
+}
+.section-header.clickable:hover {
+  background: rgba(122, 216, 255, 0.03);
+}
+.section-header .badge-count {
+  background: rgba(240, 127, 136, 0.1);
+  border: 1px solid rgba(240, 127, 136, 0.15);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* --- Buttons --- */
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: rgba(96, 199, 255, 0.12);
+  border: 1px solid rgba(96, 199, 255, 0.22);
+}
+.btn-primary:hover {
+  background: rgba(96, 199, 255, 0.2);
+  box-shadow: 0 0 16px rgba(96, 199, 255, 0.08);
+}
+
+.btn-action {
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-action:active { transform: scale(0.96); }
+
+/* --- Focus strip --- */
+.focus-chip {
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.focus-now { border-color: rgba(122, 216, 255, 0.2); }
+.focus-now:hover { box-shadow: 0 0 20px rgba(122, 216, 255, 0.06); }
+.focus-next { border-color: rgba(244, 188, 113, 0.2); }
+.focus-next:hover { box-shadow: 0 0 20px rgba(244, 188, 113, 0.06); }
+.focus-blocked { border-color: rgba(240, 127, 136, 0.2); }
+.focus-blocked:hover { box-shadow: 0 0 20px rgba(240, 127, 136, 0.06); }
+
+/* --- MR items --- */
+.mr-item-accordion {
+  border: 1px solid rgba(130, 170, 220, 0.08);
+  border-left: 2px solid transparent;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(13, 23, 42, 0.7) 0%, rgba(10, 19, 36, 0.85) 100%);
+  backdrop-filter: blur(6px);
+  transition: border-color 0.2s, box-shadow 0.2s, border-left-color 0.2s;
+}
+.mr-item-accordion:hover {
+  border-color: rgba(130, 170, 220, 0.14);
+  border-left-color: rgba(122, 216, 255, 0.3);
+}
+.mr-item-header:hover {
+  background: rgba(122, 216, 255, 0.02);
+}
+
+/* Review status glow */
+.review-status.running { box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+.review-status.completed { box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
+.review-status.failed { box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
+
+/* Avatars */
+.mr-avatar, .review-avatar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Stat badges */
+.stat-badge {
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(4px);
+}
+
+/* --- Queue lanes --- */
+.queue-lane-header {
+  background: rgba(255, 255, 255, 0.015);
+  border-bottom: 1px solid rgba(130, 170, 220, 0.06);
+}
+.queue-lane-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--nsc-text-secondary);
+}
+.queue-lane-count {
+  background: rgba(122, 216, 255, 0.08);
+  border-color: rgba(122, 216, 255, 0.15);
+  color: var(--nsc-focus);
+}
+.queue-lane {
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+
+/* --- Now lane --- */
+.now-lane {
+  background: linear-gradient(165deg, rgba(96, 199, 255, 0.08) 0%, rgba(122, 216, 255, 0.03) 100%);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(96, 199, 255, 0.18);
+  border-left: 3px solid rgba(96, 199, 255, 0.5);
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(96, 199, 255, 0.04);
+}
+.now-lane-kicker {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+}
+.now-lane-quality {
+  background: rgba(0, 0, 0, 0.15);
+  border-color: rgba(130, 170, 220, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+}
+
+/* --- Stat cards --- */
+.stat-card {
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* --- Progress bar --- */
+.progress-bar {
+  background: rgba(255, 255, 255, 0.06);
+  height: 5px;
+}
+.progress-bar-fill {
+  background: linear-gradient(90deg, #60c7ff 0%, #62d3a8 100%);
+  box-shadow: 0 0 8px rgba(96, 199, 255, 0.3);
+}
+
+/* --- Toasts --- */
+.toast {
+  backdrop-filter: blur(16px) saturate(140%);
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.toast.success {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.toast.error {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.toast.info {
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+/* --- Modal --- */
+.modal-overlay {
+  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.5);
+}
+.modal-content {
+  background: rgba(22, 34, 53, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(130, 170, 220, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* --- Inputs / Selects --- */
+.project-input, .model-select, .token-input {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(130, 170, 220, 0.1);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.project-input:focus, .model-select:focus, .token-input:focus {
+  border-color: rgba(96, 199, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(96, 199, 255, 0.08);
+  outline: none;
+}
+
+/* Focus ring */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid rgba(122, 216, 255, 0.6);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(122, 216, 255, 0.1);
+}
+
+/* --- Empty states --- */
+.empty-state {
+  color: rgba(130, 155, 190, 0.5);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* --- Config info --- */
+.config-info {
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+}
+.config-status.success {
+  border-radius: 99px;
+  font-weight: 600;
+}
+
+/* --- Data loading --- */
+.data-loading {
+  backdrop-filter: blur(4px);
+  border-color: rgba(122, 216, 255, 0.12);
+  color: rgba(122, 216, 255, 0.7);
+}
+
+/* --- Logs --- */
+.log-entry {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Monaco', monospace;
+  font-size: 0.72rem;
+  border-bottom-color: rgba(130, 170, 220, 0.05);
+  border-radius: 6px;
+  margin-bottom: 1px;
+  transition: background 0.15s;
+}
+.log-entry:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* --- Markdown --- */
+.markdown-content {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(130, 170, 220, 0.06);
+  border-radius: 12px;
+}
+
+/* Smoother status dot animation */
+@keyframes pulse-smooth {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.92); }
+}
