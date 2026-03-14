@@ -9,7 +9,7 @@ describe('StubSelfUpdateCommand', () => {
       const result = await stub.runGlobalUpdate()
 
       expect(result.success).toBe(true)
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBeNull()
     })
 
     it('should return failure with error when configured to fail', async () => {

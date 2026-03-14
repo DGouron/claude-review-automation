@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.port.js'
+import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.gateway.js'
 import { readPidFile, removePidFile } from '@/shared/services/pidFileManager.js'
 import { spawnDaemon } from '@/shared/services/daemonSpawner.js'
 import { PID_FILE_PATH } from '@/shared/services/daemonPaths.js'
@@ -28,10 +28,10 @@ export class SelfUpdateCliGateway implements SelfUpdateCommandPort {
     this.dependencies = dependencies ?? createDefaultDependencies()
   }
 
-  async runGlobalUpdate(): Promise<{ success: boolean; error?: string }> {
+  async runGlobalUpdate(): Promise<{ success: boolean; error: string | null }> {
     try {
       await this.dependencies.execFileAsync('npm', ['update', '-g', 'reviewflow'])
-      return { success: true }
+      return { success: true, error: null }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }

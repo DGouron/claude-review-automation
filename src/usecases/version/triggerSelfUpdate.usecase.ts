@@ -1,5 +1,5 @@
 import type { SelfUpdateResult } from '@/entities/packageVersion/packageVersion.js'
-import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.port.js'
+import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.gateway.js'
 
 export interface TriggerSelfUpdateDependencies {
   selfUpdateCommand: SelfUpdateCommandPort

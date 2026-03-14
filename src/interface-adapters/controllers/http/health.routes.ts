@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { VersionCachePort } from '@/entities/packageVersion/versionCache.port.js';
+import type { VersionCachePort } from '@/entities/packageVersion/versionCache.gateway.js';
 import { getQueueStats, getJobsStatus } from '@/frameworks/queue/pQueueAdapter.js';
 
 interface HealthRoutesOptions {

@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify'
 import type { VersionCheckResult, SelfUpdateResult } from '@/entities/packageVersion/packageVersion.js'
 import type { PackageVersionGateway } from '@/entities/packageVersion/packageVersion.gateway.js'
-import type { VersionCachePort } from '@/entities/packageVersion/versionCache.port.js'
-import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.port.js'
+import type { VersionCachePort } from '@/entities/packageVersion/versionCache.gateway.js'
+import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.gateway.js'
 import type { CheckVersionInput, CheckVersionDependencies } from '@/usecases/version/checkVersion.usecase.js'
 import type { TriggerSelfUpdateDependencies } from '@/usecases/version/triggerSelfUpdate.usecase.js'
 
