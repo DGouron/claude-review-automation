@@ -2557,14 +2557,35 @@ input:focus-visible,
   height: 14px;
 }
 
-/* Sheet logs */
-.sheet-logs-content {
-  max-height: calc(100vh - 120px);
+/* Sheet logs — flex layout: header + scrollable body + sticky footer */
+.sheet-logs-body {
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+}
+.sheet-logs-content {
   padding: 0;
 }
 .sheet-logs-content .log-entry {
   padding: 0.55rem 0.5rem;
+}
+.sheet-logs-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(130, 170, 220, 0.08);
+  background: rgba(14, 22, 38, 0.95);
+  backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: flex-end;
+}
+.sheet-clear-btn {
+  color: var(--nsc-danger);
+  border-color: rgba(240, 127, 136, 0.2);
+}
+.sheet-clear-btn:hover {
+  background: rgba(240, 127, 136, 0.1);
+  border-color: rgba(240, 127, 136, 0.35);
 }
 
 /* Smoother status dot animation */
@@ -2611,6 +2632,9 @@ input:focus-visible,
 
 .sheet-content {
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .sheet-close {

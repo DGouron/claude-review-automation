@@ -1095,8 +1095,20 @@
             <div class="sheet-mr-title"><i data-lucide="scroll-text"></i> ${t('section.logs')}${errorBadge}</div>
           </div>
         </div>
-        <div class="sheet-logs-content section-content logs">${logsHtml}</div>
+        <div class="sheet-logs-body">
+          <div class="sheet-logs-content section-content logs">${logsHtml}</div>
+        </div>
+        <div class="sheet-logs-footer">
+          <button class="btn btn-secondary sheet-clear-btn" onclick="clearLogs()">
+            <i data-lucide="trash-2"></i> ${t('logs.clear')}
+          </button>
+        </div>
       `;
+    }
+
+    function clearLogs() {
+      currentData.logs = [];
+      updateLogs();
     }
 
     function toggleStats() {
@@ -2260,6 +2272,7 @@
     window.handleCleanupClick = handleCleanupClick;
     window.openMrSheet = openMrSheet;
     window.closeMrSheet = closeMrSheet;
+    window.clearLogs = clearLogs;
 
     // Init cleanup section
     const cleanupContent = document.getElementById('cleanup-content');

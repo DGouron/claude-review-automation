@@ -207,6 +207,7 @@ const translations = {
 
     // Logs
     'logs.errorCount': '{{count}} errors',
+    'logs.clear': 'Clear logs',
 
     // Modal
     'modal.cancel.title': 'Cancel the {{type}} of {{label}} !{{number}} ({{type}})?',
@@ -472,6 +473,7 @@ const translations = {
 
     // Logs
     'logs.errorCount': '{{count}} erreurs',
+    'logs.clear': 'Vider les logs',
 
     // Modal
     'modal.cancel.title': 'Annuler la {{type}} de la {{label}} !{{number}} ({{type}}) ?',
