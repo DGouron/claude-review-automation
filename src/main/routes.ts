@@ -115,6 +115,16 @@ export async function registerRoutes(
     reply.redirect('/dashboard/');
   });
 
+  app.get('/api/repositories', async () => {
+    return {
+      repositories: deps.config.repositories.map((repository) => ({
+        name: repository.name,
+        localPath: repository.localPath,
+        enabled: repository.enabled,
+      })),
+    };
+  });
+
   app.get('/api', async () => {
     return {
       name: 'reviewflow',

@@ -1819,16 +1819,41 @@
       }
     }
 
-    function initProjectLoader() {
+    async function syncServerRepositories() {
+      try {
+        const response = await fetch(`${API_URL}/api/repositories`);
+        const data = await response.json();
+        if (!data.repositories) return;
+
+        const stored = getStoredProjects();
+        for (const repository of data.repositories) {
+          if (repository.enabled && !stored.includes(repository.localPath)) {
+            stored.push(repository.localPath);
+          }
+        }
+        saveProjects(stored);
+        updateProjectSelect();
+      } catch {
+        // Server unreachable — use localStorage only
+      }
+    }
+
+    async function initProjectLoader() {
+      await syncServerRepositories();
       updateProjectSelect();
       const lastProject = localStorage.getItem(STORAGE_KEY_CURRENT);
       if (lastProject) {
         loadProjectConfigFromPath(lastProject);
       } else {
-        document.getElementById('recent-reviews').innerHTML =
-          `<div class="empty-state">${t('empty.reviewsNoProject')}</div>`;
-        document.getElementById('project-stats').innerHTML =
-          `<div class="empty-state">${t('empty.statsNoProject')}</div>`;
+        const storedProjects = getStoredProjects();
+        if (storedProjects.length > 0) {
+          loadProjectConfigFromPath(storedProjects[0]);
+        } else {
+          document.getElementById('recent-reviews').innerHTML =
+            `<div class="empty-state">${t('empty.reviewsNoProject')}</div>`;
+          document.getElementById('project-stats').innerHTML =
+            `<div class="empty-state">${t('empty.statsNoProject')}</div>`;
+        }
       }
     }
 
