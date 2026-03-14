@@ -2,6 +2,7 @@ import type { UseCase } from '../../shared/foundation/usecase.base.js';
 import type { ReviewRequestTrackingGateway } from '../../interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackedMr } from '../../entities/tracking/trackedMr.js';
 import type { ReviewEvent } from '../../entities/tracking/reviewEvent.js';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
 interface RecordReviewCompletionInput {
   projectPath: string;
@@ -15,6 +16,7 @@ interface RecordReviewCompletionInput {
     suggestions?: number;
     threadsOpened?: number;
     threadsClosed?: number;
+    diffStats?: DiffStats | null;
   };
 }
 
@@ -41,6 +43,7 @@ export class RecordReviewCompletionUseCase implements UseCase<RecordReviewComple
       suggestions,
       threadsOpened,
       threadsClosed,
+      diffStats: reviewData.diffStats ?? null,
     };
 
     this.trackingGateway.recordReviewEvent(projectPath, mrId, event);

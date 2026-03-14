@@ -150,6 +150,7 @@ describe('ReviewRequestTrackingGateway', () => {
         suggestions: 3,
         threadsClosed: 0,
         threadsOpened: 3,
+        diffStats: null,
       });
 
       const result = gateway.getById('/my/project', 'mr-1');
@@ -174,6 +175,7 @@ describe('ReviewRequestTrackingGateway', () => {
         suggestions: 0,
         threadsClosed: 2,
         threadsOpened: 0,
+        diffStats: null,
       });
 
       const result = gateway.getById('/my/project', 'mr-1');

@@ -1,4 +1,4 @@
-import type { ProjectStats, ReviewStats } from '../../services/statsService.js';
+import type { ProjectStats, ReviewStats } from '@/services/statsService.js';
 
 export class ReviewStatsFactory {
   static create(overrides: Partial<ReviewStats> = {}): ReviewStats {
@@ -12,6 +12,7 @@ export class ReviewStatsFactory {
       warnings: 2,
       suggestions: 3,
       assignedBy: 'developer',
+      diffStats: null,
       ...overrides,
     };
   }
@@ -26,6 +27,10 @@ export class ProjectStatsFactory {
       averageDuration: 0,
       totalBlocking: 0,
       totalWarnings: 0,
+      totalAdditions: 0,
+      totalDeletions: 0,
+      averageAdditions: null,
+      averageDeletions: null,
       reviews: [],
       lastUpdated: '2024-01-15T10:00:00Z',
       ...overrides,
@@ -34,10 +39,14 @@ export class ProjectStatsFactory {
 
   static withReviews(reviews: ReviewStats[]): ProjectStats {
     const totalDuration = reviews.reduce((sum, r) => sum + r.duration, 0);
-    const scores = reviews.filter((r) => r.score !== null).map((r) => r.score as number);
+    const scores = reviews.filter((r) => r.score !== null).map((r) => r.score ?? 0);
     const averageScore = scores.length > 0
       ? scores.reduce((a, b) => a + b, 0) / scores.length
       : null;
+
+    const reviewsWithDiffStats = reviews.filter((r) => r.diffStats != null);
+    const totalAdditions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.additions ?? 0), 0);
+    const totalDeletions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.deletions ?? 0), 0);
 
     return this.create({
       totalReviews: reviews.length,
@@ -46,6 +55,10 @@ export class ProjectStatsFactory {
       averageDuration: reviews.length > 0 ? totalDuration / reviews.length : 0,
       totalBlocking: reviews.reduce((sum, r) => sum + r.blocking, 0),
       totalWarnings: reviews.reduce((sum, r) => sum + r.warnings, 0),
+      totalAdditions,
+      totalDeletions,
+      averageAdditions: reviewsWithDiffStats.length > 0 ? totalAdditions / reviewsWithDiffStats.length : null,
+      averageDeletions: reviewsWithDiffStats.length > 0 ? totalDeletions / reviewsWithDiffStats.length : null,
       reviews,
     });
   }

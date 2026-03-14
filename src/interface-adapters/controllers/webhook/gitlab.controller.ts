@@ -29,6 +29,7 @@ import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/we
 import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/entities/diffMetadata/diffMetadata.gateway.js';
+import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 
 export function extractBaseUrl(remoteUrl: string): string | null {
   try {
@@ -52,6 +53,7 @@ export interface GitLabWebhookDependencies {
   reviewContextGateway: ReviewContextGateway;
   threadFetchGateway: ThreadFetchGateway;
   diffMetadataFetchGateway: DiffMetadataFetchGateway;
+  diffStatsFetchGateway: DiffStatsFetchGateway;
   trackAssignment: TrackAssignmentUseCase;
   recordCompletion: RecordReviewCompletionUseCase;
   recordPush: RecordPushUseCase;
@@ -356,8 +358,13 @@ export async function handleGitLabWebhook(
               const mrId = `gitlab-${j.projectPath}-${j.mrNumber}`;
               const updatedMr = syncThreads.execute({ projectPath: j.localPath, mrId });
 
-              // Record followup completion with parsed stats
-              // threadsClosed comes from THREAD_RESOLVE markers parsed from output
+              let followupDiffStats = null;
+              try {
+                followupDiffStats = deps.diffStatsFetchGateway.fetchDiffStats(j.projectPath, j.mrNumber);
+              } catch {
+                logger.warn({ mrNumber: j.mrNumber }, 'Failed to fetch diff stats for followup');
+              }
+
               recordCompletion.execute({
                 projectPath: j.localPath,
                 mrId,
@@ -370,6 +377,7 @@ export async function handleGitLabWebhook(
                   suggestions: parsed.suggestions,
                   threadsOpened: 0,
                   threadsClosed: threadResolveCount,
+                  diffStats: followupDiffStats,
                 },
               });
               logger.info(
@@ -587,8 +595,13 @@ export async function handleGitLabWebhook(
         }
       }
 
-      // Record review completion with parsed stats
-      // Only blocking issues count as open threads - warnings are informational
+      let reviewDiffStats = null;
+      try {
+        reviewDiffStats = deps.diffStatsFetchGateway.fetchDiffStats(j.projectPath, j.mrNumber);
+      } catch {
+        logger.warn({ mrNumber: j.mrNumber }, 'Failed to fetch diff stats for review');
+      }
+
       recordCompletion.execute({
         projectPath: j.localPath,
         mrId: `gitlab-${j.projectPath}-${j.mrNumber}`,
@@ -599,7 +612,8 @@ export async function handleGitLabWebhook(
           blocking: parsed.blocking,
           warnings: parsed.warnings,
           suggestions: parsed.suggestions,
-          threadsOpened: parsed.blocking, // Only blocking issues open threads
+          threadsOpened: parsed.blocking,
+          diffStats: reviewDiffStats,
         },
       });
 

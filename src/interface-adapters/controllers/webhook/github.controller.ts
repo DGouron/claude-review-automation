@@ -25,11 +25,13 @@ import { DEFAULT_AGENTS } from '@/entities/progress/agentDefinition.type.js';
 import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/entities/diffMetadata/diffMetadata.gateway.js';
+import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 
 export interface GitHubWebhookDependencies {
   reviewContextGateway: ReviewContextGateway;
   threadFetchGateway: ThreadFetchGateway;
   diffMetadataFetchGateway: DiffMetadataFetchGateway;
+  diffStatsFetchGateway: DiffStatsFetchGateway;
   trackAssignment: TrackAssignmentUseCase;
   recordCompletion: RecordReviewCompletionUseCase;
 }
@@ -312,8 +314,13 @@ export async function handleGitHubWebhook(
         );
       }
 
-      // Record review completion with parsed stats
-      // Only blocking issues count as open threads - warnings are informational
+      let reviewDiffStats = null;
+      try {
+        reviewDiffStats = deps.diffStatsFetchGateway.fetchDiffStats(j.projectPath, j.mrNumber);
+      } catch {
+        logger.warn({ prNumber: j.mrNumber }, 'Failed to fetch diff stats for review');
+      }
+
       recordCompletion.execute({
         projectPath: j.localPath,
         mrId: `github-${j.projectPath}-${j.mrNumber}`,
@@ -324,7 +331,8 @@ export async function handleGitHubWebhook(
           blocking: parsed.blocking,
           warnings: parsed.warnings,
           suggestions: parsed.suggestions,
-          threadsOpened: parsed.blocking, // Only blocking issues open threads
+          threadsOpened: parsed.blocking,
+          diffStats: reviewDiffStats,
         },
       });
 

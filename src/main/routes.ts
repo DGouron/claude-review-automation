@@ -23,6 +23,8 @@ import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/interface-ada
 import { GitLabDiffMetadataFetchGateway } from '@/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/interface-adapters/gateways/threadFetch.github.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
+import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
 import { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
 import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
@@ -118,6 +120,7 @@ export async function registerRoutes(
       reviewContextGateway: deps.reviewContextGateway,
       threadFetchGateway: threadFetchGw,
       diffMetadataFetchGateway: new GitLabDiffMetadataFetchGateway(defaultGitLabExecutor),
+      diffStatsFetchGateway: new GitLabDiffStatsFetchGateway(defaultGitLabExecutor),
       trackAssignment: new TrackAssignmentUseCase(trackingGw),
       recordCompletion: new RecordReviewCompletionUseCase(trackingGw),
       recordPush: new RecordPushUseCase(trackingGw),
@@ -134,6 +137,7 @@ export async function registerRoutes(
       reviewContextGateway: deps.reviewContextGateway,
       threadFetchGateway: gitHubThreadFetchGw,
       diffMetadataFetchGateway: new GitHubDiffMetadataFetchGateway(defaultGitHubExecutor),
+      diffStatsFetchGateway: new GitHubDiffStatsFetchGateway(defaultGitHubExecutor),
       trackAssignment: new TrackAssignmentUseCase(trackingGw),
       recordCompletion: new RecordReviewCompletionUseCase(trackingGw),
     });

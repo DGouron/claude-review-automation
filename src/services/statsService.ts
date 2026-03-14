@@ -1,19 +1,21 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
 /**
  * Individual review statistics
  */
 export interface ReviewStats {
-  id: string; // unique identifier (timestamp-based)
-  timestamp: string; // ISO 8601 timestamp
+  id: string;
+  timestamp: string;
   mrNumber: number;
-  duration: number; // milliseconds
-  score: number | null; // global score /10, null if not parseable
-  blocking: number; // count of blocking issues
-  warnings: number; // count of warnings/important issues
-  suggestions?: number; // count of suggestions
-  assignedBy?: string; // username of person who assigned the review
+  duration: number;
+  score: number | null;
+  blocking: number;
+  warnings: number;
+  suggestions?: number;
+  assignedBy?: string;
+  diffStats?: DiffStats | null;
 }
 
 /**
@@ -21,11 +23,15 @@ export interface ReviewStats {
  */
 export interface ProjectStats {
   totalReviews: number;
-  totalDuration: number; // milliseconds
+  totalDuration: number;
   averageScore: number | null;
-  averageDuration: number; // milliseconds
+  averageDuration: number;
   totalBlocking: number;
   totalWarnings: number;
+  totalAdditions: number;
+  totalDeletions: number;
+  averageAdditions: number | null;
+  averageDeletions: number | null;
   reviews: ReviewStats[];
   lastUpdated: string;
 }
@@ -89,6 +95,10 @@ function createEmptyStats(): ProjectStats {
     averageDuration: 0,
     totalBlocking: 0,
     totalWarnings: 0,
+    totalAdditions: 0,
+    totalDeletions: 0,
+    averageAdditions: null,
+    averageDeletions: null,
     reviews: [],
     lastUpdated: new Date().toISOString(),
   };
@@ -225,7 +235,8 @@ export function addReviewStats(
   mrNumber: number,
   duration: number,
   stdout: string,
-  assignedBy?: string
+  assignedBy?: string,
+  diffStats?: DiffStats | null
 ): ReviewStats {
   const stats = loadProjectStats(projectPath);
   const parsed = parseReviewOutput(stdout);
@@ -241,24 +252,28 @@ export function addReviewStats(
     warnings: parsed.warnings,
     suggestions: parsed.suggestions,
     assignedBy,
+    diffStats: diffStats ?? null,
   };
 
-  // Add to reviews array
   stats.reviews.push(reviewStats);
 
-  // Keep only last 100 reviews
   if (stats.reviews.length > 100) {
     stats.reviews = stats.reviews.slice(-100);
   }
 
-  // Recalculate aggregates
+  recalculateProjectStats(stats);
+  saveProjectStats(projectPath, stats);
+
+  return reviewStats;
+}
+
+function recalculateProjectStats(stats: ProjectStats): void {
   stats.totalReviews = stats.reviews.length;
   stats.totalDuration = stats.reviews.reduce((sum, r) => sum + r.duration, 0);
-  stats.averageDuration = stats.totalDuration / stats.totalReviews;
+  stats.averageDuration = stats.totalReviews > 0 ? stats.totalDuration / stats.totalReviews : 0;
   stats.totalBlocking = stats.reviews.reduce((sum, r) => sum + r.blocking, 0);
   stats.totalWarnings = stats.reviews.reduce((sum, r) => sum + r.warnings, 0);
 
-  // Calculate average score (only from reviews with scores)
   const reviewsWithScore = stats.reviews.filter((r) => r.score !== null);
   if (reviewsWithScore.length > 0) {
     stats.averageScore =
@@ -267,9 +282,17 @@ export function addReviewStats(
     stats.averageScore = null;
   }
 
-  saveProjectStats(projectPath, stats);
+  const reviewsWithDiffStats = stats.reviews.filter((r) => r.diffStats != null);
+  stats.totalAdditions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.additions ?? 0), 0);
+  stats.totalDeletions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.deletions ?? 0), 0);
 
-  return reviewStats;
+  if (reviewsWithDiffStats.length > 0) {
+    stats.averageAdditions = stats.totalAdditions / reviewsWithDiffStats.length;
+    stats.averageDeletions = stats.totalDeletions / reviewsWithDiffStats.length;
+  } else {
+    stats.averageAdditions = null;
+    stats.averageDeletions = null;
+  }
 }
 
 /**
