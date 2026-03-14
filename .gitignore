@@ -35,7 +35,6 @@ coverage/
 .worktrees/
 .security-key
 logs/security/
-.claude/skills
 .claude/memory
 
 .mcp.json

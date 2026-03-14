@@ -301,6 +301,15 @@ Use instead:
 2. `/architecture` -> Design the component structure
 3. `/tdd` -> Implement with Red-Green-Refactor cycle
 
+### Feature Pipeline Skills
+
+| Skill | When to use |
+|-------|-------------|
+| `/implement-feature` | Autonomous feature implementation (planner + TDD implementer agents) |
+| `/refactor-feature` | Spec-driven refactoring with contract tests + batch execution |
+| `/product-manager` | Spec tickets, challenge scope, RICE scoring (`/product-manager rice #XX`) |
+| `/agent-creator` | Design new Claude Code agents with patterns and checklist |
+
 ### Optional Skills
 
 | Skill | When to use |
@@ -321,6 +330,7 @@ These rules ALWAYS apply:
 - [Reformulation](rules/reformulation.md) -- reformulate if prompt is vague
 - [Prompt-structure](rules/prompt-structure.md) -- 4 mandatory blocks
 - [Scope-discipline](rules/scope-discipline.md) -- one change = one scope = one commit
+- [Coding-standards](rules/coding-standards.md) -- naming, imports, architecture layers, testing
 
 ## Roles (.claude/roles/)
 
@@ -337,6 +347,8 @@ These rules ALWAYS apply:
 
 | Agent | Role loaded | When |
 |-------|-------------|------|
+| feature-planner | architect | Plan feature implementation (read-only, produces structured plan) |
+| feature-implementer | senior-dev | Implement features via TDD with self-review loop |
 | architect | architect | Design & implement features |
 | reviewer | code-reviewer | Pre-PR code review |
 | product-manager | specifier | Specs & discovery |
