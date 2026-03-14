@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { Dependencies } from '@/main/dependencies.js';
@@ -13,6 +14,7 @@ import { logsRoutes } from '@/interface-adapters/controllers/http/logs.routes.js
 import { cliStatusRoutes } from '@/interface-adapters/controllers/http/cliStatus.routes.js';
 import { projectConfigRoutes } from '@/interface-adapters/controllers/http/projectConfig.routes.js';
 import { cleanupRoutes } from '@/interface-adapters/controllers/http/cleanup.routes.js';
+import { versionRoutes } from '@/interface-adapters/controllers/http/version.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/interface-adapters/controllers/webhook/github.controller.js';
@@ -27,9 +29,25 @@ import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
 import { TransitionStateUseCase } from '@/usecases/tracking/transitionState.usecase.js';
 import { CheckFollowupNeededUseCase } from '@/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/usecases/tracking/syncThreads.usecase.js';
+import { checkVersion } from '@/usecases/version/checkVersion.usecase.js';
+import { triggerSelfUpdate } from '@/usecases/version/triggerSelfUpdate.usecase.js';
+import { NpmPackageVersionGateway } from '@/interface-adapters/gateways/packageVersion.npm.gateway.js';
+import { VersionCacheMemoryGateway } from '@/interface-adapters/gateways/versionCache.memory.gateway.js';
+import { SelfUpdateCliGateway } from '@/interface-adapters/gateways/selfUpdate.cli.gateway.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+function readVersion(): string {
+  const packageJsonPath = join(__dirname, '..', '..', 'package.json');
+  const raw = readFileSync(packageJsonPath, 'utf-8');
+  return JSON.parse(raw).version;
+}
+
+const currentVersion = readVersion();
+const packageVersionGateway = new NpmPackageVersionGateway();
+const versionCache = new VersionCacheMemoryGateway();
+const selfUpdateCommand = new SelfUpdateCliGateway();
 
 export async function registerRoutes(
   app: FastifyInstance,
@@ -41,7 +59,8 @@ export async function registerRoutes(
   });
 
   await app.register(healthRoutes, {
-    getConfig: () => ({ version: '1.0.0' }),
+    getConfig: () => ({ version: currentVersion }),
+    versionCache,
   });
 
   await app.register(settingsRoutes);
@@ -74,6 +93,15 @@ export async function registerRoutes(
     reviewLogFileGateway: deps.reviewLogFileGateway,
     getRepositories: () => deps.config.repositories,
     logger: deps.logger,
+  });
+
+  await app.register(versionRoutes, {
+    checkVersion,
+    triggerSelfUpdate,
+    currentVersion,
+    packageVersionGateway,
+    versionCache,
+    selfUpdateCommand,
   });
 
   await app.register(logsRoutes);
@@ -128,7 +156,7 @@ export async function registerRoutes(
   app.get('/api', async () => {
     return {
       name: 'reviewflow',
-      version: '1.0.0',
+      version: currentVersion,
       endpoints: {
         dashboard: '/dashboard/',
         health: '/health',
@@ -138,4 +166,9 @@ export async function registerRoutes(
       },
     };
   });
+
+  checkVersion(
+    { currentVersion, forceRefresh: false },
+    { packageVersionGateway, cache: versionCache },
+  ).catch(() => {});
 }

@@ -207,6 +207,7 @@ const translations = {
 
     // Logs
     'logs.errorCount': '{{count}} errors',
+    'logs.clear': 'Clear logs',
 
     // Modal
     'modal.cancel.title': 'Cancel the {{type}} of {{label}} !{{number}} ({{type}})?',
@@ -236,6 +237,37 @@ const translations = {
     'error.cancelReview': 'Error cancelling review',
     'error.selectOrEnterPath': 'Select or enter a path',
     'error.projectNotLoaded': 'Load a project first',
+
+    // Collapsible lists
+    'collapsible.showMore': 'Show {{count}} more...',
+    'collapsible.showLess': 'Show less',
+
+    // MR Sheet
+    'sheet.scoreTimeline': 'Score Timeline',
+    'sheet.issuesBreakdown': 'Issues Breakdown',
+    'sheet.reviewHistory': 'Review History',
+    'sheet.details': 'Details',
+    'sheet.qualityScore': 'Quality Score',
+    'sheet.openThreads': 'Open Threads',
+    'sheet.reviewDuration': 'Review Duration',
+    'sheet.totalIssues': 'Total Issues',
+    'sheet.noData': 'No data yet',
+    'sheet.type': 'Type',
+    'sheet.date': 'Date',
+    'sheet.score': 'Score',
+    'sheet.blocking': 'Blocking',
+    'sheet.outOf10': '/10',
+    'sheet.target': 'Target: {{target}}/10',
+    'sheet.approve': 'Approve',
+
+    // Version update
+    'version.updateAvailable': 'Update to v{{version}}',
+    'version.checking': 'Checking...',
+    'version.updating': 'Updating...',
+    'version.upToDate': 'Up to date',
+    'version.updateFailed': 'Update failed',
+    'version.restarting': 'Restarting server...',
+    'version.checkTooltip': 'Check for updates',
   },
   fr: {
     // Time
@@ -442,6 +474,7 @@ const translations = {
 
     // Logs
     'logs.errorCount': '{{count}} erreurs',
+    'logs.clear': 'Vider les logs',
 
     // Modal
     'modal.cancel.title': 'Annuler la {{type}} de la {{label}} !{{number}} ({{type}}) ?',
@@ -471,6 +504,37 @@ const translations = {
     'error.cancelReview': "Erreur lors de l'annulation",
     'error.selectOrEnterPath': 'Sélectionnez ou entrez un chemin',
     'error.projectNotLoaded': "Charger un projet d'abord",
+
+    // MR Sheet
+    'sheet.scoreTimeline': 'Évolution du score',
+    'sheet.issuesBreakdown': 'Répartition des problèmes',
+    'sheet.reviewHistory': 'Historique des reviews',
+    'sheet.details': 'Détails',
+    'sheet.qualityScore': 'Score qualité',
+    'sheet.openThreads': 'Threads ouverts',
+    'sheet.reviewDuration': 'Durée de review',
+    'sheet.totalIssues': 'Total problèmes',
+    'sheet.noData': 'Pas encore de données',
+    'sheet.type': 'Type',
+    'sheet.date': 'Date',
+    'sheet.score': 'Score',
+    'sheet.blocking': 'Bloquants',
+    'sheet.outOf10': '/10',
+    'sheet.target': 'Cible : {{target}}/10',
+    'sheet.approve': 'Terminer',
+
+    // Version update
+    // Collapsible lists
+    'collapsible.showMore': 'Afficher {{count}} de plus...',
+    'collapsible.showLess': 'Réduire',
+
+    'version.updateAvailable': 'Mettre à jour vers v{{version}}',
+    'version.checking': 'Vérification...',
+    'version.updating': 'Mise à jour...',
+    'version.upToDate': 'À jour',
+    'version.updateFailed': 'Échec de la mise à jour',
+    'version.restarting': 'Redémarrage du serveur...',
+    'version.checkTooltip': 'Vérifier les mises à jour',
   },
 };
 

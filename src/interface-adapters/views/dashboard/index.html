@@ -13,6 +13,7 @@
       <div class="logo"><i data-lucide="bot"></i></div>
       <h1>Reviewflow</h1>
       <div class="header-actions">
+        <div id="version-update-area" class="version-update-area"></div>
         <button id="check-claude-btn" class="btn btn-primary" onclick="checkClaudeStatus()">
           <i data-lucide="search"></i> <span id="i18n-check-claude"></span>
         </button>
@@ -233,6 +234,11 @@
 
   <div id="toast-container" class="toast-container"></div>
 
+  <div id="mr-sheet-overlay" class="sheet-overlay" onclick="closeMrSheet()"></div>
+  <div id="mr-sheet" class="sheet-panel">
+    <div id="mr-sheet-content" class="sheet-content"></div>
+  </div>
+
   <script type="module">
     import { t, setLanguage, getLanguage } from './modules/i18n.js';
     import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
@@ -248,6 +254,9 @@
     import { getQualityProgress, getQualityTrend } from './modules/quality.js';
     import { createSessionMetricsState, trackSessionAction, updatePriorityItemTracking, getSessionMetricsSnapshot } from './modules/sessionMetrics.js';
     import { renderCleanupSection, handleCleanupClick } from './modules/cleanup.js';
+    import { renderVersionUpdateArea, setVersionCheckState } from './modules/versionUpdate.js';
+    import { renderCollapsibleList, toggleCollapsibleList } from './modules/collapsibleList.js';
+    import { renderMrSheetContent, drawScoreTimeline, drawIssuesBreakdown } from './modules/mrSheet.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -258,6 +267,7 @@
     let logsVisible = false;
 
     let currentData = { activeReviews: [], recentReviews: [], logs: [], reviewFiles: [], pendingFix: [], pendingApproval: [] };
+    const mrDataStore = new Map();
     let loadedReviews = {};
     let statsCollapsed = true;
     let focusStripCompact = false;
@@ -710,21 +720,13 @@
     }
 
     function updateLogs() {
-      const logsEl = document.getElementById('logs-content');
-      const errorCount = currentData.logs.filter(l => l.level === 'error' || l.level === 'warn').length;
-      const errorBadge = document.getElementById('error-count');
-
-      if (errorCount > 0) {
-        errorBadge.textContent = t('logs.errorCount', { count: errorCount });
-        errorBadge.classList.remove('hidden');
-      } else {
-        errorBadge.classList.add('hidden');
-      }
-
-      if (currentData.logs.length === 0) {
-        logsEl.innerHTML = `<div class="empty-state">${t('empty.logs')}</div>`;
-      } else {
-        logsEl.innerHTML = currentData.logs.slice().reverse().map(renderLog).join('');
+      const sheetLogsEl = document.querySelector('.sheet-logs-content');
+      if (sheetLogsEl && logsVisible) {
+        if (currentData.logs.length === 0) {
+          sheetLogsEl.innerHTML = `<div class="empty-state">${t('empty.logs')}</div>`;
+        } else {
+          sheetLogsEl.innerHTML = currentData.logs.slice().reverse().map(renderLog).join('');
+        }
       }
     }
 
@@ -893,7 +895,10 @@
       }
 
       completedSection?.classList.remove('hidden');
-      recentEl.innerHTML = currentData.reviewFiles.map(renderReviewFile).join('');
+      recentEl.innerHTML = renderCollapsibleList(
+        currentData.reviewFiles.map(renderReviewFile),
+        'completed-reviews', t
+      );
       applySectionExpansion('completed-reviews-section');
       refreshIcons();
     }
@@ -1052,19 +1057,58 @@
     }
 
     function toggleLogs() {
-      logsVisible = !logsVisible;
-      const logsSection = document.getElementById('logs-section');
-      const btn = document.getElementById('toggle-logs-btn');
+      const sheetPanel = document.getElementById('mr-sheet');
+      const isOpen = sheetPanel.classList.contains('open') && logsVisible;
 
-      if (logsVisible) {
-        logsSection.classList.remove('hidden');
-        btn.innerHTML = `<i data-lucide="scroll-text"></i> ${t('header.hideLogs')}`;
-        fetchLogs();
-      } else {
-        logsSection.classList.add('hidden');
-        btn.innerHTML = `<i data-lucide="scroll-text"></i> ${t('header.logs')}`;
+      if (isOpen) {
+        closeMrSheet();
+        logsVisible = false;
+        return;
       }
-      refreshIcons();
+
+      logsVisible = true;
+      const openLogsSheet = () => {
+        const contentEl = document.getElementById('mr-sheet-content');
+        contentEl.innerHTML = renderLogsSheetContent();
+        document.getElementById('mr-sheet-overlay').classList.add('open');
+        sheetPanel.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        refreshIcons();
+      };
+      fetchLogs().then(openLogsSheet).catch(openLogsSheet);
+    }
+
+    function renderLogsSheetContent() {
+      const errorCount = currentData.logs.filter(l => l.level === 'error' || l.level === 'warn').length;
+      const errorBadge = errorCount > 0
+        ? ` <span class="section-header badge-count">${t('logs.errorCount', { count: errorCount })}</span>`
+        : '';
+
+      const logsHtml = currentData.logs.length === 0
+        ? `<div class="empty-state">${t('empty.logs')}</div>`
+        : currentData.logs.slice().reverse().map(renderLog).join('');
+
+      return `
+        <button class="sheet-close" onclick="closeMrSheet()"><i data-lucide="x"></i></button>
+        <div class="sheet-mr-header">
+          <div>
+            <div class="sheet-mr-title"><i data-lucide="scroll-text"></i> ${t('section.logs')}${errorBadge}</div>
+          </div>
+        </div>
+        <div class="sheet-logs-body">
+          <div class="sheet-logs-content section-content logs">${logsHtml}</div>
+        </div>
+        <div class="sheet-logs-footer">
+          <button class="btn btn-secondary sheet-clear-btn" onclick="clearLogs()">
+            <i data-lucide="trash-2"></i> ${t('logs.clear')}
+          </button>
+        </div>
+      `;
+    }
+
+    function clearLogs() {
+      currentData.logs = [];
+      updateLogs();
     }
 
     function toggleStats() {
@@ -1120,7 +1164,7 @@
 
       return `
         <div class="mr-item-accordion" data-mr-id="${mr.id}">
-          <div class="mr-item-header" onclick="toggleMrAccordion('${accordionId}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+          <div class="mr-item-header" onclick="openMrSheet('${encodedMrId}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
             <div class="review-status ${type === 'pending-fix' ? 'running' : (type === 'pending-approval' && mr.totalWarnings > 0) ? 'warnings' : 'completed'}"></div>
             <div class="mr-info">
               <div class="mr-title">
@@ -1267,10 +1311,16 @@
         ? renderNowLane(queueLanesModel.nowLaneItem)
         : `<div class="empty-state">${t('queueLane.emptyNow')}</div>`;
       const needsFixContent = queueLanesModel.needsFixItems.length > 0
-        ? queueLanesModel.needsFixItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-fix')).join('')
+        ? renderCollapsibleList(
+            queueLanesModel.needsFixItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-fix')),
+            'needs-fix', t
+          )
         : `<div class="empty-state">${t('queueLane.emptyNeedsFix')}</div>`;
       const readyToApproveContent = queueLanesModel.readyToApproveItems.length > 0
-        ? queueLanesModel.readyToApproveItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-approval')).join('')
+        ? renderCollapsibleList(
+            queueLanesModel.readyToApproveItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-approval')),
+            'ready-to-approve', t
+          )
         : `<div class="empty-state">${t('queueLane.emptyReadyToApprove')}</div>`;
 
       return `
@@ -1331,6 +1381,11 @@
       pendingFixSection.classList.remove('hidden');
       const rankedPendingFix = rankPendingFixForNowLane(currentData.pendingFix);
       const queueLanesModel = buildQueueLanesModel(rankedPendingFix, currentData.pendingApproval);
+
+      mrDataStore.clear();
+      if (queueLanesModel.nowLaneItem) mrDataStore.set(queueLanesModel.nowLaneItem.id, { ...queueLanesModel.nowLaneItem, _sheetType: 'pending-fix' });
+      queueLanesModel.needsFixItems.forEach(mr => mrDataStore.set(mr.id, { ...mr, _sheetType: 'pending-fix' }));
+      queueLanesModel.readyToApproveItems.forEach(mr => mrDataStore.set(mr.id, { ...mr, _sheetType: 'pending-approval' }));
       sessionMetrics = updatePriorityItemTracking(sessionMetrics, {
         nowLaneItemId: queueLanesModel.nowLaneItem?.id ?? null,
         pendingFixIds: rankedPendingFix.map((mergeRequest) => String(mergeRequest.id)),
@@ -1577,6 +1632,14 @@
         currentData.activeReviews = data.jobs?.active || [];
         currentData.recentReviews = data.jobs?.recent || [];
         dispatchReviewNotifications(currentData.activeReviews, currentData.recentReviews);
+        const versionUpdateArea = document.getElementById('version-update-area');
+        if (versionUpdateArea) {
+          versionUpdateArea.innerHTML = renderVersionUpdateArea(
+            { currentVersion: data.version || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            t
+          );
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
         if (!wsConnected) updateConnectionStatus('online', 'connection.onlinePolling');
         updateUI();
       } catch (error) {
@@ -2088,7 +2151,101 @@
       updateProjectSelect();
     }
 
+    async function checkForUpdates() {
+      setVersionCheckState('checking', t);
+      try {
+        const response = await fetch(`${API_URL}/api/version/check`);
+        const data = await response.json();
+        const versionUpdateArea = document.getElementById('version-update-area');
+        if (versionUpdateArea) {
+          versionUpdateArea.innerHTML = renderVersionUpdateArea(
+            { currentVersion: data.currentVersion || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            t
+          );
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        if (!data.updateAvailable) {
+          showToast(t('version.upToDate'), 'success');
+        }
+      } catch (error) {
+        console.error('Error checking for updates:', error);
+        showToast(t('version.updateFailed'), 'error');
+      } finally {
+        setVersionCheckState('idle', t);
+      }
+    }
+
+    async function triggerVersionUpdate() {
+      setVersionCheckState('updating', t);
+      try {
+        const response = await fetch(`${API_URL}/api/version/update`, { method: 'POST' });
+        const data = await response.json();
+        if (data.status === 'started') {
+          setVersionCheckState('restarting', t);
+          showToast(t('version.restarting'), 'info');
+          setTimeout(() => {
+            const checkInterval = setInterval(async () => {
+              try {
+                const healthResponse = await fetch(`${API_URL}/health`);
+                if (healthResponse.ok) {
+                  clearInterval(checkInterval);
+                  window.location.reload();
+                }
+              } catch {
+                // Server still restarting, keep polling
+              }
+            }, 2000);
+            setTimeout(() => clearInterval(checkInterval), 60000);
+          }, 3000);
+        } else {
+          showToast(data.error || t('version.updateFailed'), 'error');
+          setVersionCheckState('idle', t);
+        }
+      } catch (error) {
+        console.error('Error triggering update:', error);
+        showToast(t('version.updateFailed'), 'error');
+        setVersionCheckState('idle', t);
+      }
+    }
+
+    function openMrSheet(encodedMrId) {
+      const mrId = safeDecodeURIComponent(encodedMrId);
+      const mr = mrDataStore.get(mrId);
+      if (!mr) return;
+
+      const contentEl = document.getElementById('mr-sheet-content');
+      contentEl.innerHTML = renderMrSheetContent(mr, t, mr._sheetType);
+
+      document.getElementById('mr-sheet-overlay').classList.add('open');
+      document.getElementById('mr-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      refreshIcons();
+
+      requestAnimationFrame(() => {
+        if (mr.reviews?.length) {
+          drawScoreTimeline('sheet-score-canvas', mr.reviews);
+        }
+        const totalResolved = (mr.openThreads ?? 0) === 0 ? 1 : 0;
+        drawIssuesBreakdown('sheet-issues-canvas', mr.totalBlocking || 0, mr.totalWarnings || 0, totalResolved);
+      });
+    }
+
+    function closeMrSheet() {
+      document.getElementById('mr-sheet-overlay').classList.remove('open');
+      document.getElementById('mr-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+      logsVisible = false;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMrSheet();
+    });
+
     // Expose functions to HTML onclick handlers
+    window.checkForUpdates = checkForUpdates;
+    window.triggerVersionUpdate = triggerVersionUpdate;
+    window.toggleCollapsibleList = toggleCollapsibleList;
     window.checkClaudeStatus = checkClaudeStatus;
     window.toggleLogs = toggleLogs;
     window.toggleStats = toggleStats;
@@ -2113,6 +2270,9 @@
     window.onUsefulLinkAction = onUsefulLinkAction;
     window.activateOnKeydown = activateOnKeydown;
     window.handleCleanupClick = handleCleanupClick;
+    window.openMrSheet = openMrSheet;
+    window.closeMrSheet = closeMrSheet;
+    window.clearLogs = clearLogs;
 
     // Init cleanup section
     const cleanupContent = document.getElementById('cleanup-content');
