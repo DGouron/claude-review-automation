@@ -234,6 +234,11 @@
 
   <div id="toast-container" class="toast-container"></div>
 
+  <div id="mr-sheet-overlay" class="sheet-overlay" onclick="closeMrSheet()"></div>
+  <div id="mr-sheet" class="sheet-panel">
+    <div id="mr-sheet-content" class="sheet-content"></div>
+  </div>
+
   <script type="module">
     import { t, setLanguage, getLanguage } from './modules/i18n.js';
     import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
@@ -251,6 +256,7 @@
     import { renderCleanupSection, handleCleanupClick } from './modules/cleanup.js';
     import { renderVersionUpdateArea, setVersionCheckState } from './modules/versionUpdate.js';
     import { renderCollapsibleList, toggleCollapsibleList } from './modules/collapsibleList.js';
+    import { renderMrSheetContent, drawScoreTimeline, drawIssuesBreakdown } from './modules/mrSheet.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -261,6 +267,7 @@
     let logsVisible = false;
 
     let currentData = { activeReviews: [], recentReviews: [], logs: [], reviewFiles: [], pendingFix: [], pendingApproval: [] };
+    const mrDataStore = new Map();
     let loadedReviews = {};
     let statsCollapsed = true;
     let focusStripCompact = false;
@@ -1126,7 +1133,7 @@
 
       return `
         <div class="mr-item-accordion" data-mr-id="${mr.id}">
-          <div class="mr-item-header" onclick="toggleMrAccordion('${accordionId}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+          <div class="mr-item-header" onclick="openMrSheet('${encodedMrId}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
             <div class="review-status ${type === 'pending-fix' ? 'running' : (type === 'pending-approval' && mr.totalWarnings > 0) ? 'warnings' : 'completed'}"></div>
             <div class="mr-info">
               <div class="mr-title">
@@ -1343,6 +1350,11 @@
       pendingFixSection.classList.remove('hidden');
       const rankedPendingFix = rankPendingFixForNowLane(currentData.pendingFix);
       const queueLanesModel = buildQueueLanesModel(rankedPendingFix, currentData.pendingApproval);
+
+      mrDataStore.clear();
+      if (queueLanesModel.nowLaneItem) mrDataStore.set(queueLanesModel.nowLaneItem.id, queueLanesModel.nowLaneItem);
+      queueLanesModel.needsFixItems.forEach(mr => mrDataStore.set(mr.id, mr));
+      queueLanesModel.readyToApproveItems.forEach(mr => mrDataStore.set(mr.id, mr));
       sessionMetrics = updatePriorityItemTracking(sessionMetrics, {
         nowLaneItemId: queueLanesModel.nowLaneItem?.id ?? null,
         pendingFixIds: rankedPendingFix.map((mergeRequest) => String(mergeRequest.id)),
@@ -2165,6 +2177,39 @@
       }
     }
 
+    function openMrSheet(encodedMrId) {
+      const mrId = safeDecodeURIComponent(encodedMrId);
+      const mr = mrDataStore.get(mrId);
+      if (!mr) return;
+
+      const contentEl = document.getElementById('mr-sheet-content');
+      contentEl.innerHTML = renderMrSheetContent(mr, t);
+
+      document.getElementById('mr-sheet-overlay').classList.add('open');
+      document.getElementById('mr-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      refreshIcons();
+
+      requestAnimationFrame(() => {
+        if (mr.reviews?.length) {
+          drawScoreTimeline('sheet-score-canvas', mr.reviews);
+        }
+        const totalResolved = (mr.openThreads ?? 0) === 0 ? 1 : 0;
+        drawIssuesBreakdown('sheet-issues-canvas', mr.totalBlocking || 0, mr.totalWarnings || 0, totalResolved);
+      });
+    }
+
+    function closeMrSheet() {
+      document.getElementById('mr-sheet-overlay').classList.remove('open');
+      document.getElementById('mr-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMrSheet();
+    });
+
     // Expose functions to HTML onclick handlers
     window.checkForUpdates = checkForUpdates;
     window.triggerVersionUpdate = triggerVersionUpdate;
@@ -2193,6 +2238,8 @@
     window.onUsefulLinkAction = onUsefulLinkAction;
     window.activateOnKeydown = activateOnKeydown;
     window.handleCleanupClick = handleCleanupClick;
+    window.openMrSheet = openMrSheet;
+    window.closeMrSheet = closeMrSheet;
 
     // Init cleanup section
     const cleanupContent = document.getElementById('cleanup-content');

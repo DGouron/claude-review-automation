@@ -241,6 +241,23 @@ const translations = {
     'collapsible.showMore': 'Show {{count}} more...',
     'collapsible.showLess': 'Show less',
 
+    // MR Sheet
+    'sheet.scoreTimeline': 'Score Timeline',
+    'sheet.issuesBreakdown': 'Issues Breakdown',
+    'sheet.reviewHistory': 'Review History',
+    'sheet.details': 'Details',
+    'sheet.qualityScore': 'Quality Score',
+    'sheet.openThreads': 'Open Threads',
+    'sheet.reviewDuration': 'Review Duration',
+    'sheet.totalIssues': 'Total Issues',
+    'sheet.noData': 'No data yet',
+    'sheet.type': 'Type',
+    'sheet.date': 'Date',
+    'sheet.score': 'Score',
+    'sheet.blocking': 'Blocking',
+    'sheet.outOf10': '/10',
+    'sheet.target': 'Target: {{target}}/10',
+
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
     'version.checking': 'Checking...',
@@ -484,6 +501,23 @@ const translations = {
     'error.cancelReview': "Erreur lors de l'annulation",
     'error.selectOrEnterPath': 'Sélectionnez ou entrez un chemin',
     'error.projectNotLoaded': "Charger un projet d'abord",
+
+    // MR Sheet
+    'sheet.scoreTimeline': 'Évolution du score',
+    'sheet.issuesBreakdown': 'Répartition des problèmes',
+    'sheet.reviewHistory': 'Historique des reviews',
+    'sheet.details': 'Détails',
+    'sheet.qualityScore': 'Score qualité',
+    'sheet.openThreads': 'Threads ouverts',
+    'sheet.reviewDuration': 'Durée de review',
+    'sheet.totalIssues': 'Total problèmes',
+    'sheet.noData': 'Pas encore de données',
+    'sheet.type': 'Type',
+    'sheet.date': 'Date',
+    'sheet.score': 'Score',
+    'sheet.blocking': 'Bloquants',
+    'sheet.outOf10': '/10',
+    'sheet.target': 'Cible : {{target}}/10',
 
     // Version update
     // Collapsible lists
