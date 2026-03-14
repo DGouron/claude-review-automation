@@ -12,6 +12,7 @@ import { mrTrackingAdvancedRoutes } from '@/interface-adapters/controllers/http/
 import { logsRoutes } from '@/interface-adapters/controllers/http/logs.routes.js';
 import { cliStatusRoutes } from '@/interface-adapters/controllers/http/cliStatus.routes.js';
 import { projectConfigRoutes } from '@/interface-adapters/controllers/http/projectConfig.routes.js';
+import { cleanupRoutes } from '@/interface-adapters/controllers/http/cleanup.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/interface-adapters/controllers/webhook/github.controller.js';
@@ -65,6 +66,13 @@ export async function registerRoutes(
   await app.register(mrTrackingAdvancedRoutes, {
     getRepositories: () => deps.config.repositories,
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+    logger: deps.logger,
+  });
+
+  await app.register(cleanupRoutes, {
+    reviewFileGateway: deps.reviewFileGateway,
+    reviewLogFileGateway: deps.reviewLogFileGateway,
+    getRepositories: () => deps.config.repositories,
     logger: deps.logger,
   });
 

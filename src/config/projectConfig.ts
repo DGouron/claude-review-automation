@@ -14,6 +14,7 @@ export interface ProjectConfig {
   reviewSkill: string;
   reviewFollowupSkill: string;
   language: Language;
+  retentionDays: number;
   agents?: AgentDefinition[];
   followupAgents?: AgentDefinition[];
 }
@@ -21,6 +22,15 @@ export interface ProjectConfig {
 /**
  * Validate agents array structure
  */
+const DEFAULT_RETENTION_DAYS = 14;
+
+function parseRetentionDays(value: unknown): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1) {
+    return value;
+  }
+  return DEFAULT_RETENTION_DAYS;
+}
+
 function validateAgents(agents: unknown): agents is AgentDefinition[] {
   if (!Array.isArray(agents)) {
     return false;
@@ -91,6 +101,7 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
     reviewSkill: String(parsed.reviewSkill),
     reviewFollowupSkill: String(parsed.reviewFollowupSkill),
     language: parsed.language === 'fr' ? 'fr' : 'en',
+    retentionDays: parseRetentionDays(parsed.retentionDays),
     agents: parsed.agents as AgentDefinition[] | undefined,
     followupAgents: parsed.followupAgents as AgentDefinition[] | undefined,
   };
@@ -123,6 +134,15 @@ export function getProjectLanguage(localPath: string): Language {
 /**
  * Get followup agents from project config or undefined for defaults
  */
+export function getProjectRetentionDays(localPath: string): number {
+  try {
+    const config = loadProjectConfig(localPath);
+    return config?.retentionDays ?? DEFAULT_RETENTION_DAYS;
+  } catch {
+    return DEFAULT_RETENTION_DAYS;
+  }
+}
+
 export function getFollowupAgents(localPath: string): AgentDefinition[] | undefined {
   try {
     const config = loadProjectConfig(localPath);

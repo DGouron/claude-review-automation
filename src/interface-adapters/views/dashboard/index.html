@@ -206,6 +206,13 @@
       </div>
     </div>
 
+    <div class="section" id="cleanup-section">
+      <div class="section-header">
+        <i data-lucide="trash-2"></i> <span>Nettoyage</span>
+      </div>
+      <div class="section-content" id="cleanup-content"></div>
+    </div>
+
     <div class="refresh-info">
       <span id="connection-mode"></span> • <span id="i18n-connection-fallback"></span>
       <span class="refresh-separator"> • </span>
@@ -240,6 +247,7 @@
     import { rankPendingFixForNowLane } from './modules/priority.js';
     import { getQualityProgress, getQualityTrend } from './modules/quality.js';
     import { createSessionMetricsState, trackSessionAction, updatePriorityItemTracking, getSessionMetricsSnapshot } from './modules/sessionMetrics.js';
+    import { renderCleanupSection, handleCleanupClick } from './modules/cleanup.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -2079,6 +2087,13 @@
     window.toggleSection = toggleSection;
     window.onUsefulLinkAction = onUsefulLinkAction;
     window.activateOnKeydown = activateOnKeydown;
+    window.handleCleanupClick = handleCleanupClick;
+
+    // Init cleanup section
+    const cleanupContent = document.getElementById('cleanup-content');
+    if (cleanupContent) {
+      cleanupContent.innerHTML = renderCleanupSection(14);
+    }
 
     // Init
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
