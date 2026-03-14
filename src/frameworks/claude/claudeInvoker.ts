@@ -12,6 +12,11 @@ import { getProjectAgents, getFollowupAgents } from '@/config/projectConfig.js';
 import { addReviewStats } from '@/services/statsService.js';
 import { FileSystemReviewRequestTrackingGateway } from '@/interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { ProjectStatsCalculator } from '@/interface-adapters/presenters/projectStats.calculator.js';
+import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
+import { defaultGitLabExecutor } from '@/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
+import { defaultGitHubExecutor } from '@/interface-adapters/gateways/threadFetch.github.gateway.js';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';
 import { buildLanguageDirective } from '@/frameworks/claude/languageDirective.js';
@@ -513,7 +518,17 @@ export async function invokeClaudeReview(
             const mrDetails = trackingGateway.getById(job.localPath, mrId);
             const assignedBy = mrDetails?.assignment?.username;
 
-            const reviewStats = addReviewStats(job.localPath, job.mrNumber, durationMs, stdout, assignedBy);
+            let diffStats: DiffStats | null = null;
+            try {
+              const diffStatsFetchGateway = job.platform === 'github'
+                ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
+                : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor);
+              diffStats = diffStatsFetchGateway.fetchDiffStats(job.projectPath, job.mrNumber);
+            } catch {
+              logger.warn({ jobId: job.id }, 'Failed to fetch diff stats, continuing without');
+            }
+
+            const reviewStats = addReviewStats(job.localPath, job.mrNumber, durationMs, stdout, assignedBy, diffStats);
             logger.info({ reviewStats }, 'Stats de review enregistrées');
           } catch (statsError) {
             logger.warn({ error: statsError }, 'Erreur lors de l\'enregistrement des stats');

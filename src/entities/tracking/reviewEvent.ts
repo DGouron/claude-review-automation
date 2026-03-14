@@ -1,3 +1,5 @@
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+
 export interface ReviewEvent {
   type: 'review' | 'followup';
   timestamp: string;
@@ -8,4 +10,5 @@ export interface ReviewEvent {
   suggestions: number;
   threadsClosed: number;
   threadsOpened: number;
+  diffStats: DiffStats | null;
 }

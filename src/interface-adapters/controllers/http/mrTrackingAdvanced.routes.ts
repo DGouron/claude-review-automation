@@ -17,6 +17,8 @@ import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '../../gateways/
 import { GitLabDiffMetadataFetchGateway } from '../../gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '../../gateways/diffMetadataFetch.github.gateway.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '../../../main/websocket.js';
+import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
 
 interface MrTrackingAdvancedRoutesOptions {
@@ -209,8 +211,16 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
         const syncUseCase = new SyncThreadsUseCase(reviewRequestTrackingGateway, threadFetchGateway);
         const updatedMr = syncUseCase.execute({ projectPath: job.localPath, mrId });
 
-        // Record followup completion with parsed stats
-        // threadsClosed comes from THREAD_RESOLVE markers parsed from output
+        let diffStats = null;
+        try {
+          const diffStatsFetchGateway = job.platform === 'github'
+            ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
+            : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor);
+          diffStats = diffStatsFetchGateway.fetchDiffStats(job.projectPath, job.mrNumber);
+        } catch {
+          logger.warn({ mrNumber: job.mrNumber }, 'Failed to fetch diff stats for manual followup');
+        }
+
         const recordCompletion = new RecordReviewCompletionUseCase(reviewRequestTrackingGateway);
         recordCompletion.execute({
           projectPath: job.localPath,
@@ -224,6 +234,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
             suggestions: parsed.suggestions,
             threadsOpened: 0,
             threadsClosed: threadResolveCount,
+            diffStats,
           },
         });
 
