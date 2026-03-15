@@ -1,4 +1,5 @@
-import type { ProjectStats, ReviewStats } from '@/services/statsService.js';
+import type { ProjectStats, ReviewStats } from '@/entities/stats/projectStats.js';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
 export class ReviewStatsFactory {
   static create(overrides: Partial<ReviewStats> = {}): ReviewStats {
@@ -12,9 +13,12 @@ export class ReviewStatsFactory {
       warnings: 2,
       suggestions: 3,
       assignedBy: 'developer',
-      diffStats: null,
       ...overrides,
     };
+  }
+
+  static withDiffStats(diffStats: DiffStats, overrides: Partial<ReviewStats> = {}): ReviewStats {
+    return this.create({ diffStats, ...overrides });
   }
 }
 
@@ -39,9 +43,9 @@ export class ProjectStatsFactory {
 
   static withReviews(reviews: ReviewStats[]): ProjectStats {
     const totalDuration = reviews.reduce((sum, r) => sum + r.duration, 0);
-    const scores = reviews.filter((r) => r.score !== null).map((r) => r.score ?? 0);
-    const averageScore = scores.length > 0
-      ? scores.reduce((a, b) => a + b, 0) / scores.length
+    const reviewsWithScore = reviews.filter((r) => r.score !== null);
+    const averageScore = reviewsWithScore.length > 0
+      ? reviewsWithScore.reduce((sum, r) => sum + (r.score ?? 0), 0) / reviewsWithScore.length
       : null;
 
     const reviewsWithDiffStats = reviews.filter((r) => r.diffStats != null);

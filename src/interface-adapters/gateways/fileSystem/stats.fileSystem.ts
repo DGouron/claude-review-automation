@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import type { StatsGateway } from '../stats.gateway.js';
-import type { ProjectStats } from '../../../services/statsService.js';
+import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
+import type { ProjectStats } from '@/entities/stats/projectStats.js';
 
 function getStatsPath(projectPath: string): string {
   return join(projectPath, '.claude', 'reviews', 'stats.json');

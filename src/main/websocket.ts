@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
 import type { ReviewProgress, ProgressEvent } from '../entities/progress/progress.type.js';
+import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
 import type { Dependencies } from './dependencies.js';
 import { getJobsStatus, setProgressChangeCallback, setStateChangeCallback, updateJobProgress } from '../frameworks/queue/pQueueAdapter.js';
 import { onLog, type LogEntry } from '../frameworks/logging/logBuffer.js';
@@ -51,6 +52,21 @@ function broadcastStateChange(): void {
     type: 'state',
     activeReviews: jobs.active,
     recentReviews: jobs.recent,
+    timestamp: new Date().toISOString(),
+  });
+
+  for (const client of wsClients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
+  }
+}
+
+export function broadcastBackfillProgress(progress: BackfillProgress): void {
+  const messageType = progress.status === 'completed' ? 'backfill-complete' : 'backfill-progress';
+  const message = JSON.stringify({
+    type: messageType,
+    data: progress,
     timestamp: new Date().toISOString(),
   });
 

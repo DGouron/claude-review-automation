@@ -1,7 +1,9 @@
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 
-export type CommandExecutor = (command: string) => string;
+import type { SimpleCommandExecutor } from '@/shared/foundation/commandExecutor.js';
+
+export type CommandExecutor = SimpleCommandExecutor;
 
 interface GitHubPullRequestStatsResponse {
   additions: number;
@@ -15,7 +17,7 @@ export class GitHubDiffStatsFetchGateway implements DiffStatsFetchGateway {
   fetchDiffStats(projectPath: string, mergeRequestNumber: number): DiffStats | null {
     try {
       const response = this.executor(
-        `gh api repos/${projectPath}/pulls/${mergeRequestNumber}`
+        `gh api repos/${projectPath}/pulls/${mergeRequestNumber}`,
       );
       const pullRequest: GitHubPullRequestStatsResponse = JSON.parse(response);
 
@@ -28,9 +30,9 @@ export class GitHubDiffStatsFetchGateway implements DiffStatsFetchGateway {
       }
 
       return {
+        commitsCount: pullRequest.commits,
         additions: pullRequest.additions,
         deletions: pullRequest.deletions,
-        commitsCount: pullRequest.commits,
       };
     } catch {
       return null;

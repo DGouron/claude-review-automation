@@ -2771,6 +2771,11 @@ input:focus-visible,
 .sheet-stat-card.threads .sheet-stat-value { color: var(--nsc-danger); }
 .sheet-stat-card.duration .sheet-stat-value { color: var(--nsc-focus); }
 .sheet-stat-card.issues .sheet-stat-value { color: var(--nsc-warning); }
+.sheet-stat-card.commits::before { background: var(--nsc-text-secondary); }
+.sheet-stat-card.additions-card::before { background: var(--nsc-success); }
+.sheet-stat-card.additions-card .sheet-stat-value { color: var(--nsc-success); }
+.sheet-stat-card.deletions-card::before { background: var(--nsc-danger); }
+.sheet-stat-card.deletions-card .sheet-stat-value { color: var(--nsc-danger); }
 
 .sheet-stat-detail {
   font-size: 0.7rem;
@@ -2904,4 +2909,98 @@ input:focus-visible,
   .sheet-stats-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Stats charts */
+.stats-charts-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+  grid-column: 1 / -1;
+}
+
+.stats-chart-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(130, 170, 220, 0.08);
+  border-radius: 12px;
+  padding: 0.85rem;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.stats-chart-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.stats-chart-card:hover {
+  border-color: rgba(130, 170, 220, 0.15);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stats-chart-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--nsc-text-secondary);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stats-chart-title [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
+.stats-canvas {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+.stats-canvas-wide {
+  width: 100%;
+  height: 120px;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .stats-charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Developer filter */
+.dev-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.dev-filter-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid rgba(130, 170, 220, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--nsc-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dev-filter-btn:hover {
+  background: rgba(122, 216, 255, 0.06);
+  border-color: rgba(122, 216, 255, 0.2);
+  color: var(--nsc-text-secondary);
+}
+
+.dev-filter-btn.active {
+  background: rgba(122, 216, 255, 0.12);
+  border-color: rgba(122, 216, 255, 0.3);
+  color: var(--nsc-focus);
 }

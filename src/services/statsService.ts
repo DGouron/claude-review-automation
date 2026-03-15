@@ -1,40 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import type { ReviewStats, ProjectStats } from '@/entities/stats/projectStats.js';
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
-/**
- * Individual review statistics
- */
-export interface ReviewStats {
-  id: string;
-  timestamp: string;
-  mrNumber: number;
-  duration: number;
-  score: number | null;
-  blocking: number;
-  warnings: number;
-  suggestions?: number;
-  assignedBy?: string;
-  diffStats?: DiffStats | null;
-}
-
-/**
- * Aggregated project statistics
- */
-export interface ProjectStats {
-  totalReviews: number;
-  totalDuration: number;
-  averageScore: number | null;
-  averageDuration: number;
-  totalBlocking: number;
-  totalWarnings: number;
-  totalAdditions: number;
-  totalDeletions: number;
-  averageAdditions: number | null;
-  averageDeletions: number | null;
-  reviews: ReviewStats[];
-  lastUpdated: string;
-}
+export type { ReviewStats, ProjectStats };
 
 /**
  * Get the stats file path for a project
@@ -109,15 +78,15 @@ function createEmptyStats(): ProjectStats {
  *
  * Supports two formats:
  * 1. Summary format (from skill output):
- *    📊 Score global : X/10
- *    🚨 Bloquants : X
- *    ⚠️ Importants : X
+ *    Score global : X/10
+ *    Bloquants : X
+ *    Importants : X
  *
  * 2. Structured stats line:
  *    [REVIEW_STATS:blocking=X:warnings=X:suggestions=X:score=X]
  *
  * 3. Inline markers (fallback):
- *    🚨 [BLOQUANT], ⚠️ [IMPORTANT], 💡 [SUGGESTION]
+ *    [BLOQUANT], [IMPORTANT], [SUGGESTION]
  */
 export function parseReviewOutput(stdout: string): {
   score: number | null;
@@ -149,25 +118,21 @@ export function parseReviewOutput(stdout: string): {
   }
 
   // Method 2: Parse summary format (skill output)
-  // 📊 Score global : X/10
   const scoreMatch = stdout.match(/Score\s+[Gg]lobal\s*:\s*(\d+(?:\.\d+)?)\s*\/\s*10/i);
   if (scoreMatch) {
     score = Number.parseFloat(scoreMatch[1]);
   }
 
-  // 🚨 Bloquants : X (summary count)
   const blockingSummary = stdout.match(/🚨\s*Bloquants?\s*:\s*(\d+)/i);
   if (blockingSummary) {
     blocking = Number.parseInt(blockingSummary[1], 10);
   }
 
-  // ⚠️ Importants : X (summary count)
   const warningsSummary = stdout.match(/⚠️\s*Importants?\s*:\s*(\d+)/i);
   if (warningsSummary) {
     warnings = Number.parseInt(warningsSummary[1], 10);
   }
 
-  // 📝 Améliorations/Suggestions : X (summary count)
   const suggestionsSummary = stdout.match(/(?:📝|💡)\s*(?:Améliorations?|Suggestions?)[^:]*:\s*(\d+)/i);
   if (suggestionsSummary) {
     suggestions = Number.parseInt(suggestionsSummary[1], 10);
@@ -179,13 +144,11 @@ export function parseReviewOutput(stdout: string): {
   }
 
   // Method 3: Fallback - count inline markers
-  // 🚨 [BLOQUANT] or 🚨 **[BLOQUANT]**
   const blockingMatches = stdout.match(/🚨\s*\*?\*?\[BLOQUANT\]/gi);
   if (blockingMatches) {
     blocking = blockingMatches.length;
   }
 
-  // Alternative: count "### " headers under "## Corrections Bloquantes"
   const blockingSection = stdout.match(/##\s+Corrections?\s+Bloquantes?[\s\S]*?(?=##\s|$)/i);
   if (blockingSection) {
     const blockingHeaders = blockingSection[0].match(/^###\s+\d+\./gm);
@@ -194,13 +157,11 @@ export function parseReviewOutput(stdout: string): {
     }
   }
 
-  // ⚠️ [IMPORTANT] or ⚠️ **[IMPORTANT]**
   const warningMatches = stdout.match(/⚠️\s*\*?\*?\[IMPORTANT\]/gi);
   if (warningMatches) {
     warnings = warningMatches.length;
   }
 
-  // Alternative: count "### " headers under "## Corrections Importantes"
   const warningSection = stdout.match(/##\s+Corrections?\s+Importantes?[\s\S]*?(?=##\s|$)/i);
   if (warningSection) {
     const warningHeaders = warningSection[0].match(/^###\s+\d+\./gm);
@@ -209,13 +170,11 @@ export function parseReviewOutput(stdout: string): {
     }
   }
 
-  // 💡 [SUGGESTION] or 💡 **[SUGGESTION]**
   const suggestionMatches = stdout.match(/💡\s*\*?\*?\[SUGGESTION\]/gi);
   if (suggestionMatches) {
     suggestions = suggestionMatches.length;
   }
 
-  // Alternative: count "### " headers under "## Suggestions"
   const suggestionSection = stdout.match(/##\s+Suggestions?[\s\S]*?(?=##\s|$)/i);
   if (suggestionSection) {
     const suggestionHeaders = suggestionSection[0].match(/^###\s+\d+\./gm);

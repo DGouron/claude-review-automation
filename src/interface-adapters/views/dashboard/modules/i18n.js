@@ -174,6 +174,15 @@ const translations = {
     'stats.averageTime': 'Average time',
     'stats.blocking': 'Blocking',
     'stats.warnings': 'Important',
+    'stats.recalculate': 'Recalculate',
+    'stats.backfillProgress': '{{completed}}/{{total}} reviews',
+    'stats.backfillComplete': 'Recalculation complete',
+    'stats.backfillFailed': '{{failed}} errors',
+    'stats.scoreTrend': 'Score Trend',
+    'stats.reviewActivity': 'Review Activity',
+    'stats.scoreDistribution': 'Score Distribution',
+    'stats.noChartData': 'Not enough data',
+    'error.recalculateStats': 'Recalculation error',
 
     // Review types
     'review.type.review': 'Review',
@@ -259,6 +268,13 @@ const translations = {
     'sheet.outOf10': '/10',
     'sheet.target': 'Target: {{target}}/10',
     'sheet.approve': 'Approve',
+    'sheet.commits': 'Commits',
+    'sheet.additions': 'Additions',
+    'sheet.deletions': 'Deletions',
+
+    // Stats filters
+    'stats.allDevs': 'All',
+    'stats.filterByDev': 'Filter by developer',
 
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
@@ -441,6 +457,15 @@ const translations = {
     'stats.averageTime': 'Durée moyenne',
     'stats.blocking': 'Bloquants',
     'stats.warnings': 'Importants',
+    'stats.recalculate': 'Recalculer',
+    'stats.backfillProgress': '{{completed}}/{{total}} reviews',
+    'stats.backfillComplete': 'Recalcul terminé',
+    'stats.backfillFailed': '{{failed}} erreurs',
+    'stats.scoreTrend': 'Tendance du score',
+    'stats.reviewActivity': 'Activité des reviews',
+    'stats.scoreDistribution': 'Distribution des scores',
+    'stats.noChartData': 'Pas assez de données',
+    'error.recalculateStats': 'Erreur de recalcul',
 
     // Review types
     'review.type.review': 'Review',
@@ -522,6 +547,13 @@ const translations = {
     'sheet.outOf10': '/10',
     'sheet.target': 'Cible : {{target}}/10',
     'sheet.approve': 'Terminer',
+    'sheet.commits': 'Commits',
+    'sheet.additions': 'Ajouts',
+    'sheet.deletions': 'Suppressions',
+
+    // Stats filters
+    'stats.allDevs': 'Tous',
+    'stats.filterByDev': 'Filtrer par développeur',
 
     // Version update
     // Collapsible lists

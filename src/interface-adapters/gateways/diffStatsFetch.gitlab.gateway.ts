@@ -1,7 +1,9 @@
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 
-export type CommandExecutor = (command: string) => string;
+import type { SimpleCommandExecutor } from '@/shared/foundation/commandExecutor.js';
+
+export type CommandExecutor = SimpleCommandExecutor;
 
 interface GitLabMergeRequestStatsResponse {
   additions: number;
@@ -16,7 +18,7 @@ export class GitLabDiffStatsFetchGateway implements DiffStatsFetchGateway {
       const encodedProject = projectPath.replace(/\//g, '%2F');
 
       const mrResponse = this.executor(
-        `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}`
+        `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}`,
       );
       const mergeRequest: GitLabMergeRequestStatsResponse = JSON.parse(mrResponse);
 
@@ -28,7 +30,7 @@ export class GitLabDiffStatsFetchGateway implements DiffStatsFetchGateway {
       }
 
       const commitsResponse = this.executor(
-        `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}/commits`
+        `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}/commits`,
       );
       const commits: unknown[] = JSON.parse(commitsResponse);
 
