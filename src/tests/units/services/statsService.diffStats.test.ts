@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { ReviewStats, ProjectStats } from '@/services/statsService.js';
+import type { ReviewStats, ProjectStats } from '@/entities/stats/projectStats.js';
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
 describe('ReviewStats with diffStats extension', () => {

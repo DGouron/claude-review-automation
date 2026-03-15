@@ -1,7 +1,9 @@
 import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
-export type CommandExecutor = (command: string) => string;
+import type { SimpleCommandExecutor } from '@/shared/foundation/commandExecutor.js';
+
+export type CommandExecutor = SimpleCommandExecutor;
 
 interface GitHubPullRequestResponse {
   commits: number;

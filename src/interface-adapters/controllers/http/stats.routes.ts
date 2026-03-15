@@ -1,10 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { StatsGateway } from '@/interface-adapters/gateways/stats.gateway.js';
+import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
 import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
 import { getStatsSummary } from '@/services/statsService.js';
-import { recalculateProjectStats } from '@/usecases/stats/recalculateProjectStats.usecase.js';
-import { backfillDiffStats } from '@/usecases/stats/backfillDiffStats.usecase.js';
+import { recalculateWithBackfill } from '@/usecases/stats/recalculateWithBackfill.usecase.js';
+import { safeParseRecalculateBody } from '@/entities/stats/recalculateBody.guard.js';
 
 interface RepositoryInfo {
   localPath: string;
@@ -65,7 +65,8 @@ export const statsRoutes: FastifyPluginAsync<StatsRoutesOptions> = async (
   });
 
   fastify.post('/api/stats/recalculate', async (request, reply) => {
-    const body = request.body as { path?: string; backfill?: boolean } | null;
+    const parseResult = safeParseRecalculateBody(request.body);
+    const body = parseResult.success ? parseResult.data : null;
     const projectPath = typeof body?.path === 'string' ? body.path.trim() : '';
     const shouldBackfill = body?.backfill === true;
 
@@ -85,42 +86,23 @@ export const statsRoutes: FastifyPluginAsync<StatsRoutesOptions> = async (
     }
 
     const { diffStatsFetchGateways, broadcastBackfillProgress, logger } = options;
+    const noopLogger = { warn: () => {}, error: () => {} };
 
-    const executeRecalculation = async () => {
-      try {
-        if (shouldBackfill && diffStatsFetchGateways && repository.platform) {
-          const platform = repository.platform === 'github' ? 'github' : 'gitlab';
-          const gateway = diffStatsFetchGateways[platform];
-
-          await backfillDiffStats(
-            {
-              projectPath,
-              onProgress: (progress) => {
-                broadcastBackfillProgress?.(progress);
-              },
-            },
-            {
-              statsGateway,
-              diffStatsFetchGateway: gateway,
-              logger: logger ?? { warn: () => {} },
-            },
-          );
-        }
-
-        recalculateProjectStats(projectPath, { statsGateway });
-
-        broadcastBackfillProgress?.({
-          total: 0,
-          completed: 0,
-          failed: 0,
-          status: 'completed',
-        });
-      } catch (error) {
-        logger?.error('Recalculation failed', { projectPath, error });
-      }
-    };
-
-    executeRecalculation();
+    recalculateWithBackfill(
+      {
+        projectPath,
+        shouldBackfill,
+        platform: repository.platform ?? null,
+      },
+      {
+        statsGateway,
+        diffStatsFetchGateways: diffStatsFetchGateways ?? null,
+        onProgress: (progress) => {
+          broadcastBackfillProgress?.(progress);
+        },
+        logger: logger ? { warn: logger.warn, error: logger.error } : noopLogger,
+      },
+    );
 
     return { status: 'started' };
   });

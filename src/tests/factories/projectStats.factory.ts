@@ -1,4 +1,4 @@
-import type { ProjectStats, ReviewStats } from '@/services/statsService.js';
+import type { ProjectStats, ReviewStats } from '@/entities/stats/projectStats.js';
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
 export class ReviewStatsFactory {

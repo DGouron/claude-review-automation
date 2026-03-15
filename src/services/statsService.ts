@@ -1,34 +1,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import type { ReviewStats, ProjectStats } from '@/entities/stats/projectStats.js';
 
-export interface ReviewStats {
-  id: string;
-  timestamp: string;
-  mrNumber: number;
-  duration: number;
-  score: number | null;
-  blocking: number;
-  warnings: number;
-  suggestions?: number;
-  assignedBy?: string;
-  diffStats?: DiffStats | null;
-}
-
-export interface ProjectStats {
-  totalReviews: number;
-  totalDuration: number;
-  averageScore: number | null;
-  averageDuration: number;
-  totalBlocking: number;
-  totalWarnings: number;
-  reviews: ReviewStats[];
-  lastUpdated: string;
-  totalAdditions?: number;
-  totalDeletions?: number;
-  averageAdditions?: number;
-  averageDeletions?: number;
-}
+export type { ReviewStats, ProjectStats };
 
 /**
  * Get the stats file path for a project

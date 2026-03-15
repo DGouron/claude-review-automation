@@ -1,4 +1,4 @@
-import type { StatsGateway } from '@/interface-adapters/gateways/stats.gateway.js';
+import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
 import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
 
