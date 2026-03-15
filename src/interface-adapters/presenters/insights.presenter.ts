@@ -1,5 +1,5 @@
 import type { Presenter } from '@/shared/foundation/presenter.base.js';
-import type { DeveloperInsight, CategoryLevels } from '@/entities/insight/developerInsight.js';
+import type { DeveloperInsight, CategoryLevels, DeveloperMetrics, InsightDescription } from '@/entities/insight/developerInsight.js';
 import type { TeamInsight, AverageLevels } from '@/entities/insight/teamInsight.js';
 import type { DeveloperTitle } from '@/entities/insight/developerTitle.js';
 import type { InsightCategory } from '@/entities/insight/insightCategory.js';
@@ -13,6 +13,8 @@ export interface DeveloperInsightViewModel {
   weaknesses: InsightCategory[];
   topPriority: InsightCategory | null;
   reviewCount: number;
+  metrics: DeveloperMetrics;
+  insightDescriptions: InsightDescription[];
 }
 
 export interface TeamInsightViewModel {
@@ -60,6 +62,8 @@ export class InsightsPresenter implements Presenter<InsightsPresenterInput, Insi
       weaknesses: insight.weaknesses,
       topPriority: insight.topPriority,
       reviewCount: insight.reviewCount,
+      metrics: insight.metrics,
+      insightDescriptions: insight.insightDescriptions,
     };
   }
 

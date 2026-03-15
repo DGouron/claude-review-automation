@@ -423,6 +423,104 @@ describe('computeDeveloperInsights', () => {
     });
   });
 
+  describe('metrics population', () => {
+    it('should populate metrics with raw developer numbers', () => {
+      const reviews = createReviewsForDeveloper('alice', 6, {
+        score: 8,
+        blocking: 1,
+        warnings: 2,
+        duration: 60000,
+        diffStats: { commitsCount: 3, additions: 200, deletions: 50 },
+      });
+
+      const result = computeDeveloperInsights(reviews);
+
+      const alice = result[0];
+      expect(alice.metrics).toBeDefined();
+      expect(alice.metrics.averageScore).toBe(8);
+      expect(alice.metrics.averageBlocking).toBe(1);
+      expect(alice.metrics.averageWarnings).toBe(2);
+      expect(alice.metrics.averageDuration).toBe(60000);
+      expect(alice.metrics.averageAdditions).toBe(200);
+      expect(alice.metrics.averageDeletions).toBe(50);
+    });
+
+    it('should compute first review quality rate based on reviews with score >= 7', () => {
+      const goodReviews = Array.from({ length: 3 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-good-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: 8,
+          blocking: 0,
+        }),
+      );
+      const badReviews = Array.from({ length: 2 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-bad-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 4,
+          score: 5,
+          blocking: 2,
+        }),
+      );
+
+      const result = computeDeveloperInsights([...goodReviews, ...badReviews]);
+
+      const alice = result[0];
+      expect(alice.metrics.firstReviewQualityRate).toBe(0.6);
+    });
+  });
+
+  describe('insight descriptions', () => {
+    it('should generate insight descriptions for strengths and weaknesses', () => {
+      const aliceReviews = createReviewsForDeveloper('alice', 10, {
+        score: 9,
+        blocking: 0,
+        warnings: 0,
+        duration: 30000,
+      });
+      const bobReviews = createReviewsForDeveloper('bob', 10, {
+        score: 4,
+        blocking: 3,
+        warnings: 5,
+        duration: 300000,
+      });
+
+      const result = computeDeveloperInsights([...aliceReviews, ...bobReviews]);
+
+      const alice = result.find((insight) => insight.developerName === 'alice');
+      expect(alice).toBeDefined();
+      expect(alice?.insightDescriptions.length).toBeGreaterThan(0);
+    });
+
+    it('should include category and type in each description', () => {
+      const aliceReviews = createReviewsForDeveloper('alice', 10, {
+        score: 9,
+        blocking: 0,
+        warnings: 0,
+        duration: 30000,
+      });
+      const bobReviews = createReviewsForDeveloper('bob', 10, {
+        score: 4,
+        blocking: 3,
+        warnings: 5,
+        duration: 300000,
+      });
+
+      const result = computeDeveloperInsights([...aliceReviews, ...bobReviews]);
+
+      const alice = result.find((insight) => insight.developerName === 'alice');
+      if (alice && alice.insightDescriptions.length > 0) {
+        for (const description of alice.insightDescriptions) {
+          expect(['quality', 'responsiveness', 'codeVolume', 'iteration']).toContain(description.category);
+          expect(['strength', 'weakness']).toContain(description.type);
+          expect(description.descriptionKey).toBeTruthy();
+        }
+      }
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle reviews with null scores', () => {
       const reviews = createReviewsForDeveloper('alice', 5, { score: null });

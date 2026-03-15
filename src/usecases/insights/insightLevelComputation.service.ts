@@ -6,8 +6,8 @@ import type { DeveloperTitle } from '@/entities/insight/developerTitle.js';
 import { INSIGHT_CATEGORIES } from '@/entities/insight/insightCategory.js';
 
 export const MINIMUM_REVIEWS_THRESHOLD = 5;
-const RELATIVE_WEIGHT = 0.6;
-const TREND_WEIGHT = 0.4;
+const RELATIVE_WEIGHT = 0.8;
+const TREND_WEIGHT = 0.2;
 const TREND_WINDOW_SIZE = 10;
 const STRENGTH_THRESHOLD = 7;
 const WEAKNESS_THRESHOLD = 4;
@@ -72,9 +72,11 @@ export function normalizeHigherIsBetter(
   teamAverage: number,
   maxValue: number,
 ): number {
-  if (teamAverage === 0) return value / maxValue;
-  const ratio = value / teamAverage;
-  return Math.min(1, Math.max(0, ratio / 2));
+  if (teamAverage === 0) return Math.min(1, value / maxValue);
+  // Amplified deviation: 2x multiplier spreads values across 0-1 range
+  // At team avg → 0.5, +25% above → 1.0, -25% below → 0.0
+  const deviation = (value - teamAverage) / teamAverage;
+  return Math.min(1, Math.max(0, 0.5 + deviation * 2));
 }
 
 export function normalizeLowerIsBetter(
@@ -82,8 +84,9 @@ export function normalizeLowerIsBetter(
   teamAverage: number,
 ): number {
   if (teamAverage === 0) return value === 0 ? 1 : 0;
-  const ratio = teamAverage / Math.max(value, 0.001);
-  return Math.min(1, Math.max(0, ratio / 2));
+  // Amplified deviation: mirrors normalizeHigherIsBetter
+  const deviation = (teamAverage - value) / teamAverage;
+  return Math.min(1, Math.max(0, 0.5 + deviation * 2));
 }
 
 export function trendToScore(trend: InsightTrend): number {
@@ -375,7 +378,11 @@ function computeQualityLevel(
   metrics: DeveloperMetrics,
   teamMetrics: TeamMetrics,
 ): CategoryLevel {
-  const scoreComponent = normalizeHigherIsBetter(
+  // Absolute score component: score is already 0-10, map directly to 0-1
+  const absoluteScoreComponent = metrics.averageScore / 10;
+
+  // Relative components: how dev compares to team
+  const relativeScoreComponent = normalizeHigherIsBetter(
     metrics.averageScore,
     teamMetrics.averageScore,
     10,
@@ -389,7 +396,9 @@ function computeQualityLevel(
     teamMetrics.averageWarnings,
   );
 
-  const relativeScore = (scoreComponent * 0.5 + blockingComponent * 0.3 + warningsComponent * 0.2);
+  // Blend absolute (40%) and relative (60%) for score
+  const scoreComponent = absoluteScoreComponent * 0.4 + relativeScoreComponent * 0.6;
+  const relativeScore = scoreComponent * 0.5 + blockingComponent * 0.3 + warningsComponent * 0.2;
 
   const trend = computeTrendForMetric(reviews, extractQualityMetric);
   const trendScore = trendToScore(trend);

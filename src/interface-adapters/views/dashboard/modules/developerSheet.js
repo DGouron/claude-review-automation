@@ -3,6 +3,10 @@ import { icon } from './icons.js';
 
 const CATEGORY_KEYS = ['quality', 'responsiveness', 'codeVolume', 'iteration'];
 
+const RADAR_CSS_SIZE = 320;
+const RADAR_MAX_RADIUS = 120;
+const RADAR_LABEL_OFFSET = 28;
+
 const COLORS = {
   textPrimary: '#e8efff',
   textMuted: '#8393b0',
@@ -84,6 +88,79 @@ function renderStatBar(categoryLevel, categoryKey, translate) {
 }
 
 /**
+ * @param {number} value
+ * @param {number} [decimals]
+ * @returns {string}
+ */
+function formatNumber(value, decimals = 1) {
+  return Number(value).toFixed(decimals);
+}
+
+/**
+ * @param {object} metrics
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @returns {string}
+ */
+function renderMetricsSection(metrics, translate) {
+  if (!metrics) return '';
+
+  const qualityRate = Math.round(metrics.firstReviewQualityRate * 100);
+
+  return `
+    <div class="sheet-section">
+      <div class="sheet-section-title">${icon('bar-chart-2')} ${translate('devSheet.metrics')}</div>
+      <div class="dev-sheet-metrics-grid">
+        <div class="dev-sheet-metric">
+          <span class="dev-sheet-metric-value">${formatNumber(metrics.averageScore)}/10</span>
+          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.averageScore')}</span>
+        </div>
+        <div class="dev-sheet-metric">
+          <span class="dev-sheet-metric-value">${formatNumber(metrics.averageBlocking)}</span>
+          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.blockingPerReview')}</span>
+        </div>
+        <div class="dev-sheet-metric">
+          <span class="dev-sheet-metric-value">${formatNumber(metrics.averageWarnings)}</span>
+          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.warningsPerReview')}</span>
+        </div>
+        <div class="dev-sheet-metric">
+          <span class="dev-sheet-metric-value">${qualityRate}%</span>
+          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.firstPassQuality')}</span>
+        </div>
+        ${metrics.averageAdditions > 0 ? `
+          <div class="dev-sheet-metric">
+            <span class="dev-sheet-metric-value">+${Math.round(metrics.averageAdditions)}</span>
+            <span class="dev-sheet-metric-label">${translate('devSheet.metrics.averageAdditions')}</span>
+          </div>
+          <div class="dev-sheet-metric">
+            <span class="dev-sheet-metric-value">-${Math.round(metrics.averageDeletions)}</span>
+            <span class="dev-sheet-metric-label">${translate('devSheet.metrics.averageDeletions')}</span>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * @param {Array<{category: string, type: string, descriptionKey: string, params: object|null}>} descriptions
+ * @param {string} type
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @returns {string}
+ */
+function renderInsightDescriptions(descriptions, type, translate) {
+  const filtered = (descriptions || []).filter((description) => description.type === type);
+  if (filtered.length === 0) return '';
+
+  const iconName = type === 'strength' ? 'check-circle' : 'alert-circle';
+  const itemClass = type === 'strength' ? 'strength' : 'weakness';
+
+  return filtered.map((description) => {
+    const text = translate(description.descriptionKey, description.params || {});
+    return `<li class="dev-sheet-list-item ${itemClass}">${icon(iconName)} ${escapeHtml(text)}</li>`;
+  }).join('');
+}
+
+/**
  * @param {object} developer
  * @param {(key: string, params?: Record<string, string|number>) => string} translate
  * @returns {string}
@@ -96,17 +173,25 @@ export function renderDeveloperSheetContent(developer, translate) {
     (key) => renderStatBar(developer.categoryLevels[key], key, translate)
   ).join('');
 
-  const strengthsHtml = developer.strengths.map(
-    (category) => `<li class="dev-sheet-list-item strength">${icon('check-circle')} ${translate('category.' + category)}</li>`
-  ).join('');
+  const hasDescriptions = developer.insightDescriptions && developer.insightDescriptions.length > 0;
 
-  const weaknessesHtml = developer.weaknesses.map(
-    (category) => `<li class="dev-sheet-list-item weakness">${icon('alert-circle')} ${translate('category.' + category)}</li>`
-  ).join('');
+  const strengthsHtml = hasDescriptions
+    ? renderInsightDescriptions(developer.insightDescriptions, 'strength', translate)
+    : developer.strengths.map(
+        (category) => `<li class="dev-sheet-list-item strength">${icon('check-circle')} ${translate('category.' + category)}</li>`
+      ).join('');
+
+  const weaknessesHtml = hasDescriptions
+    ? renderInsightDescriptions(developer.insightDescriptions, 'weakness', translate)
+    : developer.weaknesses.map(
+        (category) => `<li class="dev-sheet-list-item weakness">${icon('alert-circle')} ${translate('category.' + category)}</li>`
+      ).join('');
 
   const topPriorityHtml = developer.topPriority
     ? `<span class="dev-sheet-priority-value">${icon('target')} ${translate('category.' + developer.topPriority)}</span>`
     : `<span class="dev-sheet-priority-empty">${translate('devSheet.noTopPriority')}</span>`;
+
+  const metricsHtml = renderMetricsSection(developer.metrics, translate);
 
   return `
     <button class="sheet-close" onclick="closeDevSheet()" aria-label="Close">
@@ -127,7 +212,7 @@ export function renderDeveloperSheetContent(developer, translate) {
 
     <div class="sheet-section">
       <div class="radar-chart-container">
-        <canvas id="dev-radar-canvas" width="280" height="280"></canvas>
+        <canvas id="dev-radar-canvas" width="${RADAR_CSS_SIZE}" height="${RADAR_CSS_SIZE}"></canvas>
       </div>
     </div>
 
@@ -136,6 +221,8 @@ export function renderDeveloperSheetContent(developer, translate) {
         ${statBarsHtml}
       </div>
     </div>
+
+    ${metricsHtml}
 
     <div class="sheet-section">
       <div class="sheet-section-title">${icon('trending-up')} ${translate('devSheet.scoreTrend')}</div>
@@ -176,7 +263,7 @@ export function drawRadarChart(canvasId, categoryLevels) {
   if (!ctx) return;
 
   const dpr = window.devicePixelRatio || 1;
-  const cssSize = 280;
+  const cssSize = RADAR_CSS_SIZE;
   canvas.width = cssSize * dpr;
   canvas.height = cssSize * dpr;
   canvas.style.width = `${cssSize}px`;
@@ -185,7 +272,7 @@ export function drawRadarChart(canvasId, categoryLevels) {
 
   const centerX = cssSize / 2;
   const centerY = cssSize / 2;
-  const maxRadius = 110;
+  const maxRadius = RADAR_MAX_RADIUS;
 
   const axes = [
     { key: 'quality', label: 'Quality', angle: -Math.PI / 2 },
@@ -266,7 +353,7 @@ export function drawRadarChart(canvasId, categoryLevels) {
   ctx.textBaseline = 'middle';
 
   for (const axis of axes) {
-    const labelRadius = maxRadius + 20;
+    const labelRadius = maxRadius + RADAR_LABEL_OFFSET;
     const labelX = centerX + Math.cos(axis.angle) * labelRadius;
     const labelY = centerY + Math.sin(axis.angle) * labelRadius;
     ctx.fillText(axis.label, labelX, labelY);

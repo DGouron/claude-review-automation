@@ -16,6 +16,17 @@ export class DeveloperInsightFactory {
       weaknesses: ['iteration'],
       topPriority: 'iteration',
       reviewCount: 10,
+      metrics: {
+        averageScore: 8.0,
+        averageBlocking: 0.5,
+        averageWarnings: 1.0,
+        averageDuration: 60000,
+        totalFollowups: null,
+        averageAdditions: 150,
+        averageDeletions: 30,
+        firstReviewQualityRate: 0.75,
+      },
+      insightDescriptions: [],
     };
 
     return { ...defaults, ...overrides };
@@ -36,6 +47,17 @@ export class DeveloperInsightFactory {
       weaknesses: ['iteration'],
       topPriority: 'iteration',
       reviewCount: 10,
+      metrics: {
+        averageScore: 8.0,
+        averageBlocking: 0.5,
+        averageWarnings: 1.0,
+        averageDuration: 60000,
+        totalFollowups: null,
+        averageAdditions: 150,
+        averageDeletions: 30,
+        firstReviewQualityRate: 0.75,
+      },
+      insightDescriptions: [],
       ...overrides,
     };
   }

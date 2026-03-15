@@ -141,6 +141,62 @@ describe('InsightsPresenter', () => {
     expect(alice.topPriority).toBe('iteration');
   });
 
+  it('should include metrics in developer view model', () => {
+    const developerInsights: DeveloperInsight[] = [
+      DeveloperInsightFactory.createValid({
+        developerName: 'alice',
+        metrics: {
+          averageScore: 8.3,
+          averageBlocking: 0.1,
+          averageWarnings: 1.4,
+          averageDuration: 60000,
+          totalFollowups: null,
+          averageAdditions: 200,
+          averageDeletions: 50,
+          firstReviewQualityRate: 0.85,
+        },
+      }),
+    ];
+    const teamInsight = TeamInsightFactory.createValid({ developerCount: 1 });
+
+    const viewModel = presenter.present({
+      developerInsights,
+      teamInsight,
+    });
+
+    const alice = viewModel.developers[0];
+    expect(alice.metrics).toBeDefined();
+    expect(alice.metrics.averageScore).toBe(8.3);
+    expect(alice.metrics.averageBlocking).toBe(0.1);
+    expect(alice.metrics.firstReviewQualityRate).toBe(0.85);
+  });
+
+  it('should include insight descriptions in developer view model', () => {
+    const developerInsights: DeveloperInsight[] = [
+      DeveloperInsightFactory.createValid({
+        developerName: 'alice',
+        insightDescriptions: [
+          {
+            category: 'quality',
+            type: 'strength',
+            descriptionKey: 'insight.quality.highScore',
+            params: { score: 8.3, teamAverage: 7.5, percent: 11 },
+          },
+        ],
+      }),
+    ];
+    const teamInsight = TeamInsightFactory.createValid({ developerCount: 1 });
+
+    const viewModel = presenter.present({
+      developerInsights,
+      teamInsight,
+    });
+
+    const alice = viewModel.developers[0];
+    expect(alice.insightDescriptions).toHaveLength(1);
+    expect(alice.insightDescriptions[0].descriptionKey).toBe('insight.quality.highScore');
+  });
+
   it('should include team average levels', () => {
     const developerInsights: DeveloperInsight[] = [
       DeveloperInsightFactory.createValid({ developerName: 'alice' }),

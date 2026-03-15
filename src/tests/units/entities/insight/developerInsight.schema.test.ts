@@ -114,4 +114,65 @@ describe('DeveloperInsight schema', () => {
 
     expect(result.success).toBe(true);
   });
+
+  it('should validate metrics field with raw developer numbers', () => {
+    const insight = DeveloperInsightFactory.create({
+      metrics: {
+        averageScore: 8.3,
+        averageBlocking: 0.1,
+        averageWarnings: 1.4,
+        averageDuration: 60000,
+        totalFollowups: null,
+        averageAdditions: 150,
+        averageDeletions: 30,
+        firstReviewQualityRate: 0.85,
+      },
+    });
+
+    const result = developerInsightSchema.safeParse(insight);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.metrics).toBeDefined();
+      expect(result.data.metrics.averageScore).toBe(8.3);
+      expect(result.data.metrics.averageBlocking).toBe(0.1);
+      expect(result.data.metrics.firstReviewQualityRate).toBe(0.85);
+    }
+  });
+
+  it('should validate insight descriptions with enriched context', () => {
+    const insight = DeveloperInsightFactory.create({
+      insightDescriptions: [
+        {
+          category: 'quality',
+          type: 'strength',
+          descriptionKey: 'insight.quality.highScore',
+          params: { score: 8.3, teamAverage: 7.5 },
+        },
+      ],
+    });
+
+    const result = developerInsightSchema.safeParse(insight);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.insightDescriptions).toHaveLength(1);
+      expect(result.data.insightDescriptions[0].category).toBe('quality');
+      expect(result.data.insightDescriptions[0].type).toBe('strength');
+      expect(result.data.insightDescriptions[0].descriptionKey).toBe('insight.quality.highScore');
+    }
+  });
+
+  it('should accept empty insight descriptions array', () => {
+    const insight = DeveloperInsightFactory.create({
+      insightDescriptions: [],
+    });
+
+    const result = developerInsightSchema.safeParse(insight);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.insightDescriptions).toEqual([]);
+    }
+  });
 });
