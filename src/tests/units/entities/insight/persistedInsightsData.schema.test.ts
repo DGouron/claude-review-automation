@@ -128,4 +128,65 @@ describe('persistedInsightsDataSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('should accept data with null aiInsights', () => {
+    const validData = {
+      developers: [],
+      processedReviewIds: [],
+      lastUpdated: '2024-01-15T10:00:00Z',
+      aiInsights: null,
+    };
+
+    const result = persistedInsightsDataSchema.safeParse(validData);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept data with valid aiInsights', () => {
+    const validData = {
+      developers: [],
+      processedReviewIds: [],
+      lastUpdated: '2024-01-15T10:00:00Z',
+      aiInsights: {
+        developers: [
+          {
+            developerName: 'alice',
+            title: 'Le Chirurgien du Code',
+            titleExplanation: 'Precise changes',
+            strengths: ['Testing'],
+            weaknesses: ['Speed'],
+            recommendations: ['Automate'],
+            summary: 'Alice is great.',
+          },
+        ],
+        team: {
+          summary: 'Good team.',
+          strengths: ['Quality'],
+          weaknesses: ['Velocity'],
+          recommendations: ['Pair programming'],
+          dynamics: 'Balanced.',
+        },
+        generatedAt: '2026-03-15T10:00:00Z',
+      },
+    };
+
+    const result = persistedInsightsDataSchema.safeParse(validData);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should default aiInsights to null when field is absent', () => {
+    const validData = {
+      developers: [],
+      processedReviewIds: [],
+      lastUpdated: '2024-01-15T10:00:00Z',
+    };
+
+    const result = persistedInsightsDataSchema.safeParse(validData);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.aiInsights).toBeNull();
+    }
+  });
 });

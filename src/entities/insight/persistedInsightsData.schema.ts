@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { aiInsightsResultSchema } from '@/entities/insight/aiInsight.schema.js';
 
 const reviewStatsForPersistenceSchema = z.object({
   id: z.string(),
@@ -36,4 +37,5 @@ export const persistedInsightsDataSchema = z.object({
   developers: z.array(persistedDeveloperMetricsSchema),
   processedReviewIds: z.array(z.string()),
   lastUpdated: z.string().min(1),
+  aiInsights: aiInsightsResultSchema.nullable().default(null),
 });

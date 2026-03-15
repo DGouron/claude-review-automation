@@ -1,31 +1,50 @@
 import type { FastifyPluginAsync } from 'fastify';
+import type { Logger } from 'pino';
 import type { StatsGateway } from '@/interface-adapters/gateways/stats.gateway.js';
 import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
+import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile.gateway.js';
+import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { Language } from '@/entities/language/language.schema.js';
 import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';
+import { generateAiInsights, type ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
 import { InsightsPresenter } from '@/interface-adapters/presenters/insights.presenter.js';
 
 interface InsightsRoutesOptions {
   statsGateway: StatsGateway;
   insightsGateway: InsightsGateway;
+  reviewFileGateway: ReviewFileGateway;
+  reviewRequestTrackingGateway: ReviewRequestTrackingGateway;
+  logger: Logger;
+  claudeInvoker: ClaudeInvoker;
+  language: Language;
+}
+
+function isValidProjectPath(path: string | null): path is string {
+  if (!path) return false;
+  const trimmed = path.trim();
+  return trimmed.startsWith('/') && !trimmed.includes('..');
 }
 
 export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
   fastify,
   options,
 ) => {
-  const { statsGateway, insightsGateway } = options;
+  const {
+    statsGateway,
+    insightsGateway,
+    reviewFileGateway,
+    reviewRequestTrackingGateway,
+    logger,
+    claudeInvoker,
+    language,
+  } = options;
   const presenter = new InsightsPresenter();
 
   fastify.get<{ Querystring: { path?: string } }>('/api/insights', async (request, reply) => {
-    const projectPath = request.query.path?.trim();
+    const projectPath = request.query.path?.trim() ?? null;
 
-    if (!projectPath) {
+    if (!isValidProjectPath(projectPath)) {
       reply.status(400).send({ error: 'Chemin du projet requis' });
-      return;
-    }
-
-    if (!projectPath.startsWith('/') || projectPath.includes('..')) {
-      reply.status(400).send({ error: 'Chemin invalide' });
       return;
     }
 
@@ -36,12 +55,15 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
 
       if (persistedData) {
         const result = computeInsightsWithPersistence([], persistedData);
-        insightsGateway.savePersistedInsights(projectPath, result.persistedData);
+        insightsGateway.savePersistedInsights(projectPath, {
+          ...result.persistedData,
+          aiInsights: persistedData.aiInsights ?? null,
+        });
         const viewModel = presenter.present({
           developerInsights: result.developerInsights,
           teamInsight: result.teamInsight,
         });
-        return viewModel;
+        return { ...viewModel, aiInsights: persistedData.aiInsights ?? null };
       }
 
       const emptyViewModel = presenter.present({
@@ -55,17 +77,66 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
           tips: [],
         },
       });
-      return emptyViewModel;
+      return { ...emptyViewModel, aiInsights: null };
     }
 
     const persistedData = insightsGateway.loadPersistedInsights(projectPath);
     const result = computeInsightsWithPersistence(stats.reviews, persistedData);
-    insightsGateway.savePersistedInsights(projectPath, result.persistedData);
+    insightsGateway.savePersistedInsights(projectPath, {
+      ...result.persistedData,
+      aiInsights: persistedData?.aiInsights ?? null,
+    });
     const viewModel = presenter.present({
       developerInsights: result.developerInsights,
       teamInsight: result.teamInsight,
     });
 
-    return viewModel;
+    return { ...viewModel, aiInsights: persistedData?.aiInsights ?? null };
+  });
+
+  fastify.post<{ Body: { path?: string } }>('/api/insights/generate', async (request, reply) => {
+    const body = request.body;
+    const projectPath = typeof body === 'object' && body !== null && 'path' in body
+      ? (body).path
+      : null;
+
+    if (typeof projectPath !== 'string' || !isValidProjectPath(projectPath)) {
+      reply.status(400).send({ error: 'Chemin du projet requis' });
+      return;
+    }
+
+    try {
+      const aiInsights = await generateAiInsights({
+        projectPath,
+        statsGateway,
+        reviewFileGateway,
+        reviewRequestTrackingGateway,
+        logger,
+        claudeInvoker,
+        language,
+      });
+
+      const existingData = insightsGateway.loadPersistedInsights(projectPath);
+      if (existingData) {
+        insightsGateway.savePersistedInsights(projectPath, {
+          ...existingData,
+          aiInsights,
+        });
+      } else {
+        insightsGateway.savePersistedInsights(projectPath, {
+          developers: [],
+          processedReviewIds: [],
+          lastUpdated: new Date().toISOString(),
+          aiInsights,
+        });
+      }
+
+      return aiInsights;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erreur inconnue';
+      logger.error({ error: message }, 'AI insights generation failed');
+      reply.status(500).send({ error: message });
+      return;
+    }
   });
 };

@@ -33,6 +33,7 @@ describe('FileSystemInsightsGateway', () => {
         developers: [],
         processedReviewIds: ['review-1'],
         lastUpdated: '2024-01-15T10:00:00Z',
+        aiInsights: null,
       };
       const insightsPath = join(temporaryDirectory, '.claude', 'reviews', 'insights.json');
       mkdirSync(join(temporaryDirectory, '.claude', 'reviews'), { recursive: true });
@@ -73,6 +74,7 @@ describe('FileSystemInsightsGateway', () => {
         }],
         processedReviewIds: ['review-1'],
         lastUpdated: '2024-01-15T10:00:00Z',
+        aiInsights: null,
       };
 
       gateway.savePersistedInsights(temporaryDirectory, insightsData);
@@ -90,6 +92,7 @@ describe('FileSystemInsightsGateway', () => {
         developers: [],
         processedReviewIds: [],
         lastUpdated: '2024-01-15T10:00:00Z',
+        aiInsights: null,
       };
 
       gateway.savePersistedInsights(temporaryDirectory, insightsData);
@@ -118,6 +121,7 @@ describe('FileSystemInsightsGateway', () => {
         }],
         processedReviewIds: ['rev-1', 'rev-2'],
         lastUpdated: '2024-01-15T10:00:00Z',
+        aiInsights: null,
       };
 
       gateway.savePersistedInsights(temporaryDirectory, insightsData);

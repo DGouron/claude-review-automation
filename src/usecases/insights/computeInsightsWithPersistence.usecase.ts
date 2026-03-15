@@ -58,6 +58,7 @@ export function computeInsightsWithPersistence(
       developers: updatedDevelopers,
       processedReviewIds: allProcessedIds,
       lastUpdated: new Date().toISOString(),
+      aiInsights: currentPersistedData.aiInsights ?? null,
     },
   };
 }
@@ -67,6 +68,7 @@ function createEmptyPersistedData(): PersistedInsightsData {
     developers: [],
     processedReviewIds: [],
     lastUpdated: new Date().toISOString(),
+    aiInsights: null,
   };
 }
 

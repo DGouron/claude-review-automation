@@ -38,6 +38,8 @@ import { SelfUpdateCliGateway } from '@/interface-adapters/gateways/selfUpdate.c
 import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import { broadcastBackfillProgress } from '@/main/websocket.js';
+import { createClaudeInsightsInvoker } from '@/frameworks/claude/claudeInsightsInvoker.js';
+import { getDefaultLanguage } from '@/frameworks/settings/runtimeSettings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -117,6 +119,11 @@ export async function registerRoutes(
   await app.register(insightsRoutes, {
     statsGateway: deps.statsGateway,
     insightsGateway: deps.insightsGateway,
+    reviewFileGateway: deps.reviewFileGateway,
+    reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+    logger: deps.logger,
+    claudeInvoker: createClaudeInsightsInvoker(),
+    language: getDefaultLanguage(),
   });
 
   await app.register(logsRoutes);
