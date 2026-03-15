@@ -1,0 +1,26 @@
+import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+
+export class StubDiffStatsFetchGateway implements DiffStatsFetchGateway {
+  private responses = new Map<number, DiffStats | null>();
+  private failingMergeRequests = new Set<number>();
+  fetchCallCount = 0;
+
+  async fetchDiffStats(_projectPath: string, mergeRequestNumber: number): Promise<DiffStats | null> {
+    this.fetchCallCount++;
+
+    if (this.failingMergeRequests.has(mergeRequestNumber)) {
+      throw new Error(`API error for MR ${mergeRequestNumber}`);
+    }
+
+    return this.responses.get(mergeRequestNumber) ?? null;
+  }
+
+  setResponse(mergeRequestNumber: number, diffStats: DiffStats | null): void {
+    this.responses.set(mergeRequestNumber, diffStats);
+  }
+
+  setFailure(mergeRequestNumber: number): void {
+    this.failingMergeRequests.add(mergeRequestNumber);
+  }
+}

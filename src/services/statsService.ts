@@ -1,33 +1,33 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
-/**
- * Individual review statistics
- */
 export interface ReviewStats {
-  id: string; // unique identifier (timestamp-based)
-  timestamp: string; // ISO 8601 timestamp
+  id: string;
+  timestamp: string;
   mrNumber: number;
-  duration: number; // milliseconds
-  score: number | null; // global score /10, null if not parseable
-  blocking: number; // count of blocking issues
-  warnings: number; // count of warnings/important issues
-  suggestions?: number; // count of suggestions
-  assignedBy?: string; // username of person who assigned the review
+  duration: number;
+  score: number | null;
+  blocking: number;
+  warnings: number;
+  suggestions?: number;
+  assignedBy?: string;
+  diffStats?: DiffStats | null;
 }
 
-/**
- * Aggregated project statistics
- */
 export interface ProjectStats {
   totalReviews: number;
-  totalDuration: number; // milliseconds
+  totalDuration: number;
   averageScore: number | null;
-  averageDuration: number; // milliseconds
+  averageDuration: number;
   totalBlocking: number;
   totalWarnings: number;
   reviews: ReviewStats[];
   lastUpdated: string;
+  totalAdditions?: number;
+  totalDeletions?: number;
+  averageAdditions?: number;
+  averageDeletions?: number;
 }
 
 /**
@@ -91,6 +91,10 @@ function createEmptyStats(): ProjectStats {
     totalWarnings: 0,
     reviews: [],
     lastUpdated: new Date().toISOString(),
+    totalAdditions: 0,
+    totalDeletions: 0,
+    averageAdditions: 0,
+    averageDeletions: 0,
   };
 }
 

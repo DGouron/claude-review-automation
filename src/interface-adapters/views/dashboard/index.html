@@ -146,6 +146,11 @@
       <div class="section-header clickable" onclick="toggleStats()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
         <i data-lucide="bar-chart-3"></i> <span id="i18n-section-stats"></span>
         <span id="stats-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+        <button id="recalculate-btn" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); recalculateStats()" style="margin-left: auto; font-size: 0.75rem; padding: 2px 8px;">
+          <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+          <span id="recalculate-label"></span>
+        </button>
+        <span id="backfill-progress" class="badge-count hidden" style="margin-left: 4px;"></span>
       </div>
       <div id="project-stats" class="section-content stats-grid hidden">
         <div class="empty-state" id="i18n-empty-stats"></div>
@@ -1125,6 +1130,35 @@
       }
     }
 
+    async function recalculateStats() {
+      if (!currentProjectPath) return;
+      const button = document.getElementById('recalculate-btn');
+      const progressBadge = document.getElementById('backfill-progress');
+      if (button) button.disabled = true;
+
+      try {
+        const response = await fetch(`${API_URL}/api/stats/recalculate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentProjectPath, backfill: true }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Recalculation failed');
+        }
+
+        if (progressBadge) {
+          progressBadge.textContent = '...';
+          progressBadge.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Error recalculating stats:', error);
+        if (button) button.disabled = false;
+        if (progressBadge) progressBadge.classList.add('hidden');
+      }
+    }
+    window.recalculateStats = recalculateStats;
+
     function renderMrItem(mr, type) {
       const mrPrefix = mr.platform === 'github' ? '#' : '!';
       const encodedMrId = encodeURIComponent(String(mr.id ?? ''));
@@ -1592,6 +1626,25 @@
               case 'log':
                 handleLogMessage(message.log);
                 break;
+              case 'backfill-progress': {
+                const progressBadge = document.getElementById('backfill-progress');
+                if (progressBadge) {
+                  progressBadge.textContent = t('stats.backfillProgress', { completed: message.data.completed, total: message.data.total });
+                  progressBadge.classList.remove('hidden');
+                }
+                break;
+              }
+              case 'backfill-complete': {
+                const completeBadge = document.getElementById('backfill-progress');
+                const recalcButton = document.getElementById('recalculate-btn');
+                if (completeBadge) {
+                  completeBadge.textContent = t('stats.backfillComplete');
+                  setTimeout(() => completeBadge.classList.add('hidden'), 3000);
+                }
+                if (recalcButton) recalcButton.disabled = false;
+                fetchProjectStats();
+                break;
+              }
               case 'pong':
                 break;
             }
@@ -2091,6 +2144,9 @@
 
       const sectionStats = document.getElementById('i18n-section-stats');
       if (sectionStats) sectionStats.textContent = t('section.stats');
+
+      const recalculateLabel = document.getElementById('recalculate-label');
+      if (recalculateLabel) recalculateLabel.textContent = t('stats.recalculate');
 
       const sectionActiveReviews = document.getElementById('i18n-section-active-reviews');
       if (sectionActiveReviews) sectionActiveReviews.textContent = t('section.activeReviews');

@@ -34,6 +34,9 @@ import { triggerSelfUpdate } from '@/usecases/version/triggerSelfUpdate.usecase.
 import { NpmPackageVersionGateway } from '@/interface-adapters/gateways/packageVersion.npm.gateway.js';
 import { VersionCacheMemoryGateway } from '@/interface-adapters/gateways/versionCache.memory.gateway.js';
 import { SelfUpdateCliGateway } from '@/interface-adapters/gateways/selfUpdate.cli.gateway.js';
+import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
+import { broadcastBackfillProgress } from '@/main/websocket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -76,6 +79,12 @@ export async function registerRoutes(
   await app.register(statsRoutes, {
     statsGateway: deps.statsGateway,
     getRepositories: () => deps.config.repositories,
+    diffStatsFetchGateways: {
+      gitlab: new GitLabDiffStatsFetchGateway(defaultGitLabExecutor),
+      github: new GitHubDiffStatsFetchGateway(defaultGitHubExecutor),
+    },
+    broadcastBackfillProgress,
+    logger: deps.logger,
   });
 
   await app.register(mrTrackingRoutes, {

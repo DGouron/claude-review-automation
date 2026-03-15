@@ -174,6 +174,11 @@ const translations = {
     'stats.averageTime': 'Average time',
     'stats.blocking': 'Blocking',
     'stats.warnings': 'Important',
+    'stats.recalculate': 'Recalculate',
+    'stats.backfillProgress': '{{completed}}/{{total}} reviews',
+    'stats.backfillComplete': 'Recalculation complete',
+    'stats.backfillFailed': '{{failed}} errors',
+    'error.recalculateStats': 'Recalculation error',
 
     // Review types
     'review.type.review': 'Review',
@@ -441,6 +446,11 @@ const translations = {
     'stats.averageTime': 'Durée moyenne',
     'stats.blocking': 'Bloquants',
     'stats.warnings': 'Importants',
+    'stats.recalculate': 'Recalculer',
+    'stats.backfillProgress': '{{completed}}/{{total}} reviews',
+    'stats.backfillComplete': 'Recalcul terminé',
+    'stats.backfillFailed': '{{failed}} erreurs',
+    'error.recalculateStats': 'Erreur de recalcul',
 
     // Review types
     'review.type.review': 'Review',
