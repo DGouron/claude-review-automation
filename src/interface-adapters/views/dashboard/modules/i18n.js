@@ -268,6 +268,13 @@ const translations = {
     'sheet.outOf10': '/10',
     'sheet.target': 'Target: {{target}}/10',
     'sheet.approve': 'Approve',
+    'sheet.commits': 'Commits',
+    'sheet.additions': 'Additions',
+    'sheet.deletions': 'Deletions',
+
+    // Stats filters
+    'stats.allDevs': 'All',
+    'stats.filterByDev': 'Filter by developer',
 
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
@@ -540,6 +547,13 @@ const translations = {
     'sheet.outOf10': '/10',
     'sheet.target': 'Cible : {{target}}/10',
     'sheet.approve': 'Terminer',
+    'sheet.commits': 'Commits',
+    'sheet.additions': 'Ajouts',
+    'sheet.deletions': 'Suppressions',
+
+    // Stats filters
+    'stats.allDevs': 'Tous',
+    'stats.filterByDev': 'Filtrer par développeur',
 
     // Version update
     // Collapsible lists

@@ -2771,6 +2771,11 @@ input:focus-visible,
 .sheet-stat-card.threads .sheet-stat-value { color: var(--nsc-danger); }
 .sheet-stat-card.duration .sheet-stat-value { color: var(--nsc-focus); }
 .sheet-stat-card.issues .sheet-stat-value { color: var(--nsc-warning); }
+.sheet-stat-card.commits::before { background: var(--nsc-text-secondary); }
+.sheet-stat-card.additions-card::before { background: var(--nsc-success); }
+.sheet-stat-card.additions-card .sheet-stat-value { color: var(--nsc-success); }
+.sheet-stat-card.deletions-card::before { background: var(--nsc-danger); }
+.sheet-stat-card.deletions-card .sheet-stat-value { color: var(--nsc-danger); }
 
 .sheet-stat-detail {
   font-size: 0.7rem;
@@ -2966,4 +2971,36 @@ input:focus-visible,
   .stats-charts-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Developer filter */
+.dev-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.dev-filter-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid rgba(130, 170, 220, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--nsc-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dev-filter-btn:hover {
+  background: rgba(122, 216, 255, 0.06);
+  border-color: rgba(122, 216, 255, 0.2);
+  color: var(--nsc-text-secondary);
+}
+
+.dev-filter-btn.active {
+  background: rgba(122, 216, 255, 0.12);
+  border-color: rgba(122, 216, 255, 0.3);
+  color: var(--nsc-focus);
 }

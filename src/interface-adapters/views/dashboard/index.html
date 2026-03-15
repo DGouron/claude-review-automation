@@ -276,6 +276,8 @@
     const mrDataStore = new Map();
     let loadedReviews = {};
     let statsCollapsed = true;
+    let currentStatsReviews = [];
+    let currentDevFilter = 'all';
     let focusStripCompact = false;
     const loadingState = { status: 0, reviewFiles: 0, stats: 0, mrTracking: 0 };
     let hasLoadedStatusOnce = false;
@@ -883,6 +885,12 @@
             <div class="stats-charts-row">
               <div class="stats-chart-card">
                 <div class="stats-chart-title"><i data-lucide="trending-up"></i> ${t('stats.scoreTrend')}</div>
+                <div class="dev-filter" id="dev-filter-container">
+                  <button class="dev-filter-btn ${currentDevFilter === 'all' ? 'active' : ''}" data-dev="all" onclick="filterScoreTrend('all')">${t('stats.allDevs')}</button>
+                  ${[...new Set(reviews.map(r => r.assignedBy).filter(Boolean))].map(dev =>
+                    '<button class="dev-filter-btn ' + (currentDevFilter === dev ? 'active' : '') + '" data-dev="' + dev + '" onclick="filterScoreTrend(\'' + dev + '\')">' + dev + '</button>'
+                  ).join('')}
+                </div>
                 <canvas id="stats-score-trend" class="stats-canvas"></canvas>
               </div>
               <div class="stats-chart-card">
@@ -906,9 +914,14 @@
             }
           });
 
+          currentStatsReviews = reviews;
+
           requestAnimationFrame(() => {
             if (reviews.length) {
-              drawScoreTrendChart('stats-score-trend', reviews);
+              const trendReviews = currentDevFilter === 'all'
+                ? reviews
+                : reviews.filter(r => r.assignedBy === currentDevFilter);
+              drawScoreTrendChart('stats-score-trend', trendReviews);
               drawReviewActivityChart('stats-activity', reviews);
               drawScoreDistributionChart('stats-distribution', reviews);
             }
@@ -1194,6 +1207,20 @@
       }
     }
     window.recalculateStats = recalculateStats;
+
+    function filterScoreTrend(selectedDev) {
+      currentDevFilter = selectedDev;
+      document.querySelectorAll('.dev-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.dev === selectedDev);
+      });
+
+      const filtered = selectedDev === 'all'
+        ? currentStatsReviews
+        : currentStatsReviews.filter(r => r.assignedBy === selectedDev);
+
+      drawScoreTrendChart('stats-score-trend', filtered);
+    }
+    window.filterScoreTrend = filterScoreTrend;
 
     function renderMrItem(mr, type) {
       const mrPrefix = mr.platform === 'github' ? '#' : '!';

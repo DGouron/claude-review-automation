@@ -110,6 +110,27 @@ export function renderMrSheetContent(mr, translate, mrType) {
         <div class="sheet-stat-detail">${mr.totalBlocking || 0} blocking, ${mr.totalWarnings || 0} warnings</div>
       </div>
     </div>
+    ${(() => {
+      const latestDiff = [...(mr.reviews ?? [])].reverse().find(r => r.diffStats)?.diffStats;
+      const commitsDisplay = latestDiff ? latestDiff.commitsCount : '-';
+      const additionsDisplay = latestDiff ? '+' + latestDiff.additions : '-';
+      const deletionsDisplay = latestDiff ? '-' + latestDiff.deletions : '-';
+      return `
+    <div class="sheet-stats-grid" style="margin-top: 0.5rem">
+      <div class="sheet-stat-card commits">
+        <div class="sheet-stat-label"><i data-lucide="git-commit"></i> ${translate('sheet.commits')}</div>
+        <div class="sheet-stat-value">${commitsDisplay}</div>
+      </div>
+      <div class="sheet-stat-card additions-card">
+        <div class="sheet-stat-label"><i data-lucide="plus"></i> ${translate('sheet.additions')}</div>
+        <div class="sheet-stat-value">${additionsDisplay}</div>
+      </div>
+      <div class="sheet-stat-card deletions-card">
+        <div class="sheet-stat-label"><i data-lucide="minus"></i> ${translate('sheet.deletions')}</div>
+        <div class="sheet-stat-value">${deletionsDisplay}</div>
+      </div>
+    </div>`;
+    })()}
 
     <div class="sheet-section">
       <div class="sheet-section-title"><i data-lucide="trending-up"></i> ${translate('sheet.scoreTimeline')}</div>
