@@ -276,6 +276,45 @@ const translations = {
     'stats.allDevs': 'All',
     'stats.filterByDev': 'Filter by developer',
 
+    // Team tab
+    'team.title': 'Team',
+    'team.insights': 'Team Insights',
+    'team.strengths': 'Strengths',
+    'team.weaknesses': 'Areas to improve',
+    'team.tips': 'Tips',
+    'team.noData': 'No review data yet. Reviews will appear here once the first review is completed.',
+    'team.insufficientData': '{{current}}/{{required}} reviews — more data needed',
+    'team.notEnoughDevs': 'Not enough developers for team comparison',
+    'team.loading': 'Loading team insights...',
+    'team.overallLevel': 'Level',
+    'team.reviews': '{{count}} reviews',
+
+    // Categories
+    'category.quality': 'Quality',
+    'category.responsiveness': 'Responsiveness',
+    'category.codeVolume': 'Code Volume',
+    'category.iteration': 'Iteration',
+
+    // Titles (RPG)
+    'title.architect': 'The Architect',
+    'title.firefighter': 'The Firefighter',
+    'title.workhorse': 'The Workhorse',
+    'title.sentinel': 'The Sentinel',
+    'title.polyvalent': 'The Polyvalent',
+    'title.risingStar': 'The Rising Star',
+
+    // Trends
+    'trend.improving': 'Improving',
+    'trend.declining': 'Declining',
+    'trend.stable': 'Stable',
+
+    // Developer sheet
+    'devSheet.strengths': 'Strengths',
+    'devSheet.weaknesses': 'Areas to improve',
+    'devSheet.topPriority': 'Top Priority',
+    'devSheet.noTopPriority': 'No priority — great job!',
+    'devSheet.reviewCount': '{{count}} reviews analyzed',
+
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
     'version.checking': 'Checking...',
@@ -555,11 +594,50 @@ const translations = {
     'stats.allDevs': 'Tous',
     'stats.filterByDev': 'Filtrer par développeur',
 
-    // Version update
     // Collapsible lists
     'collapsible.showMore': 'Afficher {{count}} de plus...',
     'collapsible.showLess': 'Réduire',
 
+    // Team tab
+    'team.title': 'Équipe',
+    'team.insights': 'Insights équipe',
+    'team.strengths': 'Points forts',
+    'team.weaknesses': "Axes d'amélioration",
+    'team.tips': 'Conseils',
+    'team.noData': 'Pas encore de données de review. Les reviews apparaîtront ici une fois la première review terminée.',
+    'team.insufficientData': '{{current}}/{{required}} reviews — plus de données nécessaires',
+    'team.notEnoughDevs': "Pas assez de développeurs pour une comparaison d'équipe",
+    'team.loading': 'Chargement des insights équipe...',
+    'team.overallLevel': 'Niveau',
+    'team.reviews': '{{count}} reviews',
+
+    // Categories
+    'category.quality': 'Qualité',
+    'category.responsiveness': 'Réactivité',
+    'category.codeVolume': 'Volume de code',
+    'category.iteration': 'Itération',
+
+    // Titles (RPG)
+    'title.architect': "L'Architecte",
+    'title.firefighter': 'Le Pompier',
+    'title.workhorse': 'Le Bosseur',
+    'title.sentinel': 'La Sentinelle',
+    'title.polyvalent': 'Le Polyvalent',
+    'title.risingStar': "L'Étoile Montante",
+
+    // Trends
+    'trend.improving': 'En amélioration',
+    'trend.declining': 'En déclin',
+    'trend.stable': 'Stable',
+
+    // Developer sheet
+    'devSheet.strengths': 'Points forts',
+    'devSheet.weaknesses': "Axes d'amélioration",
+    'devSheet.topPriority': 'Priorité',
+    'devSheet.noTopPriority': 'Aucune priorité — excellent travail !',
+    'devSheet.reviewCount': '{{count}} reviews analysées',
+
+    // Version update
     'version.updateAvailable': 'Mettre à jour vers v{{version}}',
     'version.checking': 'Vérification...',
     'version.updating': 'Mise à jour...',
