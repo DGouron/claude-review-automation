@@ -136,4 +136,14 @@ describe('renderDeveloperSheetContent', () => {
     expect(html).toContain('dev-sheet-avatar');
     expect(html).toContain('B');
   });
+
+  it('should render score trend canvas for developer chart', () => {
+    const developer = createDeveloperViewModel();
+
+    const html = renderDeveloperSheetContent(developer, translate);
+
+    expect(html).toContain('canvas');
+    expect(html).toContain('dev-score-trend-canvas');
+    expect(html).toContain('devSheet.scoreTrend');
+  });
 });

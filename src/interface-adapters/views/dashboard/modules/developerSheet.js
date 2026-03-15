@@ -138,6 +138,13 @@ export function renderDeveloperSheetContent(developer, translate) {
     </div>
 
     <div class="sheet-section">
+      <div class="sheet-section-title">${icon('trending-up')} ${translate('devSheet.scoreTrend')}</div>
+      <div class="sheet-canvas-wrap">
+        <canvas id="dev-score-trend-canvas" width="460" height="180"></canvas>
+      </div>
+    </div>
+
+    <div class="sheet-section">
       <div class="sheet-section-title">${icon('thumbs-up')} ${translate('devSheet.strengths')}</div>
       <ul class="dev-sheet-list">${strengthsHtml || '<li class="dev-sheet-list-empty">-</li>'}</ul>
     </div>

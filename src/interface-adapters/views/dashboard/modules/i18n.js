@@ -313,6 +313,7 @@ const translations = {
     'devSheet.weaknesses': 'Areas to improve',
     'devSheet.topPriority': 'Top Priority',
     'devSheet.noTopPriority': 'No priority — great job!',
+    'devSheet.scoreTrend': 'Score Trend',
     'devSheet.reviewCount': '{{count}} reviews analyzed',
 
     // Version update
@@ -635,6 +636,7 @@ const translations = {
     'devSheet.weaknesses': "Axes d'amélioration",
     'devSheet.topPriority': 'Priorité',
     'devSheet.noTopPriority': 'Aucune priorité — excellent travail !',
+    'devSheet.scoreTrend': 'Tendance du score',
     'devSheet.reviewCount': '{{count}} reviews analysées',
 
     // Version update
