@@ -15,6 +15,7 @@ import { cliStatusRoutes } from '@/interface-adapters/controllers/http/cliStatus
 import { projectConfigRoutes } from '@/interface-adapters/controllers/http/projectConfig.routes.js';
 import { cleanupRoutes } from '@/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/interface-adapters/controllers/http/version.routes.js';
+import { insightsRoutes } from '@/interface-adapters/controllers/http/insights.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/interface-adapters/controllers/webhook/github.controller.js';
@@ -111,6 +112,11 @@ export async function registerRoutes(
     packageVersionGateway,
     versionCache,
     selfUpdateCommand,
+  });
+
+  await app.register(insightsRoutes, {
+    statsGateway: deps.statsGateway,
+    insightsGateway: deps.insightsGateway,
   });
 
   await app.register(logsRoutes);
