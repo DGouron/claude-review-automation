@@ -116,7 +116,7 @@ describe('buildAiInsightsPrompt', () => {
       language: 'fr',
     });
 
-    expect(promptFr).toContain('fr');
+    expect(promptFr).toContain('French');
 
     const promptEn = buildAiInsightsPrompt({
       reviews,
@@ -125,7 +125,7 @@ describe('buildAiInsightsPrompt', () => {
       language: 'en',
     });
 
-    expect(promptEn).toContain('en');
+    expect(promptEn).toContain('English');
   });
 
   it('should request JSON output format', () => {

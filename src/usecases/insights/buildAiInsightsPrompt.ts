@@ -221,8 +221,10 @@ export function buildAiInsightsPrompt(input: BuildAiInsightsPromptInput): string
 
   const teamSection = buildTeamSection(reviews, reviewsByDeveloper.size);
 
+  const developerNames = Array.from(reviewsByDeveloper.keys());
+
   const prompt = `You are a senior engineering manager analyzing code review data for a development team.
-Generate rich, contextual insights about each developer and the team overall.
+Analyze this data and produce structured insights.
 
 ## Data
 
@@ -230,39 +232,47 @@ ${developerSections.join('\n\n')}
 
 ${teamSection}
 
-## Instructions
+## MANDATORY OUTPUT FORMAT
 
-Analyze this data and return a JSON object with this EXACT structure:
+You MUST return a valid JSON object matching this EXACT schema. Every field is REQUIRED and non-empty.
+
+\`\`\`json
 {
   "developers": [
-    {
-      "developerName": "exact username",
-      "title": "A creative, fun title in ${language} reflecting their coding personality",
-      "titleExplanation": "One sentence explaining why this title fits",
-      "strengths": ["Concrete strength 1 with data reference", "..."],
-      "weaknesses": ["Concrete weakness 1 with data reference", "..."],
-      "recommendations": ["Actionable recommendation 1", "..."],
-      "summary": "2-3 sentences profiling this developer's coding style and quality"
-    }
+    ${developerNames.map(name => `{
+      "developerName": "${name}",
+      "title": "<string: creative title in ${language === 'fr' ? 'French' : 'English'}, e.g. 'Le Chirurgien du Code'>",
+      "titleExplanation": "<string: one sentence why this title fits, with data reference>",
+      "strengths": ["<string: concrete strength with numbers>", "<at least 1 item>"],
+      "weaknesses": ["<string: concrete weakness with numbers>", "<at least 1 item>"],
+      "recommendations": ["<string: actionable recommendation>", "<at least 1 item>"],
+      "summary": "<string: 2-3 sentences profiling coding style and quality>"
+    }`).join(',\n    ')}
   ],
   "team": {
-    "summary": "2-3 sentences about team dynamics and overall quality",
-    "strengths": ["Team strength 1", "..."],
-    "weaknesses": ["Team weakness 1", "..."],
-    "recommendations": ["Team recommendation 1", "..."],
-    "dynamics": "Analysis of team balance, who complements whom, knowledge gaps"
+    "summary": "<string: 2-3 sentences about team dynamics>",
+    "strengths": ["<string: team strength>", "<at least 1 item>"],
+    "weaknesses": ["<string: team weakness>", "<at least 1 item>"],
+    "recommendations": ["<string: team recommendation>", "<at least 1 item>"],
+    "dynamics": "<string: analysis of team balance, complementary skills, knowledge gaps>"
   }
 }
+\`\`\`
 
-IMPORTANT:
-- Use ${language} for ALL text
-- Reference specific data points (scores, percentages, trends)
-- Be direct and honest -- do not sugarcoat weaknesses
-- Titles should be creative and memorable, not generic
-- Recommendations must be actionable (not "improve code quality" but "focus on reducing blocking issues by reviewing architecture before implementation")
-- Each developer MUST appear in the output
+## RULES (violations = invalid output)
 
-Return ONLY valid JSON, no markdown fences, no explanation.`;
+1. Language: ALL text in ${language === 'fr' ? 'French' : 'English'}
+2. Every developer listed above MUST appear in "developers" array with EXACT username
+3. "strengths", "weaknesses", "recommendations" arrays must each have AT LEAST 1 item
+4. Reference specific data points: scores, percentages, blocking counts, durations
+5. Be direct and honest -- do not sugarcoat weaknesses
+6. Titles must be creative and unique per developer (no two developers share the same title)
+7. Recommendations must be actionable (NOT "improve quality" but "review architecture before implementation to reduce the 1.3 blocking issues/review")
+8. "summary" must mention the developer's average score and key characteristic
+
+## OUTPUT
+
+Return ONLY the JSON object. No markdown fences. No explanation before or after. No trailing text.`;
 
   return prompt;
 }
