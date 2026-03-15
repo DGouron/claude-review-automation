@@ -115,7 +115,7 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
     return { ...viewModel, aiInsights: persistedData?.aiInsights ?? null, hasNewReviewsSinceAiGeneration };
   });
 
-  fastify.post<{ Body: { path?: string } }>('/api/insights/generate', async (request, reply) => {
+  fastify.post<{ Body: { path?: string; language?: string } }>('/api/insights/generate', async (request, reply) => {
     const body = request.body;
     const projectPath = typeof body === 'object' && body !== null && 'path' in body
       ? (body).path
@@ -126,6 +126,11 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
       return;
     }
 
+    const requestLanguage = typeof body === 'object' && body !== null && 'language' in body
+      && (body.language === 'fr' || body.language === 'en')
+      ? body.language
+      : language;
+
     try {
       const aiInsights = await generateAiInsights({
         projectPath,
@@ -134,7 +139,7 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
         reviewRequestTrackingGateway,
         logger,
         claudeInvoker,
-        language,
+        language: requestLanguage,
       });
 
       const existingData = insightsGateway.loadPersistedInsights(projectPath);

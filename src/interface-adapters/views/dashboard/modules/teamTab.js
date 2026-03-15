@@ -251,10 +251,10 @@ export function renderTeamTab(insightsData, translate) {
   const hasNewReviews = insightsData.hasNewReviewsSinceAiGeneration === true;
 
   const aiButtonHtml = renderAiGenerateButton(aiInsights, hasNewReviews, translate);
-  const aiTeamCardHtml = aiInsights?.team
+  const hasAiTeam = aiInsights?.team !== undefined && aiInsights?.team !== null;
+  const teamSectionHtml = hasAiTeam
     ? renderAiTeamCard(aiInsights.team, translate)
-    : '';
-  const teamInsightsHtml = renderTeamInsights(insightsData.team, translate);
+    : renderTeamInsights(insightsData.team, translate);
 
   const aiDevelopers = aiInsights?.developers ? aiInsights.developers : [];
   const developerCardsHtml = insightsData.developers.map((developer) => {
@@ -266,8 +266,7 @@ export function renderTeamTab(insightsData, translate) {
 
   return `
     ${aiButtonHtml}
-    ${aiTeamCardHtml}
-    ${teamInsightsHtml}
+    ${teamSectionHtml}
     <div class="team-grid">
       ${developerCardsHtml}
     </div>

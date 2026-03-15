@@ -1256,7 +1256,7 @@
         const response = await fetch(`${API_URL}/api/insights/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: currentProjectPath }),
+          body: JSON.stringify({ path: currentProjectPath, language: getLanguage() }),
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
