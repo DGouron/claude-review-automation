@@ -54,7 +54,7 @@ export async function generateAiInsights(
 
   const stats = statsGateway.loadProjectStats(projectPath);
   if (!stats || stats.reviews.length === 0) {
-    throw new Error('Aucune statistique de review disponible pour ce projet');
+    throw new Error('No review statistics available for this project');
   }
 
   const reviewFiles = await reviewFileGateway.listReviews(projectPath);
