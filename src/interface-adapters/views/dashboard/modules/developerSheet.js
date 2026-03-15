@@ -1,11 +1,16 @@
 import { escapeHtml } from './html.js';
 import { icon } from './icons.js';
+import {
+  getAvatarBorderClass,
+  renderLevelRing,
+  renderStatBar,
+} from './sharedViewHelpers.js';
 
 const CATEGORY_KEYS = ['quality', 'responsiveness', 'codeVolume', 'iteration'];
 
-const RADAR_CSS_SIZE = 320;
+const RADAR_CSS_SIZE = 400;
 const RADAR_MAX_RADIUS = 120;
-const RADAR_LABEL_OFFSET = 28;
+const RADAR_LABEL_OFFSET = 32;
 
 const COLORS = {
   textPrimary: '#e8efff',
@@ -18,74 +23,6 @@ const COLORS = {
   areaFill: 'rgba(122, 216, 255, 0.15)',
   areaStroke: 'rgba(122, 216, 255, 0.6)',
 };
-
-/**
- * @param {number} level
- * @returns {string}
- */
-function getStatBarColorClass(level) {
-  if (level <= 3) return 'stat-bar-danger';
-  if (level <= 6) return 'stat-bar-warning';
-  if (level <= 8) return 'stat-bar-focus';
-  return 'stat-bar-success';
-}
-
-/**
- * @param {number} level
- * @returns {string}
- */
-function getAvatarBorderClass(level) {
-  if (level <= 3) return 'dev-avatar-danger';
-  if (level <= 6) return 'dev-avatar-warning';
-  if (level <= 8) return 'dev-avatar-focus';
-  return 'dev-avatar-success';
-}
-
-/**
- * @param {string} trend
- * @returns {string}
- */
-function getTrendClass(trend) {
-  if (trend === 'improving') return 'trend-improving';
-  if (trend === 'declining') return 'trend-declining';
-  return 'trend-stable';
-}
-
-/**
- * @param {string} trend
- * @returns {string}
- */
-function getTrendIcon(trend) {
-  if (trend === 'improving') return icon('trending-up', 'trend-icon');
-  if (trend === 'declining') return icon('trending-down', 'trend-icon');
-  return icon('minus', 'trend-icon');
-}
-
-/**
- * @param {object} categoryLevel
- * @param {string} categoryKey
- * @param {(key: string, params?: Record<string, string|number>) => string} translate
- * @returns {string}
- */
-function renderStatBar(categoryLevel, categoryKey, translate) {
-  const level = categoryLevel.level;
-  const trend = categoryLevel.trend;
-  const widthPercent = (level / 10) * 100;
-  const colorClass = getStatBarColorClass(level);
-  const trendClass = getTrendClass(trend);
-
-  return `
-    <div class="stat-bar-container">
-      <span class="stat-bar-label">${translate('category.' + categoryKey)}</span>
-      <div class="stat-bar">
-        <div class="stat-bar-fill ${colorClass}" style="width: 0%" data-target-width="${widthPercent}%">
-          <span class="stat-bar-level">${level}</span>
-        </div>
-      </div>
-      <span class="trend-indicator ${trendClass}" title="${translate('trend.' + trend)}">${getTrendIcon(trend)}</span>
-    </div>
-  `;
-}
 
 /**
  * @param {number} value
@@ -109,34 +46,30 @@ function renderMetricsSection(metrics, translate) {
   return `
     <div class="sheet-section">
       <div class="sheet-section-title">${icon('bar-chart-2')} ${translate('devSheet.metrics')}</div>
-      <div class="dev-sheet-metrics-grid">
-        <div class="dev-sheet-metric">
-          <span class="dev-sheet-metric-value">${formatNumber(metrics.averageScore)}/10</span>
-          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.averageScore')}</span>
+      <div class="sheet-stats-grid">
+        <div class="sheet-stat-card dev-score">
+          <div class="sheet-stat-label">${icon('star')} ${translate('devSheet.metrics.averageScore')}</div>
+          <div class="sheet-stat-value">${formatNumber(metrics.averageScore)}<span class="sheet-stat-unit">/10</span></div>
         </div>
-        <div class="dev-sheet-metric">
-          <span class="dev-sheet-metric-value">${formatNumber(metrics.averageBlocking)}</span>
-          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.blockingPerReview')}</span>
+        <div class="sheet-stat-card dev-blocking">
+          <div class="sheet-stat-label">${icon('shield-alert')} ${translate('devSheet.metrics.blockingPerReview')}</div>
+          <div class="sheet-stat-value">${formatNumber(metrics.averageBlocking)}</div>
         </div>
-        <div class="dev-sheet-metric">
-          <span class="dev-sheet-metric-value">${formatNumber(metrics.averageWarnings)}</span>
-          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.warningsPerReview')}</span>
+        <div class="sheet-stat-card dev-warnings">
+          <div class="sheet-stat-label">${icon('alert-triangle')} ${translate('devSheet.metrics.warningsPerReview')}</div>
+          <div class="sheet-stat-value">${formatNumber(metrics.averageWarnings)}</div>
         </div>
-        <div class="dev-sheet-metric">
-          <span class="dev-sheet-metric-value">${qualityRate}%</span>
-          <span class="dev-sheet-metric-label">${translate('devSheet.metrics.firstPassQuality')}</span>
+        <div class="sheet-stat-card dev-quality">
+          <div class="sheet-stat-label">${icon('zap')} ${translate('devSheet.metrics.firstPassQuality')}</div>
+          <div class="sheet-stat-value">${qualityRate}<span class="sheet-stat-unit">%</span></div>
         </div>
-        ${metrics.averageAdditions > 0 ? `
-          <div class="dev-sheet-metric">
-            <span class="dev-sheet-metric-value">+${Math.round(metrics.averageAdditions)}</span>
-            <span class="dev-sheet-metric-label">${translate('devSheet.metrics.averageAdditions')}</span>
-          </div>
-          <div class="dev-sheet-metric">
-            <span class="dev-sheet-metric-value">-${Math.round(metrics.averageDeletions)}</span>
-            <span class="dev-sheet-metric-label">${translate('devSheet.metrics.averageDeletions')}</span>
-          </div>
-        ` : ''}
       </div>
+      ${metrics.averageAdditions > 0 ? `
+        <div class="dev-sheet-diff-row">
+          <span class="dev-sheet-additions">+${Math.round(metrics.averageAdditions)}</span>
+          <span class="dev-sheet-deletions">-${Math.round(metrics.averageDeletions)}</span>
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -267,11 +200,10 @@ export function renderDeveloperSheetContent(developer, translate, aiDeveloper) {
         <div class="dev-sheet-name">${escapeHtml(developer.developerName)}</div>
         ${titleHtml}
       </div>
-      <div class="dev-sheet-level">
-        <div class="dev-sheet-level-value">${developer.overallLevel}</div>
-        <div class="dev-sheet-level-label">${translate('team.overallLevel')}</div>
-      </div>
+      ${renderLevelRing(developer.overallLevel, 64, translate('team.overallLevel') + ' ' + developer.overallLevel + '/10')}
     </div>
+
+    ${metricsHtml}
 
     <div class="sheet-section">
       <div class="radar-chart-container">
@@ -285,8 +217,6 @@ export function renderDeveloperSheetContent(developer, translate, aiDeveloper) {
       </div>
     </div>
 
-    ${metricsHtml}
-
     <div class="sheet-section">
       <div class="sheet-section-title">${icon('trending-up')} ${translate('devSheet.scoreTrend')}</div>
       <div class="sheet-canvas-wrap">
@@ -296,14 +226,16 @@ export function renderDeveloperSheetContent(developer, translate, aiDeveloper) {
 
     ${aiSectionHtml}
 
-    <div class="sheet-section">
-      <div class="sheet-section-title">${icon('thumbs-up')} ${translate('devSheet.strengths')}</div>
-      <ul class="dev-sheet-list">${strengthsHtml || '<li class="dev-sheet-list-empty">-</li>'}</ul>
-    </div>
+    <div class="dev-sheet-insights-grid">
+      <div class="sheet-section">
+        <div class="sheet-section-title">${icon('thumbs-up')} ${translate('devSheet.strengths')}</div>
+        <ul class="dev-sheet-list">${strengthsHtml || '<li class="dev-sheet-list-empty">-</li>'}</ul>
+      </div>
 
-    <div class="sheet-section">
-      <div class="sheet-section-title">${icon('alert-triangle')} ${translate('devSheet.weaknesses')}</div>
-      <ul class="dev-sheet-list">${weaknessesHtml || '<li class="dev-sheet-list-empty">-</li>'}</ul>
+      <div class="sheet-section">
+        <div class="sheet-section-title">${icon('alert-triangle')} ${translate('devSheet.weaknesses')}</div>
+        <ul class="dev-sheet-list">${weaknessesHtml || '<li class="dev-sheet-list-empty">-</li>'}</ul>
+      </div>
     </div>
 
     <div class="sheet-section">
@@ -320,8 +252,9 @@ export function renderDeveloperSheetContent(developer, translate, aiDeveloper) {
 /**
  * @param {string} canvasId
  * @param {object} categoryLevels
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
  */
-export function drawRadarChart(canvasId, categoryLevels) {
+export function drawRadarChart(canvasId, categoryLevels, translate) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -340,10 +273,10 @@ export function drawRadarChart(canvasId, categoryLevels) {
   const maxRadius = RADAR_MAX_RADIUS;
 
   const axes = [
-    { key: 'quality', label: 'Quality', angle: -Math.PI / 2 },
-    { key: 'responsiveness', label: 'Responsiveness', angle: 0 },
-    { key: 'iteration', label: 'Iteration', angle: Math.PI / 2 },
-    { key: 'codeVolume', label: 'Code Volume', angle: Math.PI },
+    { key: 'quality', angle: -Math.PI / 2 },
+    { key: 'responsiveness', angle: 0 },
+    { key: 'iteration', angle: Math.PI / 2 },
+    { key: 'codeVolume', angle: Math.PI },
   ];
 
   for (let ring = 2; ring <= 10; ring += 2) {
@@ -421,6 +354,6 @@ export function drawRadarChart(canvasId, categoryLevels) {
     const labelRadius = maxRadius + RADAR_LABEL_OFFSET;
     const labelX = centerX + Math.cos(axis.angle) * labelRadius;
     const labelY = centerY + Math.sin(axis.angle) * labelRadius;
-    ctx.fillText(axis.label, labelX, labelY);
+    ctx.fillText(translate('category.' + axis.key), labelX, labelY);
   }
 }

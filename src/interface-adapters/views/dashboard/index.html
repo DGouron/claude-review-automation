@@ -1316,7 +1316,7 @@
       refreshIcons();
 
       requestAnimationFrame(() => {
-        drawRadarChart('dev-radar-canvas', developer.categoryLevels);
+        drawRadarChart('dev-radar-canvas', developer.categoryLevels, t);
         const developerReviews = currentStatsReviews.filter(
           (review) => review.assignedBy === developerName
         );

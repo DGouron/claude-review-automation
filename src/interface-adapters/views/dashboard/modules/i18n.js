@@ -288,6 +288,9 @@ const translations = {
     'team.loading': 'Loading team insights...',
     'team.overallLevel': 'Level',
     'team.reviews': '{{count}} reviews',
+    'team.healthStrip.developers': 'Number of developers',
+    'team.healthStrip.reviews': 'Total reviews analyzed',
+    'team.healthStrip.avgLevel': 'Average team level',
 
     // Categories
     'category.quality': 'Quality',
@@ -665,6 +668,9 @@ const translations = {
     'team.loading': 'Chargement des insights équipe...',
     'team.overallLevel': 'Niveau',
     'team.reviews': '{{count}} reviews',
+    'team.healthStrip.developers': 'Nombre de développeurs',
+    'team.healthStrip.reviews': 'Reviews totales analysées',
+    'team.healthStrip.avgLevel': "Niveau moyen de l'équipe",
 
     // Categories
     'category.quality': 'Qualité',

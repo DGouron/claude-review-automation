@@ -28,6 +28,16 @@ function createDeveloperViewModel(overrides = {}) {
     weaknesses: ['iteration'],
     topPriority: 'iteration',
     reviewCount: 12,
+    metrics: {
+      averageScore: 7.5,
+      averageBlocking: 0.3,
+      averageWarnings: 1.2,
+      averageDuration: 300,
+      totalFollowups: 5,
+      averageAdditions: 50,
+      averageDeletions: 20,
+      firstReviewQualityRate: 0.8,
+    },
     ...overrides,
   };
 }
@@ -58,7 +68,8 @@ describe('renderDeveloperSheetContent', () => {
 
     const html = renderDeveloperSheetContent(developer, translate);
 
-    expect(html).toContain('dev-sheet-level');
+    expect(html).toContain('dev-level-ring');
+    expect(html).toContain('ring-value');
     expect(html).toContain('9');
   });
 
@@ -227,5 +238,49 @@ describe('renderDeveloperSheetContent', () => {
     const html = renderDeveloperSheetContent(developer, translate);
 
     expect(html).toContain('ai.noInsights');
+  });
+
+  it('should render metrics as stat cards with values', () => {
+    const developer = createDeveloperViewModel({
+      metrics: {
+        averageScore: 8.3,
+        averageBlocking: 0.1,
+        averageWarnings: 1.4,
+        averageDuration: 300,
+        totalFollowups: 2,
+        averageAdditions: 40,
+        averageDeletions: 15,
+        firstReviewQualityRate: 0.9,
+      },
+    });
+
+    const html = renderDeveloperSheetContent(developer, translate);
+
+    expect(html).toContain('sheet-stat-card');
+    expect(html).toContain('dev-score');
+    expect(html).toContain('8.3');
+    expect(html).toContain('dev-blocking');
+    expect(html).toContain('0.1');
+    expect(html).toContain('dev-warnings');
+    expect(html).toContain('1.4');
+    expect(html).toContain('dev-quality');
+    expect(html).toContain('90');
+  });
+
+  it('should not render metrics section when metrics is null', () => {
+    const developer = createDeveloperViewModel({ metrics: null });
+
+    const html = renderDeveloperSheetContent(developer, translate);
+
+    expect(html).not.toContain('sheet-stat-card');
+    expect(html).not.toContain('sheet-stats-grid');
+  });
+
+  it('should render strengths and weaknesses side by side in insights grid', () => {
+    const developer = createDeveloperViewModel();
+
+    const html = renderDeveloperSheetContent(developer, translate);
+
+    expect(html).toContain('dev-sheet-insights-grid');
   });
 });

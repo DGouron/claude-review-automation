@@ -3022,7 +3022,22 @@ input:focus-visible,
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   position: relative;
+  overflow: hidden;
 }
+
+.dev-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.dev-card.tier-danger::before { background: var(--nsc-danger); }
+.dev-card.tier-warning::before { background: var(--nsc-warning); }
+.dev-card.tier-focus::before { background: var(--nsc-focus); }
+.dev-card.tier-success::before { background: var(--nsc-success); }
 
 .dev-card:hover {
   transform: translateY(-2px);
@@ -3083,39 +3098,52 @@ input:focus-visible,
   margin-top: 0.15rem;
 }
 
-.dev-overall-level {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--nsc-text-primary);
-  line-height: 1;
-  flex-shrink: 0;
-  opacity: 0.85;
+.dev-card-chips {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.dev-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(130, 170, 220, 0.12);
+  color: var(--nsc-text-secondary);
+}
+
+.dev-chip-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.dev-chip-score {
+  background: rgba(98, 211, 168, 0.1);
+  border-color: rgba(98, 211, 168, 0.2);
+  color: var(--nsc-success);
+}
+
+.dev-chip-quality {
+  background: rgba(122, 216, 255, 0.1);
+  border-color: rgba(122, 216, 255, 0.2);
+  color: var(--nsc-focus);
+}
+
+.dev-chip-count {
+  color: var(--nsc-text-muted);
 }
 
 .dev-card-stats {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 
-.dev-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.dev-review-count {
-  font-size: 0.68rem;
-  color: var(--nsc-text-muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.dev-count-icon {
-  width: 11px;
-  height: 11px;
-}
-
-/* Stat bars (RPG style) */
+/* Stat bars */
 .stat-bar-container {
   display: flex;
   align-items: center;
@@ -3132,8 +3160,8 @@ input:focus-visible,
 
 .stat-bar {
   flex: 1;
-  height: 20px;
-  border-radius: 4px;
+  height: 12px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
   position: relative;
   overflow: hidden;
@@ -3141,12 +3169,8 @@ input:focus-visible,
 
 .stat-bar-fill {
   height: 100%;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: width 0.8s ease-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
 }
 
 .stat-bar-danger { background: linear-gradient(90deg, var(--nsc-danger), rgba(240, 127, 136, 0.7)); }
@@ -3154,11 +3178,12 @@ input:focus-visible,
 .stat-bar-focus { background: linear-gradient(90deg, var(--nsc-focus), rgba(122, 216, 255, 0.7)); }
 .stat-bar-success { background: linear-gradient(90deg, var(--nsc-success), rgba(98, 211, 168, 0.7)); }
 
-.stat-bar-level {
-  font-size: 0.65rem;
+.stat-bar-value {
+  font-size: 0.7rem;
   font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color: var(--nsc-text-primary);
+  min-width: 16px;
+  text-align: center;
 }
 
 /* Trend indicators */
@@ -3339,24 +3364,12 @@ input:focus-visible,
   margin-top: 0.2rem;
 }
 
-.dev-sheet-level {
-  text-align: center;
+.dev-sheet-header .dev-level-ring {
   flex-shrink: 0;
 }
 
-.dev-sheet-level-value {
-  font-size: 2.4rem;
-  font-weight: 800;
-  color: var(--nsc-text-primary);
-  line-height: 1;
-}
-
-.dev-sheet-level-label {
-  font-size: 0.65rem;
-  color: var(--nsc-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 0.2rem;
+.dev-sheet-header .ring-value {
+  font-size: 1.6rem;
 }
 
 .dev-sheet-bars {
@@ -3716,6 +3729,127 @@ input:focus-visible,
   gap: 0.35rem;
 }
 
+/* ===== Level Ring ===== */
+
+.dev-level-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dev-level-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ring-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--nsc-text-primary);
+  z-index: 1;
+  line-height: 1;
+}
+
+.tier-danger { color: var(--nsc-danger); }
+.tier-warning { color: var(--nsc-warning); }
+.tier-focus { color: var(--nsc-focus); }
+.tier-success { color: var(--nsc-success); }
+
+/* ===== Team Health Strip ===== */
+
+.team-health-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.015) 100%);
+  border: 1px solid var(--nsc-border-soft);
+  border-radius: 10px;
+}
+
+.team-health-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--nsc-text-secondary);
+}
+
+.team-health-stat.tier-danger { color: var(--nsc-danger); }
+.team-health-stat.tier-warning { color: var(--nsc-warning); }
+.team-health-stat.tier-focus { color: var(--nsc-focus); }
+.team-health-stat.tier-success { color: var(--nsc-success); }
+
+.team-health-icon {
+  width: 15px;
+  height: 15px;
+  opacity: 0.7;
+}
+
+.team-health-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: inherit;
+}
+
+.team-health-unit {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.team-health-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--nsc-border-soft);
+}
+
+/* ===== Dev Sheet Metric Stat Cards ===== */
+
+.sheet-stat-card.dev-score::before { background: var(--nsc-success); }
+.sheet-stat-card.dev-score .sheet-stat-value { color: var(--nsc-success); }
+.sheet-stat-card.dev-blocking::before { background: var(--nsc-danger); }
+.sheet-stat-card.dev-blocking .sheet-stat-value { color: var(--nsc-danger); }
+.sheet-stat-card.dev-warnings::before { background: var(--nsc-warning); }
+.sheet-stat-card.dev-warnings .sheet-stat-value { color: var(--nsc-warning); }
+.sheet-stat-card.dev-quality::before { background: var(--nsc-focus); }
+.sheet-stat-card.dev-quality .sheet-stat-value { color: var(--nsc-focus); }
+
+.dev-sheet-diff-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dev-sheet-additions {
+  color: var(--nsc-success);
+}
+
+.dev-sheet-deletions {
+  color: var(--nsc-danger);
+}
+
+/* ===== Dev Sheet Insights Grid ===== */
+
+.dev-sheet-insights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.dev-sheet-insights-grid .sheet-section {
+  margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
   .team-grid {
     grid-template-columns: 1fr;
@@ -3730,6 +3864,16 @@ input:focus-visible,
     width: 56px;
     height: 56px;
     font-size: 1.4rem;
+  }
+  .team-health-strip {
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .team-health-value {
+    font-size: 0.95rem;
+  }
+  .dev-sheet-insights-grid {
+    grid-template-columns: 1fr;
   }
 }
 

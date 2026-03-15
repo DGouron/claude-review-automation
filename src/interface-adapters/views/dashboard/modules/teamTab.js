@@ -1,75 +1,13 @@
 import { escapeHtml } from './html.js';
 import { icon } from './icons.js';
+import {
+  getAvatarBorderClass,
+  getTierClass,
+  renderLevelRing,
+  renderStatBar,
+} from './sharedViewHelpers.js';
 
 const CATEGORY_KEYS = ['quality', 'responsiveness', 'codeVolume', 'iteration'];
-
-/**
- * @param {number} level
- * @returns {string}
- */
-function getStatBarColorClass(level) {
-  if (level <= 3) return 'stat-bar-danger';
-  if (level <= 6) return 'stat-bar-warning';
-  if (level <= 8) return 'stat-bar-focus';
-  return 'stat-bar-success';
-}
-
-/**
- * @param {number} level
- * @returns {string}
- */
-function getAvatarBorderClass(level) {
-  if (level <= 3) return 'dev-avatar-danger';
-  if (level <= 6) return 'dev-avatar-warning';
-  if (level <= 8) return 'dev-avatar-focus';
-  return 'dev-avatar-success';
-}
-
-/**
- * @param {string} trend
- * @returns {string}
- */
-function getTrendClass(trend) {
-  if (trend === 'improving') return 'trend-improving';
-  if (trend === 'declining') return 'trend-declining';
-  return 'trend-stable';
-}
-
-/**
- * @param {string} trend
- * @returns {string}
- */
-function getTrendIcon(trend) {
-  if (trend === 'improving') return icon('trending-up', 'trend-icon');
-  if (trend === 'declining') return icon('trending-down', 'trend-icon');
-  return icon('minus', 'trend-icon');
-}
-
-/**
- * @param {object} categoryLevel
- * @param {string} categoryKey
- * @param {(key: string, params?: Record<string, string|number>) => string} translate
- * @returns {string}
- */
-function renderStatBar(categoryLevel, categoryKey, translate) {
-  const level = categoryLevel.level;
-  const trend = categoryLevel.trend;
-  const widthPercent = (level / 10) * 100;
-  const colorClass = getStatBarColorClass(level);
-  const trendClass = getTrendClass(trend);
-
-  return `
-    <div class="stat-bar-container">
-      <span class="stat-bar-label">${translate('category.' + categoryKey)}</span>
-      <div class="stat-bar">
-        <div class="stat-bar-fill ${colorClass}" style="width: 0%" data-target-width="${widthPercent}%">
-          <span class="stat-bar-level">${level}</span>
-        </div>
-      </div>
-      <span class="trend-indicator ${trendClass}" title="${translate('trend.' + trend)}">${getTrendIcon(trend)}</span>
-    </div>
-  `;
-}
 
 /**
  * @param {object} developer
@@ -80,6 +18,7 @@ function renderStatBar(categoryLevel, categoryKey, translate) {
 function renderDeveloperCard(developer, translate, aiDeveloper) {
   const initial = developer.developerName.charAt(0).toUpperCase();
   const avatarBorderClass = getAvatarBorderClass(developer.overallLevel);
+  const tierClass = getTierClass(developer.overallLevel);
   const encodedName = encodeURIComponent(developer.developerName);
 
   const statBarsHtml = CATEGORY_KEYS.map(
@@ -90,21 +29,61 @@ function renderDeveloperCard(developer, translate, aiDeveloper) {
     ? `<div class="dev-title ai-title">${icon('sparkles', 'ai-sparkle-icon')} ${escapeHtml(aiDeveloper.title)}</div>`
     : `<div class="dev-title">${translate('title.' + developer.title)}</div>`;
 
+  const metrics = developer.metrics;
+  const avgScore = metrics ? Number(metrics.averageScore).toFixed(1) : null;
+  const qualityRate = metrics ? Math.round(metrics.firstReviewQualityRate * 100) : null;
+
   return `
-    <div class="dev-card" onclick="openDevSheet('${encodedName}')" role="button" tabindex="0">
+    <div class="dev-card ${tierClass}" onclick="openDevSheet('${encodedName}')" role="button" tabindex="0">
       <div class="dev-card-header">
         <div class="dev-avatar-placeholder ${avatarBorderClass}">${escapeHtml(initial)}</div>
         <div class="dev-card-identity">
           <div class="dev-name">${escapeHtml(developer.developerName)}</div>
           ${titleHtml}
         </div>
-        <div class="dev-overall-level">${developer.overallLevel}</div>
+        ${renderLevelRing(developer.overallLevel, 52, translate('team.overallLevel') + ' ' + developer.overallLevel + '/10')}
+      </div>
+      <div class="dev-card-chips">
+        ${avgScore ? `<span class="dev-chip dev-chip-score" title="${translate('devSheet.metrics.averageScore')}">${icon('star', 'dev-chip-icon')} ${avgScore}</span>` : ''}
+        ${qualityRate !== null ? `<span class="dev-chip dev-chip-quality" title="${translate('devSheet.metrics.firstPassQuality')}">${icon('zap', 'dev-chip-icon')} ${qualityRate}%</span>` : ''}
+        <span class="dev-chip dev-chip-count" title="${translate('devSheet.reviewCount', { count: developer.reviewCount })}">${icon('file-search', 'dev-chip-icon')} ${developer.reviewCount}</span>
       </div>
       <div class="dev-card-stats">
         ${statBarsHtml}
       </div>
-      <div class="dev-card-footer">
-        <span class="dev-review-count">${icon('file-search', 'dev-count-icon')} ${translate('team.reviews', { count: developer.reviewCount })}</span>
+    </div>
+  `;
+}
+
+/**
+ * @param {object} team
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @returns {string}
+ */
+function renderTeamHealthStrip(team, translate) {
+  const avgLevel = (
+    team.averageLevels.quality +
+    team.averageLevels.responsiveness +
+    team.averageLevels.codeVolume +
+    team.averageLevels.iteration
+  ) / 4;
+  const tierClass = getTierClass(Math.round(avgLevel));
+
+  return `
+    <div class="team-health-strip">
+      <div class="team-health-stat" title="${translate('team.healthStrip.developers')}">
+        ${icon('users', 'team-health-icon')}
+        <span class="team-health-value">${team.developerCount}</span>
+      </div>
+      <div class="team-health-divider"></div>
+      <div class="team-health-stat" title="${translate('team.healthStrip.reviews')}">
+        ${icon('file-search', 'team-health-icon')}
+        <span class="team-health-value">${team.totalReviewCount}</span>
+      </div>
+      <div class="team-health-divider"></div>
+      <div class="team-health-stat ${tierClass}" title="${translate('team.healthStrip.avgLevel')}">
+        ${icon('gauge', 'team-health-icon')}
+        <span class="team-health-value">${avgLevel.toFixed(1)}<span class="team-health-unit">/10</span></span>
       </div>
     </div>
   `;
@@ -273,11 +252,14 @@ export function renderTeamTab(insightsData, translate) {
     </button>
   `;
 
+  const healthStripHtml = renderTeamHealthStrip(insightsData.team, translate);
+
   return `
     <div class="team-tab-actions">
       ${aiButtonHtml}
       ${exportButtonHtml}
     </div>
+    ${healthStripHtml}
     ${teamSectionHtml}
     <div class="team-grid">
       ${developerCardsHtml}

@@ -28,6 +28,16 @@ function createDeveloperViewModel(overrides = {}) {
     weaknesses: ['iteration'],
     topPriority: 'iteration',
     reviewCount: 12,
+    metrics: {
+      averageScore: 7.5,
+      averageBlocking: 0.3,
+      averageWarnings: 1.2,
+      averageDuration: 300,
+      totalFollowups: 5,
+      averageAdditions: 50,
+      averageDeletions: 20,
+      firstReviewQualityRate: 0.8,
+    },
     ...overrides,
   };
 }
@@ -120,7 +130,8 @@ describe('renderTeamTab', () => {
 
     const html = renderTeamTab(data, translate);
 
-    expect(html).toContain('dev-overall-level');
+    expect(html).toContain('dev-level-ring');
+    expect(html).toContain('ring-value');
     expect(html).toContain('9');
   });
 
@@ -131,8 +142,8 @@ describe('renderTeamTab', () => {
 
     const html = renderTeamTab(data, translate);
 
-    expect(html).toContain('team.reviews');
-    expect(html).toContain('dev-review-count');
+    expect(html).toContain('devSheet.reviewCount');
+    expect(html).toContain('dev-chip-count');
   });
 
   it('should include onclick handler to open developer sheet', () => {
@@ -317,5 +328,82 @@ describe('renderTeamTab', () => {
 
     expect(html).not.toContain('export-pdf-btn');
     expect(html).not.toContain('exportInsightsPdf');
+  });
+
+  it('should render team health strip with developer count, review count and avg level', () => {
+    const data = createInsightsData({
+      team: createTeamViewModel({
+        developerCount: 4,
+        totalReviewCount: 100,
+        averageLevels: { quality: 8, responsiveness: 6, codeVolume: 7, iteration: 7 },
+      }),
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('team-health-strip');
+    expect(html).toContain('>4<');
+    expect(html).toContain('>100<');
+    expect(html).toContain('7.0');
+    expect(html).toContain('tier-focus');
+  });
+
+  it('should render health strip with warning tier when avg level is low', () => {
+    const data = createInsightsData({
+      team: createTeamViewModel({
+        averageLevels: { quality: 4, responsiveness: 5, codeVolume: 4, iteration: 3 },
+      }),
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('team-health-strip');
+    expect(html).toContain('tier-warning');
+  });
+
+  it('should render metric chips with avg score and quality rate', () => {
+    const data = createInsightsData({
+      developers: [createDeveloperViewModel({
+        metrics: {
+          averageScore: 8.3,
+          averageBlocking: 0.1,
+          averageWarnings: 1.4,
+          averageDuration: 300,
+          totalFollowups: 2,
+          averageAdditions: 40,
+          averageDeletions: 15,
+          firstReviewQualityRate: 0.9,
+        },
+      })],
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('dev-chip-score');
+    expect(html).toContain('8.3');
+    expect(html).toContain('dev-chip-quality');
+    expect(html).toContain('90%');
+  });
+
+  it('should not render metric chips when metrics is null', () => {
+    const data = createInsightsData({
+      developers: [createDeveloperViewModel({ metrics: null })],
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).not.toContain('dev-chip-score');
+    expect(html).not.toContain('dev-chip-quality');
+    expect(html).toContain('dev-chip-count');
+  });
+
+  it('should render health strip tooltips with translated text', () => {
+    const data = createInsightsData();
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('team.healthStrip.developers');
+    expect(html).toContain('team.healthStrip.reviews');
+    expect(html).toContain('team.healthStrip.avgLevel');
   });
 });
