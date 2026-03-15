@@ -1,12 +1,12 @@
-import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 
 export class StubDiffStatsFetchGateway implements DiffStatsFetchGateway {
   private responses = new Map<number, DiffStats | null>();
   private failingMergeRequests = new Set<number>();
   fetchCallCount = 0;
 
-  async fetchDiffStats(_projectPath: string, mergeRequestNumber: number): Promise<DiffStats | null> {
+  fetchDiffStats(_projectPath: string, mergeRequestNumber: number): DiffStats | null {
     this.fetchCallCount++;
 
     if (this.failingMergeRequests.has(mergeRequestNumber)) {

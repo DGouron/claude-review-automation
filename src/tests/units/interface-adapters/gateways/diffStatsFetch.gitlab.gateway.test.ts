@@ -1,39 +1,114 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 
 describe('GitLabDiffStatsFetchGateway', () => {
-  it('should fetch diff stats from GitLab API', async () => {
-    const changesResponse = JSON.stringify([
-      { diff: '@@ -1,10 +1,15 @@\n+added1\n+added2\n-removed1' },
-      { diff: '@@ -1,5 +1,8 @@\n+added3\n+added4\n+added5\n-removed2\n-removed3' },
-    ]);
-    const commitsResponse = JSON.stringify([
-      { id: 'abc123' },
-      { id: 'def456' },
-      { id: 'ghi789' },
-    ]);
+  describe('fetchDiffStats', () => {
+    it('should parse additions, deletions from MR API and count commits', () => {
+      const stubExecutor = (command: string) => {
+        if (command.includes('/commits')) {
+          return JSON.stringify([
+            { id: 'commit1' },
+            { id: 'commit2' },
+            { id: 'commit3' },
+          ]);
+        }
+        return JSON.stringify({
+          changes_count: '5',
+          additions: 150,
+          deletions: 30,
+        });
+      };
 
-    const executor = vi.fn()
-      .mockReturnValueOnce(changesResponse)
-      .mockReturnValueOnce(commitsResponse);
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      const result = gateway.fetchDiffStats('group/project', 42);
 
-    const gateway = new GitLabDiffStatsFetchGateway(executor);
-    const result = await gateway.fetchDiffStats('my-group/my-project', 42);
-
-    expect(result).not.toBeNull();
-    expect(result?.commitsCount).toBe(3);
-    expect(result?.additions).toBe(5);
-    expect(result?.deletions).toBe(3);
-  });
-
-  it('should return null when executor throws', async () => {
-    const executor = vi.fn().mockImplementation(() => {
-      throw new Error('API error');
+      expect(result).not.toBeNull();
+      expect(result?.additions).toBe(150);
+      expect(result?.deletions).toBe(30);
+      expect(result?.commitsCount).toBe(3);
     });
 
-    const gateway = new GitLabDiffStatsFetchGateway(executor);
-    const result = await gateway.fetchDiffStats('my-group/my-project', 42);
+    it('should encode project path for API URL', () => {
+      const capturedCommands: string[] = [];
+      const stubExecutor = (command: string) => {
+        capturedCommands.push(command);
+        if (command.includes('/commits')) {
+          return JSON.stringify([{ id: 'commit1' }]);
+        }
+        return JSON.stringify({ additions: 0, deletions: 0 });
+      };
 
-    expect(result).toBeNull();
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      gateway.fetchDiffStats('group/project', 99);
+
+      expect(capturedCommands[0]).toContain('group%2Fproject');
+      expect(capturedCommands[0]).toContain('merge_requests/99');
+    });
+
+    it('should return null when MR API call throws', () => {
+      const stubExecutor = () => {
+        throw new Error('API error');
+      };
+
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      const result = gateway.fetchDiffStats('group/project', 42);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when commits API call throws', () => {
+      const stubExecutor = (command: string) => {
+        if (command.includes('/commits')) {
+          throw new Error('Commits API error');
+        }
+        return JSON.stringify({ additions: 10, deletions: 5 });
+      };
+
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      const result = gateway.fetchDiffStats('group/project', 42);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when MR response is malformed', () => {
+      const stubExecutor = () => 'not valid json';
+
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      const result = gateway.fetchDiffStats('group/project', 42);
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle MR with zero additions and deletions', () => {
+      const stubExecutor = (command: string) => {
+        if (command.includes('/commits')) {
+          return JSON.stringify([{ id: 'commit1' }]);
+        }
+        return JSON.stringify({ additions: 0, deletions: 0 });
+      };
+
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      const result = gateway.fetchDiffStats('group/project', 10);
+
+      expect(result).not.toBeNull();
+      expect(result?.additions).toBe(0);
+      expect(result?.deletions).toBe(0);
+      expect(result?.commitsCount).toBe(1);
+    });
+
+    it('should handle empty commits array', () => {
+      const stubExecutor = (command: string) => {
+        if (command.includes('/commits')) {
+          return JSON.stringify([]);
+        }
+        return JSON.stringify({ additions: 10, deletions: 5 });
+      };
+
+      const gateway = new GitLabDiffStatsFetchGateway(stubExecutor);
+      const result = gateway.fetchDiffStats('group/project', 42);
+
+      expect(result).not.toBeNull();
+      expect(result?.commitsCount).toBe(0);
+    });
   });
 });

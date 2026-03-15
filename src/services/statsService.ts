@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { ReviewStats, ProjectStats } from '@/entities/stats/projectStats.js';
+import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 
 export type { ReviewStats, ProjectStats };
 
@@ -63,12 +64,12 @@ function createEmptyStats(): ProjectStats {
     averageDuration: 0,
     totalBlocking: 0,
     totalWarnings: 0,
-    reviews: [],
-    lastUpdated: new Date().toISOString(),
     totalAdditions: 0,
     totalDeletions: 0,
-    averageAdditions: 0,
-    averageDeletions: 0,
+    averageAdditions: null,
+    averageDeletions: null,
+    reviews: [],
+    lastUpdated: new Date().toISOString(),
   };
 }
 
@@ -77,15 +78,15 @@ function createEmptyStats(): ProjectStats {
  *
  * Supports two formats:
  * 1. Summary format (from skill output):
- *    📊 Score global : X/10
- *    🚨 Bloquants : X
- *    ⚠️ Importants : X
+ *    Score global : X/10
+ *    Bloquants : X
+ *    Importants : X
  *
  * 2. Structured stats line:
  *    [REVIEW_STATS:blocking=X:warnings=X:suggestions=X:score=X]
  *
  * 3. Inline markers (fallback):
- *    🚨 [BLOQUANT], ⚠️ [IMPORTANT], 💡 [SUGGESTION]
+ *    [BLOQUANT], [IMPORTANT], [SUGGESTION]
  */
 export function parseReviewOutput(stdout: string): {
   score: number | null;
@@ -117,25 +118,21 @@ export function parseReviewOutput(stdout: string): {
   }
 
   // Method 2: Parse summary format (skill output)
-  // 📊 Score global : X/10
   const scoreMatch = stdout.match(/Score\s+[Gg]lobal\s*:\s*(\d+(?:\.\d+)?)\s*\/\s*10/i);
   if (scoreMatch) {
     score = Number.parseFloat(scoreMatch[1]);
   }
 
-  // 🚨 Bloquants : X (summary count)
   const blockingSummary = stdout.match(/🚨\s*Bloquants?\s*:\s*(\d+)/i);
   if (blockingSummary) {
     blocking = Number.parseInt(blockingSummary[1], 10);
   }
 
-  // ⚠️ Importants : X (summary count)
   const warningsSummary = stdout.match(/⚠️\s*Importants?\s*:\s*(\d+)/i);
   if (warningsSummary) {
     warnings = Number.parseInt(warningsSummary[1], 10);
   }
 
-  // 📝 Améliorations/Suggestions : X (summary count)
   const suggestionsSummary = stdout.match(/(?:📝|💡)\s*(?:Améliorations?|Suggestions?)[^:]*:\s*(\d+)/i);
   if (suggestionsSummary) {
     suggestions = Number.parseInt(suggestionsSummary[1], 10);
@@ -147,13 +144,11 @@ export function parseReviewOutput(stdout: string): {
   }
 
   // Method 3: Fallback - count inline markers
-  // 🚨 [BLOQUANT] or 🚨 **[BLOQUANT]**
   const blockingMatches = stdout.match(/🚨\s*\*?\*?\[BLOQUANT\]/gi);
   if (blockingMatches) {
     blocking = blockingMatches.length;
   }
 
-  // Alternative: count "### " headers under "## Corrections Bloquantes"
   const blockingSection = stdout.match(/##\s+Corrections?\s+Bloquantes?[\s\S]*?(?=##\s|$)/i);
   if (blockingSection) {
     const blockingHeaders = blockingSection[0].match(/^###\s+\d+\./gm);
@@ -162,13 +157,11 @@ export function parseReviewOutput(stdout: string): {
     }
   }
 
-  // ⚠️ [IMPORTANT] or ⚠️ **[IMPORTANT]**
   const warningMatches = stdout.match(/⚠️\s*\*?\*?\[IMPORTANT\]/gi);
   if (warningMatches) {
     warnings = warningMatches.length;
   }
 
-  // Alternative: count "### " headers under "## Corrections Importantes"
   const warningSection = stdout.match(/##\s+Corrections?\s+Importantes?[\s\S]*?(?=##\s|$)/i);
   if (warningSection) {
     const warningHeaders = warningSection[0].match(/^###\s+\d+\./gm);
@@ -177,13 +170,11 @@ export function parseReviewOutput(stdout: string): {
     }
   }
 
-  // 💡 [SUGGESTION] or 💡 **[SUGGESTION]**
   const suggestionMatches = stdout.match(/💡\s*\*?\*?\[SUGGESTION\]/gi);
   if (suggestionMatches) {
     suggestions = suggestionMatches.length;
   }
 
-  // Alternative: count "### " headers under "## Suggestions"
   const suggestionSection = stdout.match(/##\s+Suggestions?[\s\S]*?(?=##\s|$)/i);
   if (suggestionSection) {
     const suggestionHeaders = suggestionSection[0].match(/^###\s+\d+\./gm);
@@ -203,7 +194,8 @@ export function addReviewStats(
   mrNumber: number,
   duration: number,
   stdout: string,
-  assignedBy?: string
+  assignedBy?: string,
+  diffStats?: DiffStats | null
 ): ReviewStats {
   const stats = loadProjectStats(projectPath);
   const parsed = parseReviewOutput(stdout);
@@ -219,24 +211,28 @@ export function addReviewStats(
     warnings: parsed.warnings,
     suggestions: parsed.suggestions,
     assignedBy,
+    diffStats: diffStats ?? null,
   };
 
-  // Add to reviews array
   stats.reviews.push(reviewStats);
 
-  // Keep only last 100 reviews
   if (stats.reviews.length > 100) {
     stats.reviews = stats.reviews.slice(-100);
   }
 
-  // Recalculate aggregates
+  recalculateProjectStats(stats);
+  saveProjectStats(projectPath, stats);
+
+  return reviewStats;
+}
+
+function recalculateProjectStats(stats: ProjectStats): void {
   stats.totalReviews = stats.reviews.length;
   stats.totalDuration = stats.reviews.reduce((sum, r) => sum + r.duration, 0);
-  stats.averageDuration = stats.totalDuration / stats.totalReviews;
+  stats.averageDuration = stats.totalReviews > 0 ? stats.totalDuration / stats.totalReviews : 0;
   stats.totalBlocking = stats.reviews.reduce((sum, r) => sum + r.blocking, 0);
   stats.totalWarnings = stats.reviews.reduce((sum, r) => sum + r.warnings, 0);
 
-  // Calculate average score (only from reviews with scores)
   const reviewsWithScore = stats.reviews.filter((r) => r.score !== null);
   if (reviewsWithScore.length > 0) {
     stats.averageScore =
@@ -245,9 +241,17 @@ export function addReviewStats(
     stats.averageScore = null;
   }
 
-  saveProjectStats(projectPath, stats);
+  const reviewsWithDiffStats = stats.reviews.filter((r) => r.diffStats != null);
+  stats.totalAdditions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.additions ?? 0), 0);
+  stats.totalDeletions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.deletions ?? 0), 0);
 
-  return reviewStats;
+  if (reviewsWithDiffStats.length > 0) {
+    stats.averageAdditions = stats.totalAdditions / reviewsWithDiffStats.length;
+    stats.averageDeletions = stats.totalDeletions / reviewsWithDiffStats.length;
+  } else {
+    stats.averageAdditions = null;
+    stats.averageDeletions = null;
+  }
 }
 
 /**

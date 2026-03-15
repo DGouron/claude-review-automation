@@ -1,65 +1,75 @@
 import { describe, it, expect } from 'vitest';
-import type { ReviewStats, ProjectStats } from '@/entities/stats/projectStats.js';
-import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
+import { DiffStatsFactory } from '@/tests/factories/diffStats.factory.js';
+import type { ReviewStats } from '@/entities/stats/projectStats.js';
 
-describe('ReviewStats with diffStats extension', () => {
-  it('should support a diffStats field on ReviewStats', () => {
-    const diffStats: DiffStats = {
-      commitsCount: 3,
-      additions: 150,
-      deletions: 30,
-    };
+describe('StatsService DiffStats', () => {
+  describe('ReviewStats', () => {
+    it('should support diffStats field with additions, deletions, and commitsCount', () => {
+      const diffStats = DiffStatsFactory.create();
+      const reviewStats = ReviewStatsFactory.create({ diffStats });
 
-    const review: ReviewStats = {
-      id: 'test-1',
-      timestamp: '2024-01-15T10:00:00Z',
-      mrNumber: 42,
-      duration: 60000,
-      score: 8,
-      blocking: 1,
-      warnings: 2,
-      diffStats,
-    };
+      expect(reviewStats.diffStats).toEqual({
+        commitsCount: 3,
+        additions: 150,
+        deletions: 30,
+      });
+    });
 
-    expect(review.diffStats).toEqual(diffStats);
+    it('should support null diffStats for reviews without diff data', () => {
+      const reviewStats = ReviewStatsFactory.create({ diffStats: null });
+
+      expect(reviewStats.diffStats).toBeNull();
+    });
   });
 
-  it('should support null diffStats on ReviewStats', () => {
-    const review: ReviewStats = {
-      id: 'test-2',
-      timestamp: '2024-01-15T10:00:00Z',
-      mrNumber: 42,
-      duration: 60000,
-      score: 8,
-      blocking: 1,
-      warnings: 2,
-      diffStats: null,
-    };
+  describe('ProjectStats', () => {
+    it('should include totalAdditions and totalDeletions aggregates', () => {
+      const stats = ProjectStatsFactory.create();
 
-    expect(review.diffStats).toBeNull();
-  });
-});
+      expect(stats.totalAdditions).toBe(0);
+      expect(stats.totalDeletions).toBe(0);
+    });
 
-describe('ProjectStats with diff aggregates', () => {
-  it('should support diff aggregate fields on ProjectStats', () => {
-    const stats: ProjectStats = {
-      totalReviews: 5,
-      totalDuration: 300000,
-      averageScore: 7.5,
-      averageDuration: 60000,
-      totalBlocking: 3,
-      totalWarnings: 5,
-      reviews: [],
-      lastUpdated: '2024-01-15T10:00:00Z',
-      totalAdditions: 500,
-      totalDeletions: 100,
-      averageAdditions: 100,
-      averageDeletions: 20,
-    };
+    it('should include averageAdditions and averageDeletions', () => {
+      const stats = ProjectStatsFactory.create();
 
-    expect(stats.totalAdditions).toBe(500);
-    expect(stats.totalDeletions).toBe(100);
-    expect(stats.averageAdditions).toBe(100);
-    expect(stats.averageDeletions).toBe(20);
+      expect(stats.averageAdditions).toBeNull();
+      expect(stats.averageDeletions).toBeNull();
+    });
+
+    it('should compute aggregates from reviews with diffStats', () => {
+      const reviews: ReviewStats[] = [
+        ReviewStatsFactory.create({
+          diffStats: DiffStatsFactory.create({ additions: 100, deletions: 20 }),
+        }),
+        ReviewStatsFactory.create({
+          diffStats: DiffStatsFactory.create({ additions: 200, deletions: 40 }),
+        }),
+        ReviewStatsFactory.create({
+          diffStats: null,
+        }),
+      ];
+
+      const stats = ProjectStatsFactory.withReviews(reviews);
+
+      expect(stats.totalAdditions).toBe(300);
+      expect(stats.totalDeletions).toBe(60);
+      expect(stats.averageAdditions).toBe(150);
+      expect(stats.averageDeletions).toBe(30);
+    });
+
+    it('should return null averages when no reviews have diffStats', () => {
+      const reviews: ReviewStats[] = [
+        ReviewStatsFactory.create({ diffStats: null }),
+      ];
+
+      const stats = ProjectStatsFactory.withReviews(reviews);
+
+      expect(stats.totalAdditions).toBe(0);
+      expect(stats.totalDeletions).toBe(0);
+      expect(stats.averageAdditions).toBeNull();
+      expect(stats.averageDeletions).toBeNull();
+    });
   });
 });

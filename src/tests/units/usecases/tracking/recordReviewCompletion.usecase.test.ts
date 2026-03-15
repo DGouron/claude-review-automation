@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { RecordReviewCompletionUseCase } from '../../../../usecases/tracking/recordReviewCompletion.usecase.js';
 import { InMemoryReviewRequestTrackingGateway } from '../../../stubs/reviewRequestTracking.stub.js';
 import { TrackedMrFactory } from '../../../factories/trackedMr.factory.js';
+import { DiffStatsFactory } from '@/tests/factories/diffStats.factory.js';
 
 describe('RecordReviewCompletionUseCase', () => {
   const reviewData = {
@@ -100,7 +101,7 @@ describe('RecordReviewCompletionUseCase', () => {
     const mr = TrackedMrFactory.create({
       id: 'mr-1',
       reviews: [
-        { type: 'review', timestamp: '2024-01-01T00:00:00Z', durationMs: 1000, score: 6, blocking: 0, warnings: 0, suggestions: 0, threadsClosed: 0, threadsOpened: 0 },
+        { type: 'review', timestamp: '2024-01-01T00:00:00Z', durationMs: 1000, score: 6, blocking: 0, warnings: 0, suggestions: 0, threadsClosed: 0, threadsOpened: 0, diffStats: null },
       ],
       totalReviews: 1,
       latestScore: 6,
@@ -122,7 +123,7 @@ describe('RecordReviewCompletionUseCase', () => {
     const mr = TrackedMrFactory.create({
       id: 'mr-1',
       reviews: [
-        { type: 'review', timestamp: '2024-01-01T00:00:00Z', durationMs: 1000, score: 5, blocking: 1, warnings: 0, suggestions: 0, threadsClosed: 0, threadsOpened: 1 },
+        { type: 'review', timestamp: '2024-01-01T00:00:00Z', durationMs: 1000, score: 5, blocking: 1, warnings: 0, suggestions: 0, threadsClosed: 0, threadsOpened: 1, diffStats: null },
       ],
       totalReviews: 1,
       latestScore: 5,
@@ -147,6 +148,40 @@ describe('RecordReviewCompletionUseCase', () => {
     });
 
     expect(result?.latestScore).toBe(8);
+  });
+
+  it('should record diffStats in review event when provided', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1' });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const diffStats = DiffStatsFactory.create({ commitsCount: 5, additions: 200, deletions: 50 });
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      reviewData: { ...reviewData, diffStats },
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.reviews).toHaveLength(1);
+    expect(result?.reviews[0].diffStats).toEqual({
+      commitsCount: 5,
+      additions: 200,
+      deletions: 50,
+    });
+  });
+
+  it('should set diffStats to null when not provided', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1' });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const result = useCase.execute({ projectPath: '/project', mrId: 'mr-1', reviewData });
+
+    expect(result).not.toBeNull();
+    expect(result?.reviews[0].diffStats).toBeNull();
   });
 
   it('should return null for unknown MR', () => {

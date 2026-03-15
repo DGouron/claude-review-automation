@@ -135,6 +135,7 @@ function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTracking
     reviewContextGateway: createStubContextGateway(),
     threadFetchGateway,
     diffMetadataFetchGateway: { fetchDiffMetadata: vi.fn(() => ({ baseSha: 'abc', headSha: 'def', startSha: 'ghi' })) },
+    diffStatsFetchGateway: { fetchDiffStats: vi.fn(() => null) },
     trackAssignment: new TrackAssignmentUseCase(trackingGateway),
     recordCompletion: new RecordReviewCompletionUseCase(trackingGateway),
     recordPush: new RecordPushUseCase(trackingGateway),
