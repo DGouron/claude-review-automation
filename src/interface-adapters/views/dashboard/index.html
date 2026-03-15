@@ -157,6 +157,16 @@
       </div>
     </div>
 
+    <div id="team-section" class="section hidden">
+      <div class="section-header clickable" onclick="toggleTeamSection()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="users"></i> <span id="i18n-section-team"></span>
+        <span id="team-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+      </div>
+      <div id="team-tab-content" class="section-content hidden">
+        <div class="empty-state" id="i18n-empty-team"></div>
+      </div>
+    </div>
+
     <div class="section" id="active-reviews-section">
       <div class="section-header">
         <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
@@ -244,6 +254,11 @@
     <div id="mr-sheet-content" class="sheet-content"></div>
   </div>
 
+  <div id="dev-sheet-overlay" class="sheet-overlay" onclick="closeDevSheet()"></div>
+  <div id="dev-sheet" class="sheet-panel">
+    <div id="dev-sheet-content" class="sheet-content"></div>
+  </div>
+
   <script type="module">
     import { t, setLanguage, getLanguage } from './modules/i18n.js';
     import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
@@ -263,6 +278,9 @@
     import { renderCollapsibleList, toggleCollapsibleList } from './modules/collapsibleList.js';
     import { renderMrSheetContent, drawScoreTimeline, drawIssuesBreakdown } from './modules/mrSheet.js';
     import { drawScoreTrendChart, drawReviewActivityChart, drawScoreDistributionChart, animateCounter } from './modules/statsCharts.js';
+    import { renderTeamTab, fetchAndRenderTeamTab } from './modules/teamTab.js';
+    import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
+    import { buildInsightsReport } from './modules/insightsReport.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -279,6 +297,8 @@
     let currentStatsReviews = [];
     let currentDevFilter = 'all';
     let focusStripCompact = false;
+    let teamCollapsed = true;
+    let currentInsightsData = null;
     const loadingState = { status: 0, reviewFiles: 0, stats: 0, mrTracking: 0 };
     let hasLoadedStatusOnce = false;
     const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section'];
@@ -1179,6 +1199,171 @@
       }
     }
 
+    function toggleTeamSection() {
+      teamCollapsed = !teamCollapsed;
+      const content = document.getElementById('team-tab-content');
+      const toggle = document.getElementById('team-toggle');
+
+      if (teamCollapsed) {
+        content.classList.add('hidden');
+        toggle.classList.add('collapsed');
+      } else {
+        content.classList.remove('hidden');
+        toggle.classList.remove('collapsed');
+      }
+    }
+
+    let teamAnalysisCollapsed = false;
+
+    function toggleTeamAnalysis() {
+      teamAnalysisCollapsed = !teamAnalysisCollapsed;
+      const body = document.getElementById('team-analysis-body');
+      const toggle = document.getElementById('team-analysis-toggle');
+      if (body) {
+        body.classList.toggle('hidden', teamAnalysisCollapsed);
+      }
+      if (toggle) {
+        toggle.classList.toggle('collapsed', teamAnalysisCollapsed);
+      }
+      refreshIcons();
+    }
+
+    let aiGenerationInProgress = false;
+
+    async function fetchTeamInsights() {
+      if (!currentProjectPath) return;
+      if (aiGenerationInProgress) return;
+      const container = document.getElementById('team-tab-content');
+      if (!container) return;
+
+      container.innerHTML = `<div class="empty-state team-loading">${icon('loader-circle', 'spinning')} ${t('team.loading')}</div>`;
+      refreshIcons();
+
+      try {
+        const response = await fetch(`${API_URL}/api/insights?path=${encodeURIComponent(currentProjectPath)}`);
+        const data = await response.json();
+        currentInsightsData = data;
+
+        container.innerHTML = renderTeamTab(data, t);
+        refreshIcons();
+
+        setTimeout(() => {
+          container.querySelectorAll('.stat-bar-fill[data-target-width]').forEach((bar) => {
+            bar.style.width = bar.dataset.targetWidth;
+          });
+        }, 50);
+      } catch (error) {
+        console.error('Error fetching team insights:', error);
+        container.innerHTML = `<div class="empty-state">${t('team.noData')}</div>`;
+      }
+    }
+
+    async function generateAiInsights() {
+      if (!currentProjectPath || aiGenerationInProgress) return;
+      aiGenerationInProgress = true;
+      const button = document.querySelector('.ai-generate-btn');
+      if (button) {
+        button.disabled = true;
+        button.classList.add('loading');
+        button.innerHTML = `${icon('loader-circle', 'spinning')} ${t('ai.generating')}`;
+        refreshIcons();
+      }
+      try {
+        const response = await fetch(`${API_URL}/api/insights/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentProjectPath, language: getLanguage() }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || t('ai.error'));
+        }
+        aiGenerationInProgress = false;
+        await fetchTeamInsights();
+      } catch (error) {
+        aiGenerationInProgress = false;
+        console.error('Error generating AI insights:', error);
+        showToast(error.message || t('ai.error'), 'error');
+        if (button) {
+          button.disabled = false;
+          button.classList.remove('loading');
+          button.innerHTML = `${icon('sparkles')} ${t('ai.generate')}`;
+          refreshIcons();
+        }
+      }
+    }
+
+    function openDevSheet(encodedName) {
+      const developerName = decodeURIComponent(encodedName);
+      if (!currentInsightsData || !currentInsightsData.developers) return;
+      const developer = currentInsightsData.developers.find(
+        (dev) => dev.developerName === developerName
+      );
+      if (!developer) return;
+
+      const aiDevelopers = currentInsightsData.aiInsights?.developers || [];
+      const aiDeveloper = aiDevelopers.find(
+        (aiDev) => aiDev.developerName === developerName
+      ) || null;
+
+      const contentEl = document.getElementById('dev-sheet-content');
+      contentEl.innerHTML = renderDeveloperSheetContent(developer, t, aiDeveloper);
+
+      document.getElementById('dev-sheet-overlay').classList.add('open');
+      document.getElementById('dev-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      refreshIcons();
+
+      requestAnimationFrame(() => {
+        drawRadarChart('dev-radar-canvas', developer.categoryLevels, t);
+        const developerReviews = currentStatsReviews.filter(
+          (review) => review.assignedBy === developerName
+        );
+        drawScoreTrendChart('dev-score-trend-canvas', developerReviews);
+        contentEl.querySelectorAll('.stat-bar-fill[data-target-width]').forEach((bar) => {
+          setTimeout(() => { bar.style.width = bar.dataset.targetWidth; }, 50);
+        });
+      });
+    }
+
+    function closeDevSheet() {
+      document.getElementById('dev-sheet-overlay').classList.remove('open');
+      document.getElementById('dev-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function exportInsightsPdf() {
+      if (!currentInsightsData || currentInsightsData.isEmpty) return;
+
+      const reportHtml = buildInsightsReport(currentInsightsData, t);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const document_ = iframe.contentDocument || iframe.contentWindow.document;
+      document_.open();
+      document_.write(reportHtml);
+      document_.close();
+
+      iframe.contentWindow.addEventListener('afterprint', () => {
+        if (iframe.parentNode) document.body.removeChild(iframe);
+      });
+
+      setTimeout(() => {
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          if (iframe.parentNode) document.body.removeChild(iframe);
+        }, 60000);
+      }, 250);
+    }
+
     async function recalculateStats() {
       if (!currentProjectPath) return;
       const button = document.getElementById('recalculate-btn');
@@ -1706,6 +1891,7 @@
                 }
                 if (recalcButton) recalcButton.disabled = false;
                 fetchProjectStats();
+                fetchTeamInsights();
                 break;
               }
               case 'pong':
@@ -1949,8 +2135,10 @@
           fetchReviewFiles();
           fetchProjectStats();
           fetchMrTracking();
+          fetchTeamInsights();
 
           document.getElementById('stats-section').classList.remove('hidden');
+          document.getElementById('team-section').classList.remove('hidden');
 
           const platformIcon = activePlatform === 'gitlab' ? '<i data-lucide="gitlab"></i> GitLab' : '<i data-lucide="github"></i> GitHub';
           info.innerHTML = `
@@ -2211,6 +2399,9 @@
       const recalculateLabel = document.getElementById('recalculate-label');
       if (recalculateLabel) recalculateLabel.textContent = t('stats.recalculate');
 
+      const sectionTeam = document.getElementById('i18n-section-team');
+      if (sectionTeam) sectionTeam.textContent = t('team.title');
+
       const sectionActiveReviews = document.getElementById('i18n-section-active-reviews');
       if (sectionActiveReviews) sectionActiveReviews.textContent = t('section.activeReviews');
 
@@ -2244,6 +2435,9 @@
 
       const emptyPendingApproval = document.getElementById('i18n-empty-pending-approval');
       if (emptyPendingApproval) emptyPendingApproval.textContent = t('empty.pendingApproval');
+
+      const emptyTeam = document.getElementById('i18n-empty-team');
+      if (emptyTeam) emptyTeam.textContent = t('team.noData');
 
       const emptyLoading = document.getElementById('i18n-empty-loading');
       if (emptyLoading) emptyLoading.textContent = t('status.loading');
@@ -2358,7 +2552,10 @@
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeMrSheet();
+      if (e.key === 'Escape') {
+        closeMrSheet();
+        closeDevSheet();
+      }
     });
 
     // Expose functions to HTML onclick handlers
@@ -2391,6 +2588,12 @@
     window.handleCleanupClick = handleCleanupClick;
     window.openMrSheet = openMrSheet;
     window.closeMrSheet = closeMrSheet;
+    window.openDevSheet = openDevSheet;
+    window.closeDevSheet = closeDevSheet;
+    window.generateAiInsights = generateAiInsights;
+    window.exportInsightsPdf = exportInsightsPdf;
+    window.toggleTeamAnalysis = toggleTeamAnalysis;
+    window.toggleTeamSection = toggleTeamSection;
     window.clearLogs = clearLogs;
 
     // Init cleanup section
@@ -2421,6 +2624,7 @@
       fetchReviewFiles();
       fetchProjectStats();
       fetchMrTracking();
+      fetchTeamInsights();
     }, 30000);
 
     setInterval(() => {

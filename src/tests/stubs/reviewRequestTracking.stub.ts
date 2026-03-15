@@ -1,10 +1,10 @@
 import type {
   ReviewRequestTrackingGateway,
   Platform,
-} from '../../interface-adapters/gateways/reviewRequestTracking.gateway.js';
-import type { MrTrackingData } from '../../entities/tracking/mrTrackingData.js';
-import type { TrackedMr } from '../../entities/tracking/trackedMr.js';
-import type { ReviewEvent } from '../../entities/tracking/reviewEvent.js';
+} from '@/entities/tracking/reviewRequestTracking.gateway.js';
+import type { MrTrackingData } from '@/entities/tracking/mrTrackingData.js';
+import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
+import type { ReviewEvent } from '@/entities/tracking/reviewEvent.js';
 
 export class InMemoryReviewRequestTrackingGateway implements ReviewRequestTrackingGateway {
   private storage = new Map<string, MrTrackingData>();
