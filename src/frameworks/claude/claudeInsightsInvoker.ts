@@ -11,6 +11,7 @@ export function createClaudeInsightsInvoker(): ClaudeInvoker {
       const args = [
         '--print',
         '--model', getModel(),
+        '--setting-sources', 'user',
         '-p', prompt,
       ];
 
@@ -18,6 +19,7 @@ export function createClaudeInsightsInvoker(): ClaudeInvoker {
       childEnv.CLAUDECODE = undefined;
 
       const proc = spawn(resolveClaudePath(), args, {
+        cwd: '/tmp',
         env: {
           ...childEnv,
           TERM: 'dumb',
