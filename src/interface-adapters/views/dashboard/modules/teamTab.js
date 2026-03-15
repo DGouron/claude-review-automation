@@ -264,8 +264,17 @@ export function renderTeamTab(insightsData, translate) {
     return renderDeveloperCard(developer, translate, aiDeveloper);
   }).join('');
 
+  const exportButtonHtml = `
+    <button class="export-pdf-btn" onclick="exportInsightsPdf()">
+      ${icon('file-text')} ${translate('export.pdf')}
+    </button>
+  `;
+
   return `
-    ${aiButtonHtml}
+    <div class="team-tab-actions">
+      ${aiButtonHtml}
+      ${exportButtonHtml}
+    </div>
     ${teamSectionHtml}
     <div class="team-grid">
       ${developerCardsHtml}

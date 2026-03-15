@@ -280,6 +280,7 @@
     import { drawScoreTrendChart, drawReviewActivityChart, drawScoreDistributionChart, animateCounter } from './modules/statsCharts.js';
     import { renderTeamTab, fetchAndRenderTeamTab } from './modules/teamTab.js';
     import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
+    import { buildInsightsReport } from './modules/insightsReport.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -1315,6 +1316,37 @@
       document.getElementById('dev-sheet-overlay').classList.remove('open');
       document.getElementById('dev-sheet').classList.remove('open');
       document.body.style.overflow = '';
+    }
+
+    function exportInsightsPdf() {
+      if (!currentInsightsData || currentInsightsData.isEmpty) return;
+
+      const reportHtml = buildInsightsReport(currentInsightsData, t);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const document_ = iframe.contentDocument || iframe.contentWindow.document;
+      document_.open();
+      document_.write(reportHtml);
+      document_.close();
+
+      iframe.contentWindow.addEventListener('afterprint', () => {
+        if (iframe.parentNode) document.body.removeChild(iframe);
+      });
+
+      setTimeout(() => {
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          if (iframe.parentNode) document.body.removeChild(iframe);
+        }, 60000);
+      }, 250);
     }
 
     async function recalculateStats() {
@@ -2544,6 +2576,7 @@
     window.openDevSheet = openDevSheet;
     window.closeDevSheet = closeDevSheet;
     window.generateAiInsights = generateAiInsights;
+    window.exportInsightsPdf = exportInsightsPdf;
     window.toggleTeamSection = toggleTeamSection;
     window.clearLogs = clearLogs;
 

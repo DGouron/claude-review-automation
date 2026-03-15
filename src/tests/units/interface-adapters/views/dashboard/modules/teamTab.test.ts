@@ -299,4 +299,23 @@ describe('renderTeamTab', () => {
     expect(html).toContain('title.firefighter');
     expect(html).not.toContain('The Quality Guardian');
   });
+
+  it('should render export PDF button when data is not empty', () => {
+    const data = createInsightsData();
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('export-pdf-btn');
+    expect(html).toContain('exportInsightsPdf');
+    expect(html).toContain('export.pdf');
+  });
+
+  it('should not render export PDF button on empty state', () => {
+    const data = createInsightsData({ isEmpty: true, developers: [] });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).not.toContain('export-pdf-btn');
+    expect(html).not.toContain('exportInsightsPdf');
+  });
 });

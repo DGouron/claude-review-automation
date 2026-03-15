@@ -3715,3 +3715,41 @@ input:focus-visible,
     font-size: 1.4rem;
   }
 }
+
+/* ===== Team Tab Actions ===== */
+
+.team-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.export-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--nsc-border-strong);
+  background: var(--nsc-bg-surface);
+  color: var(--nsc-text-secondary);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.export-pdf-btn:hover {
+  background: var(--nsc-bg-surface-strong);
+  border-color: var(--nsc-focus);
+  color: var(--nsc-text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(122, 216, 255, 0.08);
+}
+
+.export-pdf-btn [data-lucide] {
+  width: 15px;
+  height: 15px;
+}
