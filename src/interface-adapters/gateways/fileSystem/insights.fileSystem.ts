@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
 import type { PersistedInsightsData } from '@/entities/insight/persistedInsightsData.js';
+import { safeParsePersistedInsightsData } from '@/entities/insight/persistedInsightsData.guard.js';
 
 function getInsightsPath(projectPath: string): string {
   return join(projectPath, '.claude', 'reviews', 'insights.json');
@@ -17,7 +18,9 @@ export class FileSystemInsightsGateway implements InsightsGateway {
 
     try {
       const content = readFileSync(insightsPath, 'utf-8');
-      return JSON.parse(content) as PersistedInsightsData;
+      const parsed = safeParsePersistedInsightsData(JSON.parse(content));
+      if (!parsed.success) return null;
+      return parsed.data;
     } catch {
       return null;
     }

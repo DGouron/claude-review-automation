@@ -47,19 +47,19 @@ export function createClaudeInsightsInvoker(): ClaudeInvoker {
 
       proc.on('error', (error) => {
         clearTimeout(timeout);
-        reject(new Error(`Impossible de lancer Claude CLI : ${error.message}`));
+        reject(new Error(`Failed to launch Claude CLI: ${error.message}`));
       });
 
       proc.on('close', (code) => {
         clearTimeout(timeout);
         if (timedOut) {
-          reject(new Error('Claude CLI a pris trop de temps (timeout 300s)'));
+          reject(new Error('Claude CLI timed out (timeout 300s)'));
           return;
         }
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(new Error(`Claude CLI a retourne le code ${code}: ${stderr.substring(0, 500)}`));
+          reject(new Error(`Claude CLI exited with code ${code}: ${stderr.substring(0, 500)}`));
         }
       });
     });

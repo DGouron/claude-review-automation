@@ -1,7 +1,7 @@
 import type { Logger } from 'pino';
-import type { StatsGateway } from '@/interface-adapters/gateways/stats.gateway.js';
-import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile.gateway.js';
-import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
+import type { ReviewFileGateway } from '@/entities/review/reviewFile.gateway.js';
+import type { ReviewRequestTrackingGateway } from '@/entities/tracking/reviewRequestTracking.gateway.js';
 import type { AiInsightsResult } from '@/entities/insight/aiInsight.js';
 import type { Language } from '@/entities/language/language.schema.js';
 import { aiInsightsRawResponseSchema } from '@/entities/insight/aiInsight.schema.js';

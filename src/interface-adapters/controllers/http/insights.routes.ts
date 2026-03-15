@@ -1,12 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { Logger } from 'pino';
-import type { StatsGateway } from '@/interface-adapters/gateways/stats.gateway.js';
+import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
 import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
-import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile.gateway.js';
-import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { ReviewFileGateway } from '@/entities/review/reviewFile.gateway.js';
+import type { ReviewRequestTrackingGateway } from '@/entities/tracking/reviewRequestTracking.gateway.js';
 import type { Language } from '@/entities/language/language.schema.js';
-import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';
 import { generateAiInsights, type ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
+import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';
+import { getInsightsWithAiStatus } from '@/usecases/insights/getInsightsWithAiStatus.usecase.js';
 import { InsightsPresenter } from '@/interface-adapters/presenters/insights.presenter.js';
 
 interface InsightsRoutesOptions {
@@ -23,15 +24,6 @@ function isValidProjectPath(path: string | null): path is string {
   if (!path) return false;
   const trimmed = path.trim();
   return trimmed.startsWith('/') && !trimmed.includes('..');
-}
-
-function computeHasNewReviewsSinceAiGeneration(
-  currentReviewCount: number,
-  reviewCountAtAiGeneration: number,
-  aiGeneratedAt: string | null,
-): boolean {
-  if (!aiGeneratedAt) return false;
-  return currentReviewCount > reviewCountAtAiGeneration;
 }
 
 export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
@@ -57,62 +49,22 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
       return;
     }
 
-    const stats = statsGateway.loadProjectStats(projectPath);
-
-    if (!stats || stats.reviews.length === 0) {
-      const persistedData = insightsGateway.loadPersistedInsights(projectPath);
-
-      if (persistedData) {
-        const result = computeInsightsWithPersistence([], persistedData);
-        insightsGateway.savePersistedInsights(projectPath, {
-          ...result.persistedData,
-          aiInsights: persistedData.aiInsights ?? null,
-          reviewCountAtAiGeneration: persistedData.reviewCountAtAiGeneration ?? 0,
-        });
-        const viewModel = presenter.present({
-          developerInsights: result.developerInsights,
-          teamInsight: result.teamInsight,
-        });
-        const hasNewReviewsSinceAiGeneration = computeHasNewReviewsSinceAiGeneration(
-          result.persistedData.processedReviewIds.length,
-          persistedData.reviewCountAtAiGeneration ?? 0,
-          persistedData.aiInsights?.generatedAt ?? null,
-        );
-        return { ...viewModel, aiInsights: persistedData.aiInsights ?? null, hasNewReviewsSinceAiGeneration };
-      }
-
-      const emptyViewModel = presenter.present({
-        developerInsights: [],
-        teamInsight: {
-          developerCount: 0,
-          totalReviewCount: 0,
-          averageLevels: { quality: 5, responsiveness: 5, codeVolume: 5, iteration: 5 },
-          strengths: [],
-          weaknesses: [],
-          tips: [],
-        },
-      });
-      return { ...emptyViewModel, aiInsights: null, hasNewReviewsSinceAiGeneration: false };
-    }
-
-    const persistedData = insightsGateway.loadPersistedInsights(projectPath);
-    const result = computeInsightsWithPersistence(stats.reviews, persistedData);
-    insightsGateway.savePersistedInsights(projectPath, {
-      ...result.persistedData,
-      aiInsights: persistedData?.aiInsights ?? null,
-      reviewCountAtAiGeneration: persistedData?.reviewCountAtAiGeneration ?? 0,
+    const result = getInsightsWithAiStatus({
+      projectPath,
+      statsGateway,
+      insightsGateway,
     });
+
     const viewModel = presenter.present({
       developerInsights: result.developerInsights,
       teamInsight: result.teamInsight,
     });
-    const hasNewReviewsSinceAiGeneration = computeHasNewReviewsSinceAiGeneration(
-      result.persistedData.processedReviewIds.length,
-      persistedData?.reviewCountAtAiGeneration ?? 0,
-      persistedData?.aiInsights?.generatedAt ?? null,
-    );
 
-    return { ...viewModel, aiInsights: persistedData?.aiInsights ?? null, hasNewReviewsSinceAiGeneration };
+    return {
+      ...viewModel,
+      aiInsights: result.aiInsights,
+      hasNewReviewsSinceAiGeneration: result.hasNewReviewsSinceAiGeneration,
+    };
   });
 
   fastify.post<{ Body: { path?: string; language?: string } }>('/api/insights/generate', async (request, reply) => {
