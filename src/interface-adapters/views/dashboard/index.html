@@ -1213,6 +1213,21 @@
       }
     }
 
+    let teamAnalysisCollapsed = false;
+
+    function toggleTeamAnalysis() {
+      teamAnalysisCollapsed = !teamAnalysisCollapsed;
+      const body = document.getElementById('team-analysis-body');
+      const toggle = document.getElementById('team-analysis-toggle');
+      if (body) {
+        body.classList.toggle('hidden', teamAnalysisCollapsed);
+      }
+      if (toggle) {
+        toggle.classList.toggle('collapsed', teamAnalysisCollapsed);
+      }
+      refreshIcons();
+    }
+
     let aiGenerationInProgress = false;
 
     async function fetchTeamInsights() {
@@ -2577,6 +2592,7 @@
     window.closeDevSheet = closeDevSheet;
     window.generateAiInsights = generateAiInsights;
     window.exportInsightsPdf = exportInsightsPdf;
+    window.toggleTeamAnalysis = toggleTeamAnalysis;
     window.toggleTeamSection = toggleTeamSection;
     window.clearLogs = clearLogs;
 

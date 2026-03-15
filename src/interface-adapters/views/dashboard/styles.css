@@ -3579,6 +3579,23 @@ input:focus-visible,
   gap: 0.35rem;
 }
 
+.ai-team-card-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-team-card-header.clickable:hover {
+  opacity: 0.85;
+}
+
+.ai-team-card-header .toggle-icon {
+  margin-left: auto;
+}
+
+.ai-team-card-body.hidden {
+  display: none;
+}
+
 .ai-team-card-header [data-lucide] {
   width: 15px;
   height: 15px;

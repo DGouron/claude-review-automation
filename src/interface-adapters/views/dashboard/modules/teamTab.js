@@ -207,31 +207,34 @@ function renderAiTeamCard(aiTeam, translate) {
 
   return `
     <div class="ai-team-card">
-      <div class="ai-team-card-header">
+      <div class="ai-team-card-header clickable" onclick="toggleTeamAnalysis()" role="button" tabindex="0">
         ${icon('sparkles', 'ai-sparkle-icon')} ${translate('ai.teamAnalysis')}
+        <span id="team-analysis-toggle" class="toggle-icon"><i data-lucide="chevron-up"></i></span>
       </div>
-      <div class="ai-summary">${escapeHtml(aiTeam.summary)}</div>
-      ${aiTeam.strengths.length > 0 ? `
+      <div id="team-analysis-body" class="ai-team-card-body">
+        <div class="ai-summary">${escapeHtml(aiTeam.summary)}</div>
+        ${aiTeam.strengths.length > 0 ? `
+          <div class="ai-section-group">
+            <div class="ai-section-label">${icon('check-circle')} ${translate('ai.strengths')}</div>
+            <ul class="ai-list">${strengthsList}</ul>
+          </div>
+        ` : ''}
+        ${aiTeam.weaknesses.length > 0 ? `
+          <div class="ai-section-group">
+            <div class="ai-section-label">${icon('alert-circle')} ${translate('ai.weaknesses')}</div>
+            <ul class="ai-list">${weaknessesList}</ul>
+          </div>
+        ` : ''}
+        ${aiTeam.recommendations.length > 0 ? `
+          <div class="ai-section-group">
+            <div class="ai-section-label">${icon('lightbulb')} ${translate('ai.recommendations')}</div>
+            <ul class="ai-list">${recommendationsList}</ul>
+          </div>
+        ` : ''}
         <div class="ai-section-group">
-          <div class="ai-section-label">${icon('check-circle')} ${translate('ai.strengths')}</div>
-          <ul class="ai-list">${strengthsList}</ul>
+          <div class="ai-section-label">${icon('users')} ${translate('ai.dynamics')}</div>
+          <div class="ai-summary">${escapeHtml(aiTeam.dynamics)}</div>
         </div>
-      ` : ''}
-      ${aiTeam.weaknesses.length > 0 ? `
-        <div class="ai-section-group">
-          <div class="ai-section-label">${icon('alert-circle')} ${translate('ai.weaknesses')}</div>
-          <ul class="ai-list">${weaknessesList}</ul>
-        </div>
-      ` : ''}
-      ${aiTeam.recommendations.length > 0 ? `
-        <div class="ai-section-group">
-          <div class="ai-section-label">${icon('lightbulb')} ${translate('ai.recommendations')}</div>
-          <ul class="ai-list">${recommendationsList}</ul>
-        </div>
-      ` : ''}
-      <div class="ai-section-group">
-        <div class="ai-section-label">${icon('users')} ${translate('ai.dynamics')}</div>
-        <div class="ai-summary">${escapeHtml(aiTeam.dynamics)}</div>
       </div>
     </div>
   `;
