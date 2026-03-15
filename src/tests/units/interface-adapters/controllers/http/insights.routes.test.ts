@@ -399,5 +399,100 @@ describe('insights routes', () => {
       expect(body.aiInsights).not.toBeNull();
       expect(body.aiInsights.developers).toHaveLength(1);
     });
+
+    it('should return hasNewReviewsSinceAiGeneration false when no new reviews', async () => {
+      const reviews = Array.from({ length: 6 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: 8,
+          blocking: 0,
+          warnings: 1,
+          duration: 60000,
+        }),
+      );
+      statsGateway.saveProjectStats('/test/project', ProjectStatsFactory.withReviews(reviews));
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/insights/generate',
+        payload: { path: '/test/project' },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/insights?path=/test/project',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.hasNewReviewsSinceAiGeneration).toBe(false);
+    });
+
+    it('should return hasNewReviewsSinceAiGeneration true when new reviews arrived', async () => {
+      const reviews = Array.from({ length: 6 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: 8,
+          blocking: 0,
+          warnings: 1,
+          duration: 60000,
+        }),
+      );
+      statsGateway.saveProjectStats('/test/project', ProjectStatsFactory.withReviews(reviews));
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/insights/generate',
+        payload: { path: '/test/project' },
+      });
+
+      const newReview = ReviewStatsFactory.create({
+        id: 'alice-new-after-ai',
+        assignedBy: 'alice',
+        mrNumber: 100,
+        score: 9,
+      });
+      statsGateway.saveProjectStats(
+        '/test/project',
+        ProjectStatsFactory.withReviews([...reviews, newReview]),
+      );
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/insights?path=/test/project',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.hasNewReviewsSinceAiGeneration).toBe(true);
+    });
+
+    it('should return hasNewReviewsSinceAiGeneration false when no AI insights exist', async () => {
+      const reviews = Array.from({ length: 6 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: 8,
+          blocking: 0,
+          warnings: 1,
+          duration: 60000,
+        }),
+      );
+      statsGateway.saveProjectStats('/test/project', ProjectStatsFactory.withReviews(reviews));
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/insights?path=/test/project',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.hasNewReviewsSinceAiGeneration).toBe(false);
+    });
   });
 });

@@ -1239,6 +1239,38 @@
       }
     }
 
+    async function generateAiInsights() {
+      if (!currentProjectPath) return;
+      const button = document.querySelector('.ai-generate-btn');
+      if (button) {
+        button.disabled = true;
+        button.classList.add('loading');
+        button.innerHTML = `${icon('loader-circle', 'spinning')} ${t('ai.generating')}`;
+        refreshIcons();
+      }
+      try {
+        const response = await fetch(`${API_URL}/api/insights/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentProjectPath }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || t('ai.error'));
+        }
+        await fetchTeamInsights();
+      } catch (error) {
+        console.error('Error generating AI insights:', error);
+        showToast(error.message || t('ai.error'), 'error');
+        if (button) {
+          button.disabled = false;
+          button.classList.remove('loading');
+          button.innerHTML = `${icon('sparkles')} ${t('ai.generate')}`;
+          refreshIcons();
+        }
+      }
+    }
+
     function openDevSheet(encodedName) {
       const developerName = decodeURIComponent(encodedName);
       if (!currentInsightsData || !currentInsightsData.developers) return;
@@ -1247,8 +1279,13 @@
       );
       if (!developer) return;
 
+      const aiDevelopers = currentInsightsData.aiInsights?.developers || [];
+      const aiDeveloper = aiDevelopers.find(
+        (aiDev) => aiDev.developerName === developerName
+      ) || null;
+
       const contentEl = document.getElementById('dev-sheet-content');
-      contentEl.innerHTML = renderDeveloperSheetContent(developer, t);
+      contentEl.innerHTML = renderDeveloperSheetContent(developer, t, aiDeveloper);
 
       document.getElementById('dev-sheet-overlay').classList.add('open');
       document.getElementById('dev-sheet').classList.add('open');
@@ -2500,6 +2537,7 @@
     window.closeMrSheet = closeMrSheet;
     window.openDevSheet = openDevSheet;
     window.closeDevSheet = closeDevSheet;
+    window.generateAiInsights = generateAiInsights;
     window.toggleTeamSection = toggleTeamSection;
     window.clearLogs = clearLogs;
 

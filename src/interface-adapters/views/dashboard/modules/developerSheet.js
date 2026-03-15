@@ -161,11 +161,67 @@ function renderInsightDescriptions(descriptions, type, translate) {
 }
 
 /**
- * @param {object} developer
+ * @param {object|null} aiDeveloper
  * @param {(key: string, params?: Record<string, string|number>) => string} translate
  * @returns {string}
  */
-export function renderDeveloperSheetContent(developer, translate) {
+function renderAiAnalysisSection(aiDeveloper, translate) {
+  if (!aiDeveloper) {
+    return `
+      <div class="ai-section ai-no-insights">
+        <span class="ai-no-insights-text">${icon('sparkles', 'ai-sparkle-icon')} ${translate('ai.noInsights')}</span>
+      </div>
+    `;
+  }
+
+  const strengthsList = aiDeveloper.strengths.map(
+    (strength) => `<li class="ai-list-item">${icon('check-circle', 'ai-list-icon')} ${escapeHtml(strength)}</li>`
+  ).join('');
+
+  const weaknessesList = aiDeveloper.weaknesses.map(
+    (weakness) => `<li class="ai-list-item">${icon('alert-circle', 'ai-list-icon')} ${escapeHtml(weakness)}</li>`
+  ).join('');
+
+  const recommendationsList = aiDeveloper.recommendations.map(
+    (recommendation) => `<li class="ai-list-item">${icon('lightbulb', 'ai-list-icon')} ${escapeHtml(recommendation)}</li>`
+  ).join('');
+
+  return `
+    <div class="ai-section">
+      <div class="sheet-section-title">${icon('sparkles', 'ai-sparkle-icon')} ${translate('ai.section')}</div>
+      <div class="ai-section-group">
+        <div class="ai-section-label">${icon('user')} ${translate('ai.summary')}</div>
+        <div class="ai-summary">${escapeHtml(aiDeveloper.summary)}</div>
+      </div>
+      ${aiDeveloper.strengths.length > 0 ? `
+        <div class="ai-section-group">
+          <div class="ai-section-label">${icon('check-circle')} ${translate('ai.strengths')}</div>
+          <ul class="ai-list">${strengthsList}</ul>
+        </div>
+      ` : ''}
+      ${aiDeveloper.weaknesses.length > 0 ? `
+        <div class="ai-section-group">
+          <div class="ai-section-label">${icon('alert-circle')} ${translate('ai.weaknesses')}</div>
+          <ul class="ai-list">${weaknessesList}</ul>
+        </div>
+      ` : ''}
+      ${aiDeveloper.recommendations.length > 0 ? `
+        <div class="ai-section-group">
+          <div class="ai-section-label">${icon('lightbulb')} ${translate('ai.recommendations')}</div>
+          <ul class="ai-list">${recommendationsList}</ul>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+/**
+ * @param {object} developer
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @param {object|null} [aiDeveloper]
+ * @returns {string}
+ */
+export function renderDeveloperSheetContent(developer, translate, aiDeveloper) {
   const initial = developer.developerName.charAt(0).toUpperCase();
   const avatarBorderClass = getAvatarBorderClass(developer.overallLevel);
 
@@ -193,6 +249,13 @@ export function renderDeveloperSheetContent(developer, translate) {
 
   const metricsHtml = renderMetricsSection(developer.metrics, translate);
 
+  const titleHtml = aiDeveloper
+    ? `<div class="dev-sheet-title ai-title">${icon('sparkles', 'ai-sparkle-icon')} ${escapeHtml(aiDeveloper.title)}</div>
+       <div class="ai-title-explanation">${icon('info', 'ai-explanation-icon')} ${translate('ai.titleExplanation')}: ${escapeHtml(aiDeveloper.titleExplanation)}</div>`
+    : `<div class="dev-sheet-title">${translate('title.' + developer.title)}</div>`;
+
+  const aiSectionHtml = renderAiAnalysisSection(aiDeveloper || null, translate);
+
   return `
     <button class="sheet-close" onclick="closeDevSheet()" aria-label="Close">
       ${icon('x')}
@@ -202,7 +265,7 @@ export function renderDeveloperSheetContent(developer, translate) {
       <div class="dev-sheet-avatar ${avatarBorderClass}">${escapeHtml(initial)}</div>
       <div class="dev-sheet-identity">
         <div class="dev-sheet-name">${escapeHtml(developer.developerName)}</div>
-        <div class="dev-sheet-title">${translate('title.' + developer.title)}</div>
+        ${titleHtml}
       </div>
       <div class="dev-sheet-level">
         <div class="dev-sheet-level-value">${developer.overallLevel}</div>
@@ -230,6 +293,8 @@ export function renderDeveloperSheetContent(developer, translate) {
         <canvas id="dev-score-trend-canvas" width="460" height="180"></canvas>
       </div>
     </div>
+
+    ${aiSectionHtml}
 
     <div class="sheet-section">
       <div class="sheet-section-title">${icon('thumbs-up')} ${translate('devSheet.strengths')}</div>

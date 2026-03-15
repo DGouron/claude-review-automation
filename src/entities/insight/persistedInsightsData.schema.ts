@@ -38,4 +38,5 @@ export const persistedInsightsDataSchema = z.object({
   processedReviewIds: z.array(z.string()),
   lastUpdated: z.string().min(1),
   aiInsights: aiInsightsResultSchema.nullable().default(null),
+  reviewCountAtAiGeneration: z.number().int().min(0).default(0),
 });

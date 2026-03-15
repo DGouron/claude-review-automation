@@ -176,4 +176,127 @@ describe('renderTeamTab', () => {
     expect(html).toContain('trend-declining');
     expect(html).toContain('trend-stable');
   });
+
+  it('should render AI generate button when no AI insights exist', () => {
+    const data = createInsightsData({ aiInsights: null });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('ai-generate-btn');
+    expect(html).toContain('generateAiInsights');
+    expect(html).toContain('ai.generate');
+  });
+
+  it('should render refresh button with new data badge when hasNewReviewsSinceAiGeneration is true', () => {
+    const data = createInsightsData({
+      aiInsights: {
+        developers: [],
+        team: { summary: 'Team summary', strengths: [], weaknesses: [], recommendations: [], dynamics: 'Balanced' },
+        generatedAt: '2026-03-15T10:00:00Z',
+      },
+      hasNewReviewsSinceAiGeneration: true,
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('ai-generate-btn');
+    expect(html).toContain('ai.refresh');
+    expect(html).toContain('ai-badge');
+    expect(html).toContain('ai.newDataAvailable');
+  });
+
+  it('should render last generated date when AI insights are fresh', () => {
+    const data = createInsightsData({
+      aiInsights: {
+        developers: [],
+        team: { summary: 'Team summary', strengths: [], weaknesses: [], recommendations: [], dynamics: 'Balanced' },
+        generatedAt: '2026-03-15T10:00:00Z',
+      },
+      hasNewReviewsSinceAiGeneration: false,
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('ai.lastGenerated');
+    expect(html).toContain('ai-generate-btn');
+  });
+
+  it('should render AI team analysis card when AI team insights exist', () => {
+    const data = createInsightsData({
+      aiInsights: {
+        developers: [],
+        team: {
+          summary: 'The team shows strong quality patterns.',
+          strengths: ['Consistent code quality', 'Fast reviews'],
+          weaknesses: ['Large code changes'],
+          recommendations: ['Break down large PRs'],
+          dynamics: 'Well balanced team with complementary skills.',
+        },
+        generatedAt: '2026-03-15T10:00:00Z',
+      },
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('ai-team-card');
+    expect(html).toContain('ai.teamAnalysis');
+    expect(html).toContain('The team shows strong quality patterns.');
+    expect(html).toContain('Consistent code quality');
+    expect(html).toContain('Fast reviews');
+    expect(html).toContain('Large code changes');
+    expect(html).toContain('Break down large PRs');
+    expect(html).toContain('Well balanced team with complementary skills.');
+  });
+
+  it('should use AI title on developer card when AI developer insights exist', () => {
+    const data = createInsightsData({
+      developers: [createDeveloperViewModel({ developerName: 'alice', title: 'architect' })],
+      aiInsights: {
+        developers: [
+          {
+            developerName: 'alice',
+            title: 'The Quality Guardian',
+            titleExplanation: 'Consistently high scores',
+            strengths: ['Clean code'],
+            weaknesses: ['Slow reviews'],
+            recommendations: ['Speed up'],
+            summary: 'Alice is great',
+          },
+        ],
+        team: { summary: 'Team', strengths: [], weaknesses: [], recommendations: [], dynamics: 'Good' },
+        generatedAt: '2026-03-15T10:00:00Z',
+      },
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('The Quality Guardian');
+    expect(html).toContain('ai-title');
+  });
+
+  it('should fall back to deterministic title when no AI insights for developer', () => {
+    const data = createInsightsData({
+      developers: [createDeveloperViewModel({ developerName: 'bob', title: 'firefighter' })],
+      aiInsights: {
+        developers: [
+          {
+            developerName: 'alice',
+            title: 'The Quality Guardian',
+            titleExplanation: 'Consistently high scores',
+            strengths: [],
+            weaknesses: [],
+            recommendations: [],
+            summary: 'Alice profile',
+          },
+        ],
+        team: { summary: 'Team', strengths: [], weaknesses: [], recommendations: [], dynamics: 'Good' },
+        generatedAt: '2026-03-15T10:00:00Z',
+      },
+    });
+
+    const html = renderTeamTab(data, translate);
+
+    expect(html).toContain('title.firefighter');
+    expect(html).not.toContain('The Quality Guardian');
+  });
 });

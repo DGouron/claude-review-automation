@@ -35,6 +35,7 @@ export class PersistedInsightsDataFactory {
       processedReviewIds: [],
       lastUpdated: '2024-01-15T10:00:00Z',
       aiInsights: null,
+      reviewCountAtAiGeneration: 0,
       ...overrides,
     };
   }

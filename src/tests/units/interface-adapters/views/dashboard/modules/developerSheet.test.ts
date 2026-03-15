@@ -146,4 +146,86 @@ describe('renderDeveloperSheetContent', () => {
     expect(html).toContain('dev-score-trend-canvas');
     expect(html).toContain('devSheet.scoreTrend');
   });
+
+  it('should use AI title when aiDeveloper is provided', () => {
+    const developer = createDeveloperViewModel({ title: 'architect' });
+    const aiDeveloper = {
+      developerName: 'alice',
+      title: 'The Quality Guardian',
+      titleExplanation: 'Consistently delivers high-quality code',
+      strengths: ['Clean code'],
+      weaknesses: ['Large PRs'],
+      recommendations: ['Break down changes'],
+      summary: 'Alice is a strong developer',
+    };
+
+    const html = renderDeveloperSheetContent(developer, translate, aiDeveloper);
+
+    expect(html).toContain('The Quality Guardian');
+    expect(html).toContain('ai-title');
+    expect(html).toContain('ai.titleExplanation');
+    expect(html).toContain('Consistently delivers high-quality code');
+  });
+
+  it('should fall back to deterministic title when no AI developer', () => {
+    const developer = createDeveloperViewModel({ title: 'sentinel' });
+
+    const html = renderDeveloperSheetContent(developer, translate);
+
+    expect(html).toContain('title.sentinel');
+    expect(html).not.toContain('ai-title');
+  });
+
+  it('should render AI analysis section when aiDeveloper is provided', () => {
+    const developer = createDeveloperViewModel();
+    const aiDeveloper = {
+      developerName: 'alice',
+      title: 'The Quality Guardian',
+      titleExplanation: 'High scores',
+      strengths: ['Clean architecture', 'Good naming'],
+      weaknesses: ['Slow reviews', 'Large changes'],
+      recommendations: ['Review faster', 'Split PRs'],
+      summary: 'Alice is a thorough developer who focuses on code quality.',
+    };
+
+    const html = renderDeveloperSheetContent(developer, translate, aiDeveloper);
+
+    expect(html).toContain('ai-section');
+    expect(html).toContain('ai.section');
+    expect(html).toContain('ai.summary');
+    expect(html).toContain('Alice is a thorough developer who focuses on code quality.');
+    expect(html).toContain('Clean architecture');
+    expect(html).toContain('Good naming');
+    expect(html).toContain('Slow reviews');
+    expect(html).toContain('Large changes');
+    expect(html).toContain('Review faster');
+    expect(html).toContain('Split PRs');
+  });
+
+  it('should render AI strengths and weaknesses with appropriate labels', () => {
+    const developer = createDeveloperViewModel();
+    const aiDeveloper = {
+      developerName: 'alice',
+      title: 'Title',
+      titleExplanation: 'Reason',
+      strengths: ['Excellent testing'],
+      weaknesses: ['Missing docs'],
+      recommendations: ['Add documentation'],
+      summary: 'Profile text',
+    };
+
+    const html = renderDeveloperSheetContent(developer, translate, aiDeveloper);
+
+    expect(html).toContain('ai.strengths');
+    expect(html).toContain('ai.weaknesses');
+    expect(html).toContain('ai.recommendations');
+  });
+
+  it('should show prompt to generate AI insights when no aiDeveloper', () => {
+    const developer = createDeveloperViewModel();
+
+    const html = renderDeveloperSheetContent(developer, translate);
+
+    expect(html).toContain('ai.noInsights');
+  });
 });

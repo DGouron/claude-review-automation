@@ -74,9 +74,10 @@ function renderStatBar(categoryLevel, categoryKey, translate) {
 /**
  * @param {object} developer
  * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @param {object|null} [aiDeveloper]
  * @returns {string}
  */
-function renderDeveloperCard(developer, translate) {
+function renderDeveloperCard(developer, translate, aiDeveloper) {
   const initial = developer.developerName.charAt(0).toUpperCase();
   const avatarBorderClass = getAvatarBorderClass(developer.overallLevel);
   const encodedName = encodeURIComponent(developer.developerName);
@@ -85,13 +86,17 @@ function renderDeveloperCard(developer, translate) {
     (key) => renderStatBar(developer.categoryLevels[key], key, translate)
   ).join('');
 
+  const titleHtml = aiDeveloper
+    ? `<div class="dev-title ai-title">${icon('sparkles', 'ai-sparkle-icon')} ${escapeHtml(aiDeveloper.title)}</div>`
+    : `<div class="dev-title">${translate('title.' + developer.title)}</div>`;
+
   return `
     <div class="dev-card" onclick="openDevSheet('${encodedName}')" role="button" tabindex="0">
       <div class="dev-card-header">
         <div class="dev-avatar-placeholder ${avatarBorderClass}">${escapeHtml(initial)}</div>
         <div class="dev-card-identity">
           <div class="dev-name">${escapeHtml(developer.developerName)}</div>
-          <div class="dev-title">${translate('title.' + developer.title)}</div>
+          ${titleHtml}
         </div>
         <div class="dev-overall-level">${developer.overallLevel}</div>
       </div>
@@ -146,6 +151,93 @@ function renderTeamInsights(team, translate) {
 }
 
 /**
+ * @param {object|null} aiInsights
+ * @param {boolean} hasNewReviewsSinceAiGeneration
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @returns {string}
+ */
+function renderAiGenerateButton(aiInsights, hasNewReviewsSinceAiGeneration, translate) {
+  if (!aiInsights) {
+    return `
+      <button class="ai-generate-btn" onclick="generateAiInsights()">
+        ${icon('sparkles')} ${translate('ai.generate')}
+      </button>
+    `;
+  }
+
+  if (hasNewReviewsSinceAiGeneration) {
+    return `
+      <div class="ai-generate-bar">
+        <button class="ai-generate-btn" onclick="generateAiInsights()">
+          ${icon('sparkles')} ${translate('ai.refresh')}
+          <span class="ai-badge">${translate('ai.newDataAvailable')}</span>
+        </button>
+      </div>
+    `;
+  }
+
+  const generatedDate = new Date(aiInsights.generatedAt).toLocaleDateString();
+  return `
+    <div class="ai-generate-bar">
+      <span class="ai-last-generated">${translate('ai.lastGenerated', { date: generatedDate })}</span>
+      <button class="ai-generate-btn ai-refresh-btn" onclick="generateAiInsights()">
+        ${icon('refresh-cw')}
+      </button>
+    </div>
+  `;
+}
+
+/**
+ * @param {object} aiTeam
+ * @param {(key: string, params?: Record<string, string|number>) => string} translate
+ * @returns {string}
+ */
+function renderAiTeamCard(aiTeam, translate) {
+  const strengthsList = aiTeam.strengths.map(
+    (strength) => `<li class="ai-list-item">${icon('check-circle', 'ai-list-icon')} ${escapeHtml(strength)}</li>`
+  ).join('');
+
+  const weaknessesList = aiTeam.weaknesses.map(
+    (weakness) => `<li class="ai-list-item">${icon('alert-circle', 'ai-list-icon')} ${escapeHtml(weakness)}</li>`
+  ).join('');
+
+  const recommendationsList = aiTeam.recommendations.map(
+    (recommendation) => `<li class="ai-list-item">${icon('lightbulb', 'ai-list-icon')} ${escapeHtml(recommendation)}</li>`
+  ).join('');
+
+  return `
+    <div class="ai-team-card">
+      <div class="ai-team-card-header">
+        ${icon('sparkles', 'ai-sparkle-icon')} ${translate('ai.teamAnalysis')}
+      </div>
+      <div class="ai-summary">${escapeHtml(aiTeam.summary)}</div>
+      ${aiTeam.strengths.length > 0 ? `
+        <div class="ai-section-group">
+          <div class="ai-section-label">${icon('check-circle')} ${translate('ai.strengths')}</div>
+          <ul class="ai-list">${strengthsList}</ul>
+        </div>
+      ` : ''}
+      ${aiTeam.weaknesses.length > 0 ? `
+        <div class="ai-section-group">
+          <div class="ai-section-label">${icon('alert-circle')} ${translate('ai.weaknesses')}</div>
+          <ul class="ai-list">${weaknessesList}</ul>
+        </div>
+      ` : ''}
+      ${aiTeam.recommendations.length > 0 ? `
+        <div class="ai-section-group">
+          <div class="ai-section-label">${icon('lightbulb')} ${translate('ai.recommendations')}</div>
+          <ul class="ai-list">${recommendationsList}</ul>
+        </div>
+      ` : ''}
+      <div class="ai-section-group">
+        <div class="ai-section-label">${icon('users')} ${translate('ai.dynamics')}</div>
+        <div class="ai-summary">${escapeHtml(aiTeam.dynamics)}</div>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * @param {object} insightsData
  * @param {(key: string, params?: Record<string, string|number>) => string} translate
  * @returns {string}
@@ -155,13 +247,26 @@ export function renderTeamTab(insightsData, translate) {
     return `<div class="empty-state">${icon('users')} ${translate('team.noData')}</div>`;
   }
 
+  const aiInsights = insightsData.aiInsights || null;
+  const hasNewReviews = insightsData.hasNewReviewsSinceAiGeneration === true;
+
+  const aiButtonHtml = renderAiGenerateButton(aiInsights, hasNewReviews, translate);
+  const aiTeamCardHtml = aiInsights?.team
+    ? renderAiTeamCard(aiInsights.team, translate)
+    : '';
   const teamInsightsHtml = renderTeamInsights(insightsData.team, translate);
 
-  const developerCardsHtml = insightsData.developers.map(
-    (developer) => renderDeveloperCard(developer, translate)
-  ).join('');
+  const aiDevelopers = aiInsights?.developers ? aiInsights.developers : [];
+  const developerCardsHtml = insightsData.developers.map((developer) => {
+    const aiDeveloper = aiDevelopers.find(
+      (aiDev) => aiDev.developerName === developer.developerName
+    ) || null;
+    return renderDeveloperCard(developer, translate, aiDeveloper);
+  }).join('');
 
   return `
+    ${aiButtonHtml}
+    ${aiTeamCardHtml}
     ${teamInsightsHtml}
     <div class="team-grid">
       ${developerCardsHtml}

@@ -339,6 +339,23 @@ const translations = {
     'insight.codeVolume.improving': 'Code volume is increasing — handling larger changes',
     'insight.iteration.improving': 'Iteration efficiency is improving — fewer blocking issues recently',
 
+    // AI insights
+    'ai.generate': 'Generate AI Insights',
+    'ai.refresh': 'Refresh AI Insights',
+    'ai.generating': 'Generating...',
+    'ai.lastGenerated': 'AI insights from {{date}}',
+    'ai.newDataAvailable': 'New reviews available',
+    'ai.section': 'AI Analysis',
+    'ai.noInsights': 'Generate AI insights for detailed analysis',
+    'ai.teamAnalysis': 'Team Analysis',
+    'ai.strengths': 'Strengths',
+    'ai.weaknesses': 'Areas to improve',
+    'ai.recommendations': 'Recommendations',
+    'ai.dynamics': 'Team Dynamics',
+    'ai.summary': 'Profile',
+    'ai.error': 'Error generating insights',
+    'ai.titleExplanation': 'Why this title',
+
     // Version update
     'version.updateAvailable': 'Update to v{{version}}',
     'version.checking': 'Checking...',
@@ -684,6 +701,23 @@ const translations = {
     'insight.responsiveness.improving': 'La réactivité s\'améliore — les reviews sont de plus en plus rapides',
     'insight.codeVolume.improving': 'Le volume de code augmente — gestion de changements plus importants',
     'insight.iteration.improving': 'L\'efficacité d\'itération s\'améliore — moins de problèmes bloquants récemment',
+
+    // AI insights
+    'ai.generate': 'Générer les insights IA',
+    'ai.refresh': 'Actualiser les insights IA',
+    'ai.generating': 'Génération en cours...',
+    'ai.lastGenerated': 'Insights IA du {{date}}',
+    'ai.newDataAvailable': 'Nouvelles reviews disponibles',
+    'ai.section': 'Analyse IA',
+    'ai.noInsights': 'Générer les insights IA pour une analyse détaillée',
+    'ai.teamAnalysis': 'Analyse d\'équipe',
+    'ai.strengths': 'Points forts',
+    'ai.weaknesses': 'Axes d\'amélioration',
+    'ai.recommendations': 'Recommandations',
+    'ai.dynamics': 'Dynamique d\'équipe',
+    'ai.summary': 'Profil',
+    'ai.error': 'Erreur lors de la génération des insights',
+    'ai.titleExplanation': 'Pourquoi ce titre',
 
     // Version update
     'version.updateAvailable': 'Mettre à jour vers v{{version}}',

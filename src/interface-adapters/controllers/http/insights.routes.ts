@@ -25,6 +25,15 @@ function isValidProjectPath(path: string | null): path is string {
   return trimmed.startsWith('/') && !trimmed.includes('..');
 }
 
+function computeHasNewReviewsSinceAiGeneration(
+  currentReviewCount: number,
+  reviewCountAtAiGeneration: number,
+  aiGeneratedAt: string | null,
+): boolean {
+  if (!aiGeneratedAt) return false;
+  return currentReviewCount > reviewCountAtAiGeneration;
+}
+
 export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
   fastify,
   options,
@@ -58,12 +67,18 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
         insightsGateway.savePersistedInsights(projectPath, {
           ...result.persistedData,
           aiInsights: persistedData.aiInsights ?? null,
+          reviewCountAtAiGeneration: persistedData.reviewCountAtAiGeneration ?? 0,
         });
         const viewModel = presenter.present({
           developerInsights: result.developerInsights,
           teamInsight: result.teamInsight,
         });
-        return { ...viewModel, aiInsights: persistedData.aiInsights ?? null };
+        const hasNewReviewsSinceAiGeneration = computeHasNewReviewsSinceAiGeneration(
+          result.persistedData.processedReviewIds.length,
+          persistedData.reviewCountAtAiGeneration ?? 0,
+          persistedData.aiInsights?.generatedAt ?? null,
+        );
+        return { ...viewModel, aiInsights: persistedData.aiInsights ?? null, hasNewReviewsSinceAiGeneration };
       }
 
       const emptyViewModel = presenter.present({
@@ -77,7 +92,7 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
           tips: [],
         },
       });
-      return { ...emptyViewModel, aiInsights: null };
+      return { ...emptyViewModel, aiInsights: null, hasNewReviewsSinceAiGeneration: false };
     }
 
     const persistedData = insightsGateway.loadPersistedInsights(projectPath);
@@ -85,13 +100,19 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
     insightsGateway.savePersistedInsights(projectPath, {
       ...result.persistedData,
       aiInsights: persistedData?.aiInsights ?? null,
+      reviewCountAtAiGeneration: persistedData?.reviewCountAtAiGeneration ?? 0,
     });
     const viewModel = presenter.present({
       developerInsights: result.developerInsights,
       teamInsight: result.teamInsight,
     });
+    const hasNewReviewsSinceAiGeneration = computeHasNewReviewsSinceAiGeneration(
+      result.persistedData.processedReviewIds.length,
+      persistedData?.reviewCountAtAiGeneration ?? 0,
+      persistedData?.aiInsights?.generatedAt ?? null,
+    );
 
-    return { ...viewModel, aiInsights: persistedData?.aiInsights ?? null };
+    return { ...viewModel, aiInsights: persistedData?.aiInsights ?? null, hasNewReviewsSinceAiGeneration };
   });
 
   fastify.post<{ Body: { path?: string } }>('/api/insights/generate', async (request, reply) => {
@@ -117,19 +138,14 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
       });
 
       const existingData = insightsGateway.loadPersistedInsights(projectPath);
-      if (existingData) {
-        insightsGateway.savePersistedInsights(projectPath, {
-          ...existingData,
-          aiInsights,
-        });
-      } else {
-        insightsGateway.savePersistedInsights(projectPath, {
-          developers: [],
-          processedReviewIds: [],
-          lastUpdated: new Date().toISOString(),
-          aiInsights,
-        });
-      }
+      const stats = statsGateway.loadProjectStats(projectPath);
+      const currentReviews = stats?.reviews ?? [];
+      const upToDateResult = computeInsightsWithPersistence(currentReviews, existingData);
+      insightsGateway.savePersistedInsights(projectPath, {
+        ...upToDateResult.persistedData,
+        aiInsights,
+        reviewCountAtAiGeneration: upToDateResult.persistedData.processedReviewIds.length,
+      });
 
       return aiInsights;
     } catch (error) {
