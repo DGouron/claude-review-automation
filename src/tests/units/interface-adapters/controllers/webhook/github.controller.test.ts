@@ -80,6 +80,9 @@ function createMockDeps(): GitHubWebhookDependencies {
         startSha: 'ghi',
       })),
     },
+    diffStatsFetchGateway: {
+      fetchDiffStats: vi.fn(() => null),
+    },
     trackAssignment: { execute: vi.fn() },
     recordCompletion: { execute: vi.fn() },
   } as unknown as GitHubWebhookDependencies;

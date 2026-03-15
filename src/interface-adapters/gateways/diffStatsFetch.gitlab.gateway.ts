@@ -1,62 +1,43 @@
-import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
 
 import type { SimpleCommandExecutor } from '@/shared/foundation/commandExecutor.js';
 
 export type CommandExecutor = SimpleCommandExecutor;
 
-interface GitLabChange {
-  diff: string;
-}
-
-interface GitLabCommit {
-  id: string;
-}
-
-function countDiffLines(diff: string): { additions: number; deletions: number } {
-  let additions = 0;
-  let deletions = 0;
-
-  for (const line of diff.split('\n')) {
-    if (line.startsWith('+') && !line.startsWith('+++')) {
-      additions++;
-    } else if (line.startsWith('-') && !line.startsWith('---')) {
-      deletions++;
-    }
-  }
-
-  return { additions, deletions };
+interface GitLabMergeRequestStatsResponse {
+  additions: number;
+  deletions: number;
 }
 
 export class GitLabDiffStatsFetchGateway implements DiffStatsFetchGateway {
   constructor(private readonly executor: CommandExecutor) {}
 
-  async fetchDiffStats(projectPath: string, mergeRequestNumber: number): Promise<DiffStats | null> {
+  fetchDiffStats(projectPath: string, mergeRequestNumber: number): DiffStats | null {
     try {
       const encodedProject = projectPath.replace(/\//g, '%2F');
 
-      const changesResponse = this.executor(
-        `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}/changes`,
+      const mrResponse = this.executor(
+        `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}`,
       );
-      const changes: GitLabChange[] = JSON.parse(changesResponse);
+      const mergeRequest: GitLabMergeRequestStatsResponse = JSON.parse(mrResponse);
 
-      let totalAdditions = 0;
-      let totalDeletions = 0;
-      for (const change of changes) {
-        const { additions, deletions } = countDiffLines(change.diff);
-        totalAdditions += additions;
-        totalDeletions += deletions;
+      if (
+        typeof mergeRequest.additions !== 'number' ||
+        typeof mergeRequest.deletions !== 'number'
+      ) {
+        return null;
       }
 
       const commitsResponse = this.executor(
         `glab api projects/${encodedProject}/merge_requests/${mergeRequestNumber}/commits`,
       );
-      const commits: GitLabCommit[] = JSON.parse(commitsResponse);
+      const commits: unknown[] = JSON.parse(commitsResponse);
 
       return {
-        commitsCount: commits.length,
-        additions: totalAdditions,
-        deletions: totalDeletions,
+        additions: mergeRequest.additions,
+        deletions: mergeRequest.deletions,
+        commitsCount: Array.isArray(commits) ? commits.length : 0,
       };
     } catch {
       return null;

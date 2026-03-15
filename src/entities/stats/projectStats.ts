@@ -30,8 +30,8 @@ export interface ProjectStats {
   totalWarnings: number;
   reviews: ReviewStats[];
   lastUpdated: string;
-  totalAdditions?: number;
-  totalDeletions?: number;
-  averageAdditions?: number;
-  averageDeletions?: number;
+  totalAdditions: number;
+  totalDeletions: number;
+  averageAdditions: number | null;
+  averageDeletions: number | null;
 }
