@@ -4,7 +4,7 @@ import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile
 import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { AiInsightsResult } from '@/entities/insight/aiInsight.js';
 import type { Language } from '@/entities/language/language.schema.js';
-import { aiInsightsResultSchema } from '@/entities/insight/aiInsight.schema.js';
+import { aiInsightsRawResponseSchema } from '@/entities/insight/aiInsight.schema.js';
 import { buildAiInsightsPrompt } from '@/usecases/insights/buildAiInsightsPrompt.js';
 
 export type ClaudeInvoker = (prompt: string) => Promise<string>;
@@ -33,10 +33,10 @@ function stripMarkdownFences(text: string): string {
   return cleaned;
 }
 
-function parseClaudeResponse(rawOutput: string): AiInsightsResult {
+function parseClaudeResponse(rawOutput: string): Omit<AiInsightsResult, 'generatedAt'> {
   const cleaned = stripMarkdownFences(rawOutput);
   const parsed: unknown = JSON.parse(cleaned);
-  return aiInsightsResultSchema.parse(parsed);
+  return aiInsightsRawResponseSchema.parse(parsed);
 }
 
 export async function generateAiInsights(

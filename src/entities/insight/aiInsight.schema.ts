@@ -18,8 +18,11 @@ export const aiTeamInsightSchema = z.object({
   dynamics: z.string().min(1),
 });
 
-export const aiInsightsResultSchema = z.object({
+export const aiInsightsRawResponseSchema = z.object({
   developers: z.array(aiDeveloperInsightSchema),
   team: aiTeamInsightSchema,
+});
+
+export const aiInsightsResultSchema = aiInsightsRawResponseSchema.extend({
   generatedAt: z.string().min(1),
 });
