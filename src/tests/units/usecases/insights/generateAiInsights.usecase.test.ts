@@ -131,7 +131,8 @@ describe('generateAiInsights', () => {
       ReviewStatsFactory.create({ id: 'r1', assignedBy: 'alice', mrNumber: 42, score: 8 }),
     ];
     statsGateway.saveProjectStats('/test/project', ProjectStatsFactory.withReviews(reviews));
-    reviewFileGateway.addReview('/test/project', '2026-03-13-MR-42-review.md', '# Code Review - MR !42\nGreat work!');
+    const reviewContent = '# Code Review - MR !42\n\n## Synthèse Exécutive\n\n| Audit | Score |\n|---|---|\n| Testing | 9/10 |\n\n**Score Global : 8/10**\n\n## Constats Positifs\n\n### 1. Great test coverage\n';
+    reviewFileGateway.addReview('/test/project', '2026-03-13-MR-42-review.md', reviewContent);
 
     let capturedPrompt = '';
     const capturingInvoker: ClaudeInvoker = async (prompt: string) => {
@@ -149,7 +150,9 @@ describe('generateAiInsights', () => {
       language: 'fr',
     });
 
-    expect(capturedPrompt).toContain('Great work!');
+    expect(capturedPrompt).toContain('Synthèse Exécutive');
+    expect(capturedPrompt).toContain('Score Global');
+    expect(capturedPrompt).toContain('Great test coverage');
   });
 
   it('should include tracked MR data in the prompt', async () => {

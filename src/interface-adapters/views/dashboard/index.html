@@ -1212,8 +1212,11 @@
       }
     }
 
+    let aiGenerationInProgress = false;
+
     async function fetchTeamInsights() {
       if (!currentProjectPath) return;
+      if (aiGenerationInProgress) return;
       const container = document.getElementById('team-tab-content');
       if (!container) return;
 
@@ -1240,7 +1243,8 @@
     }
 
     async function generateAiInsights() {
-      if (!currentProjectPath) return;
+      if (!currentProjectPath || aiGenerationInProgress) return;
+      aiGenerationInProgress = true;
       const button = document.querySelector('.ai-generate-btn');
       if (button) {
         button.disabled = true;
@@ -1258,8 +1262,10 @@
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || t('ai.error'));
         }
+        aiGenerationInProgress = false;
         await fetchTeamInsights();
       } catch (error) {
+        aiGenerationInProgress = false;
         console.error('Error generating AI insights:', error);
         showToast(error.message || t('ai.error'), 'error');
         if (button) {

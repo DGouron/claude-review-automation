@@ -15,9 +15,8 @@ interface BuildAiInsightsPromptInput {
   language: Language;
 }
 
-const FULL_CONTENT_LIMIT = 3;
-const SUMMARY_CONTENT_LIMIT = 5;
-const SUMMARY_CHAR_LIMIT = 500;
+const REVIEW_EXCERPTS_LIMIT = 5;
+const EXCERPT_CHAR_LIMIT = 1500;
 
 function groupReviewsByDeveloper(reviews: ReviewStats[]): Map<string, ReviewStats[]> {
   const grouped = new Map<string, ReviewStats[]>();
@@ -87,12 +86,43 @@ function computeFirstPassQualityRate(reviews: ReviewStats[]): string {
   return `${rate.toFixed(0)}%`;
 }
 
-function extractReviewContent(
-  content: string,
-  full: boolean,
-): string {
-  if (full) return content;
-  return content.substring(0, SUMMARY_CHAR_LIMIT);
+function extractReviewExcerpt(content: string): string {
+  const sections: string[] = [];
+
+  // Extract executive summary table
+  const summaryMatch = content.match(/## Synth[èe]se Ex[ée]cutive[\s\S]*?(?=\n## )/);
+  if (summaryMatch) {
+    sections.push(summaryMatch[0].trim());
+  }
+
+  // Extract score line
+  const scoreMatch = content.match(/\*\*Score Global\s*:.*?\*\*/);
+  if (scoreMatch) {
+    sections.push(scoreMatch[0]);
+  }
+
+  // Extract blocking corrections titles only
+  const blockingSection = content.match(/## Corrections? (?:Importantes?|Bloquantes?)[\s\S]*?(?=\n## )/g);
+  if (blockingSection) {
+    for (const section of blockingSection) {
+      const titles = section.match(/^### \d+\..+$/gm);
+      if (titles) {
+        sections.push('Corrections: ' + titles.join(', '));
+      }
+    }
+  }
+
+  // Extract positive observations titles
+  const positiveSection = content.match(/## Constats? Positifs?[\s\S]*?(?=\n## |$)/);
+  if (positiveSection) {
+    const titles = positiveSection[0].match(/^### \d+\..+$/gm);
+    if (titles) {
+      sections.push('Points positifs: ' + titles.join(', '));
+    }
+  }
+
+  const excerpt = sections.join('\n');
+  return excerpt.substring(0, EXCERPT_CHAR_LIMIT);
 }
 
 function buildDeveloperSection(
@@ -128,14 +158,15 @@ function buildDeveloperSection(
   section += `- Total additions: ${totalAdditions}, deletions: ${totalDeletions}\n`;
 
   const reviewExcerpts: string[] = [];
-  for (let index = 0; index < Math.min(sortedReviews.length, FULL_CONTENT_LIMIT + SUMMARY_CONTENT_LIMIT); index++) {
+  for (let index = 0; index < Math.min(sortedReviews.length, REVIEW_EXCERPTS_LIMIT); index++) {
     const review = sortedReviews[index];
     const mrKey = String(review.mrNumber);
     const content = reviewContents.get(mrKey);
     if (content) {
-      const isFull = index < FULL_CONTENT_LIMIT;
-      const excerpt = extractReviewContent(content, isFull);
-      reviewExcerpts.push(`--- MR ${review.mrNumber} (score: ${review.score ?? 'N/A'}) ---\n${excerpt}`);
+      const excerpt = extractReviewExcerpt(content);
+      if (excerpt.length > 0) {
+        reviewExcerpts.push(`--- MR ${review.mrNumber} (score: ${review.score ?? 'N/A'}) ---\n${excerpt}`);
+      }
     }
   }
 

@@ -3,7 +3,7 @@ import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getModel } from '@/frameworks/settings/runtimeSettings.js';
 import type { ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
 
-const INSIGHTS_TIMEOUT_MS = 120000;
+const INSIGHTS_TIMEOUT_MS = 300000;
 
 export function createClaudeInsightsInvoker(): ClaudeInvoker {
   return (prompt: string): Promise<string> => {
@@ -51,7 +51,7 @@ export function createClaudeInsightsInvoker(): ClaudeInvoker {
       proc.on('close', (code) => {
         clearTimeout(timeout);
         if (timedOut) {
-          reject(new Error('Claude CLI a pris trop de temps (timeout 120s)'));
+          reject(new Error('Claude CLI a pris trop de temps (timeout 300s)'));
           return;
         }
         if (code === 0) {
