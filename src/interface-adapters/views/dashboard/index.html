@@ -262,6 +262,7 @@
     import { renderVersionUpdateArea, setVersionCheckState } from './modules/versionUpdate.js';
     import { renderCollapsibleList, toggleCollapsibleList } from './modules/collapsibleList.js';
     import { renderMrSheetContent, drawScoreTimeline, drawIssuesBreakdown } from './modules/mrSheet.js';
+    import { drawScoreTrendChart, drawReviewActivityChart, drawScoreDistributionChart, animateCounter } from './modules/statsCharts.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -844,19 +845,23 @@
 
         if (data.summary) {
           const s = data.summary;
+          const reviews = data.stats?.reviews || [];
           const trendIcon = (trend) => trend === 'up'
             ? '<span class="stat-trend up"><i data-lucide="trending-up"></i></span>'
             : trend === 'down'
               ? '<span class="stat-trend down"><i data-lucide="trending-down"></i></span>'
               : '<span class="stat-trend flat"><i data-lucide="minus"></i></span>';
 
+          const numericScore = parseFloat(s.averageScore);
+          const isScoreNumeric = !isNaN(numericScore);
+
           statsEl.innerHTML = `
             <div class="stat-card metric-reviews">
-              <div class="stat-value"><span class="stat-main">${s.totalReviews}</span></div>
+              <div class="stat-value"><span class="stat-main" data-target="${s.totalReviews}">0</span></div>
               <div class="stat-label"><i data-lucide="file-search"></i> ${t('stats.reviews')}</div>
             </div>
             <div class="stat-card metric-score">
-              <div class="stat-value"><span class="stat-main">${s.averageScore}</span><span class="stat-denominator">/10</span>${trendIcon(s.trend.score)}</div>
+              <div class="stat-value"><span class="stat-main" ${isScoreNumeric ? `data-target="${numericScore}" data-suffix="/10"` : ''}>${isScoreNumeric ? '0' : s.averageScore}</span>${!isScoreNumeric ? '<span class="stat-denominator">/10</span>' : ''}${trendIcon(s.trend.score)}</div>
               <div class="stat-label"><i data-lucide="star"></i> ${t('stats.averageScore')}</div>
             </div>
             <div class="stat-card metric-time">
@@ -868,15 +873,46 @@
               <div class="stat-label"><i data-lucide="clock"></i> ${t('stats.averageTime')}</div>
             </div>
             <div class="stat-card warning metric-blocking">
-              <div class="stat-value"><span class="stat-main">${s.totalBlocking}</span>${trendIcon(s.trend.blocking)}</div>
+              <div class="stat-value"><span class="stat-main" data-target="${s.totalBlocking}">0</span>${trendIcon(s.trend.blocking)}</div>
               <div class="stat-label"><i data-lucide="octagon-alert"></i> ${t('stats.blocking')}</div>
             </div>
             <div class="stat-card metric-warnings">
-              <div class="stat-value"><span class="stat-main">${s.totalWarnings}</span></div>
+              <div class="stat-value"><span class="stat-main" data-target="${s.totalWarnings}">0</span></div>
               <div class="stat-label"><i data-lucide="alert-triangle"></i> ${t('stats.warnings')}</div>
+            </div>
+            <div class="stats-charts-row">
+              <div class="stats-chart-card">
+                <div class="stats-chart-title"><i data-lucide="trending-up"></i> ${t('stats.scoreTrend')}</div>
+                <canvas id="stats-score-trend" class="stats-canvas"></canvas>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title"><i data-lucide="bar-chart-3"></i> ${t('stats.reviewActivity')}</div>
+                <canvas id="stats-activity" class="stats-canvas"></canvas>
+              </div>
+            </div>
+            <div class="stats-charts-row">
+              <div class="stats-chart-card full-width">
+                <div class="stats-chart-title"><i data-lucide="pie-chart"></i> ${t('stats.scoreDistribution')}</div>
+                <canvas id="stats-distribution" class="stats-canvas-wide"></canvas>
+              </div>
             </div>
           `;
           refreshIcons();
+
+          statsEl.querySelectorAll('.stat-main[data-target]').forEach(element => {
+            const target = parseFloat(element.dataset.target);
+            if (!isNaN(target)) {
+              animateCounter(element, target, 800, element.dataset.suffix || '');
+            }
+          });
+
+          requestAnimationFrame(() => {
+            if (reviews.length) {
+              drawScoreTrendChart('stats-score-trend', reviews);
+              drawReviewActivityChart('stats-activity', reviews);
+              drawScoreDistributionChart('stats-distribution', reviews);
+            }
+          });
         } else {
           statsEl.innerHTML = `<div class="empty-state">${t('empty.statsNoData')}</div>`;
         }

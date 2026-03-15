@@ -178,6 +178,10 @@ const translations = {
     'stats.backfillProgress': '{{completed}}/{{total}} reviews',
     'stats.backfillComplete': 'Recalculation complete',
     'stats.backfillFailed': '{{failed}} errors',
+    'stats.scoreTrend': 'Score Trend',
+    'stats.reviewActivity': 'Review Activity',
+    'stats.scoreDistribution': 'Score Distribution',
+    'stats.noChartData': 'Not enough data',
     'error.recalculateStats': 'Recalculation error',
 
     // Review types
@@ -450,6 +454,10 @@ const translations = {
     'stats.backfillProgress': '{{completed}}/{{total}} reviews',
     'stats.backfillComplete': 'Recalcul terminé',
     'stats.backfillFailed': '{{failed}} erreurs',
+    'stats.scoreTrend': 'Tendance du score',
+    'stats.reviewActivity': 'Activité des reviews',
+    'stats.scoreDistribution': 'Distribution des scores',
+    'stats.noChartData': 'Pas assez de données',
     'error.recalculateStats': 'Erreur de recalcul',
 
     // Review types
