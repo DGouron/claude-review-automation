@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.8.0...reviewflow-v3.8.1) (2026-03-16)
+
+
+### Fixed
+
+* **docs:** escape angle bracket placeholders in spec files ([e82ff68](https://github.com/DGouron/review-flow/commit/e82ff688a5ce9e556d01a94369ac14b4598bfa2c))
+
 ## [3.8.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.7.0...reviewflow-v3.8.0) (2026-03-16)
 
 
