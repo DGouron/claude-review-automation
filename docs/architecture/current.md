@@ -59,7 +59,14 @@ src/
 ├── config/                                        # Config loading and validation
 ├── security/                                      # Webhook signature verification
 ├── entities/                                      # Domain entities and types
-├── usecases/                                      # Business logic (incl. mcp/)
+│   ├── insight/                                   # Developer & team insights
+│   ├── stats/                                     # Review statistics
+│   ├── tracking/                                  # MR lifecycle tracking
+│   └── ...                                        # Other domain entities
+├── usecases/                                      # Business logic
+│   ├── insights/                                  # Insight computation & AI generation
+│   ├── stats/                                     # Stats recalculation & backfill
+│   └── ...                                        # Other use cases
 │
 ├── interface-adapters/
 │   ├── controllers/
@@ -67,11 +74,20 @@ src/
 │   │   │   ├── gitlab.controller.ts               # GitLab webhook handler
 │   │   │   ├── github.controller.ts               # GitHub webhook handler
 │   │   │   └── eventFilter.ts                     # Filtering logic
+│   │   ├── http/                                  # REST API routes
+│   │   │   ├── insights.routes.ts                 # Developer & team insights
+│   │   │   ├── stats.routes.ts                    # Stats recalculation
+│   │   │   ├── version.routes.ts                  # Self-update mechanism
+│   │   │   └── ...                                # Other routes
 │   │   └── mcp/                                   # MCP tool handlers
+│   ├── presenters/                                # Domain → ViewModel transformation
+│   │   └── insights.presenter.ts                  # Insights presentation
 │   └── gateways/                                  # Gateway implementations
 │
 ├── frameworks/
-│   └── claude/                                    # Claude CLI integration
+│   ├── claude/                                    # Claude CLI integration
+│   │   └── claudeInsightsInvoker.ts               # AI insights generation via Claude
+│   └── settings/                                  # Runtime settings (model, language)
 │
 ├── mcp/                                           # MCP server infrastructure
 │   ├── server.ts                                  # MCP server setup

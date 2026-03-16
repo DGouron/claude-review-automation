@@ -97,6 +97,39 @@ pending-review ──→ pending-fix ──→ pending-approval ──→ approv
 
 Both produce `ReviewAction[]`. The distinction lives in the **Use Case layer**: initial reviews find all issues, followup reviews verify fixes. Both use the same `ReviewAction` entity and `ReviewActionGateway` for execution.
 
+## Insights
+
+### DeveloperInsight
+**Definition**: Computed analysis of a developer's review performance across multiple metrics.
+**Contains**: `developerName`, `title`, `overallLevel`, `categoryLevels`, `strengths`, `weaknesses`, `insightDescriptions`, `trend`
+**Location**: `entities/insight/`
+
+### TeamInsight
+**Definition**: Aggregated analysis of the team's review performance with actionable tips.
+**Contains**: `summary`, `tips`, `topPerformer`, `mostImproved`
+**Location**: `entities/insight/`
+
+### InsightCategory
+**Definition**: A dimension of developer performance measured by the insight system.
+**Values**: `quality` (score, blocking issues), `responsiveness` (review duration), `codeVolume` (additions/deletions), `iteration` (first-pass quality rate)
+**Location**: `entities/insight/`
+
+### DeveloperTitle
+**Definition**: A title assigned to a developer based on their strongest category.
+**Values**: `architect` (quality), `firefighter` (responsiveness), `workhorse` (code volume), `sentinel` (iteration), `balanced` (no dominant category)
+**Location**: `entities/insight/`
+
+### InsightTrend
+**Definition**: The direction of a developer's performance over recent reviews.
+**Values**: `improving`, `stable`, `declining`
+**Location**: `entities/insight/`
+
+### AiInsight
+**Definition**: AI-generated narrative insights produced by Claude from review data.
+**Contains**: `developers[]` (with strengths, weaknesses, recommendations), `team` (summary, recommendations)
+**Trigger**: Manual via dashboard button.
+**Location**: `entities/insight/`
+
 ## Scoring
 
 ### ReviewScore Components

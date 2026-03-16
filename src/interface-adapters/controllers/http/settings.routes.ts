@@ -7,6 +7,10 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
     return getSettings();
   });
 
+  fastify.get('/api/settings/model', async () => {
+    return { model: getModel() };
+  });
+
   fastify.post('/api/settings/model', async (request, reply) => {
     const { model } = request.body as { model?: ClaudeModel };
 

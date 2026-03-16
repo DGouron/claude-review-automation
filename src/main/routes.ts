@@ -15,6 +15,7 @@ import { cliStatusRoutes } from '@/interface-adapters/controllers/http/cliStatus
 import { projectConfigRoutes } from '@/interface-adapters/controllers/http/projectConfig.routes.js';
 import { cleanupRoutes } from '@/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/interface-adapters/controllers/http/version.routes.js';
+import { insightsRoutes } from '@/interface-adapters/controllers/http/insights.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/interface-adapters/controllers/webhook/github.controller.js';
@@ -37,6 +38,8 @@ import { NpmPackageVersionGateway } from '@/interface-adapters/gateways/packageV
 import { VersionCacheMemoryGateway } from '@/interface-adapters/gateways/versionCache.memory.gateway.js';
 import { SelfUpdateCliGateway } from '@/interface-adapters/gateways/selfUpdate.cli.gateway.js';
 import { broadcastBackfillProgress } from '@/main/websocket.js';
+import { createClaudeInsightsInvoker } from '@/frameworks/claude/claudeInsightsInvoker.js';
+import { getDefaultLanguage } from '@/frameworks/settings/runtimeSettings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -111,6 +114,17 @@ export async function registerRoutes(
     packageVersionGateway,
     versionCache,
     selfUpdateCommand,
+    serverPort: deps.config.server.port,
+  });
+
+  await app.register(insightsRoutes, {
+    statsGateway: deps.statsGateway,
+    insightsGateway: deps.insightsGateway,
+    reviewFileGateway: deps.reviewFileGateway,
+    reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+    logger: deps.logger,
+    claudeInvoker: createClaudeInsightsInvoker(),
+    language: getDefaultLanguage(),
   });
 
   await app.register(logsRoutes);

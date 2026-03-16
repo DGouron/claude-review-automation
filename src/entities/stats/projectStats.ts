@@ -34,4 +34,7 @@ export interface ProjectStats {
   totalDeletions: number;
   averageAdditions: number | null;
   averageDeletions: number | null;
+  totalScoreSum?: number;
+  scoredReviewCount?: number;
+  diffStatsReviewCount?: number;
 }

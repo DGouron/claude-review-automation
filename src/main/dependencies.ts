@@ -4,8 +4,10 @@ import type { StatsGateway } from '../interface-adapters/gateways/stats.gateway.
 import type { ReviewFileGateway } from '../interface-adapters/gateways/reviewFile.gateway.js';
 import type { ReviewLogFileGateway } from '../interface-adapters/gateways/reviewLogFile.gateway.js';
 import type { ReviewContextGateway } from '../entities/reviewContext/reviewContext.gateway.js';
+import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
 import { FileSystemReviewRequestTrackingGateway } from '../interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { FileSystemStatsGateway } from '../interface-adapters/gateways/fileSystem/stats.fileSystem.js';
+import { FileSystemInsightsGateway } from '@/interface-adapters/gateways/fileSystem/insights.fileSystem.js';
 import { FileSystemReviewFileGateway } from '../interface-adapters/gateways/fileSystem/reviewFile.fileSystem.js';
 import { FileSystemReviewLogFileGateway } from '../interface-adapters/gateways/fileSystem/reviewLogFile.fileSystem.gateway.js';
 import { ReviewContextFileSystemGateway } from '../interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
@@ -22,6 +24,7 @@ export interface Dependencies {
   reviewFileGateway: ReviewFileGateway;
   reviewLogFileGateway: ReviewLogFileGateway;
   reviewContextGateway: ReviewContextGateway;
+  insightsGateway: InsightsGateway;
   reviewContextWatcher: ReviewContextWatcherService;
   progressPresenter: ReviewContextProgressPresenter;
   logger: Logger;
@@ -68,6 +71,7 @@ export function createDependencies(config: Config): Dependencies {
     reviewFileGateway: new FileSystemReviewFileGateway(),
     reviewLogFileGateway: new FileSystemReviewLogFileGateway(),
     reviewContextGateway,
+    insightsGateway: new FileSystemInsightsGateway(),
     reviewContextWatcher: new ReviewContextWatcherService(reviewContextGateway),
     progressPresenter: new ReviewContextProgressPresenter(),
     logger,

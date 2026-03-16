@@ -32,6 +32,8 @@ title: Target Architecture
 │  │  ├── gitlab         ├── health         └── progress                  │   │
 │  │  └── github         ├── reviews                                      │   │
 │  │                     ├── stats                                        │   │
+│  │                     ├── insights                                     │   │
+│  │                     ├── version                                      │   │
 │  │                     └── mrTracking                                   │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -40,6 +42,7 @@ title: Target Architecture
 │  │  reviewAction.presenter.ts      # stdout → ReviewAction[]            │   │
 │  │  reviewOutput.presenter.ts      # stdout → ReviewStats               │   │
 │  │  statsSummary.presenter.ts      # ProjectStats → ViewModel           │   │
+│  │  insights.presenter.ts          # DeveloperInsight[] → ViewModel     │   │
 │  │  jobStatus.presenter.ts         # Job → ViewModel                    │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -48,8 +51,9 @@ title: Target Architecture
 │  │                                                                      │   │
 │  │  cli/                          fileSystem/                           │   │
 │  │  ├── command.cli.gateway       ├── reviewStats.fileSystem            │   │
-│  │  └── reviewAction.cli.gateway  ├── reviewFile.fileSystem             │   │
-│  │                                └── reviewRequestTracking.fileSystem  │   │
+│  │  ├── reviewAction.cli.gateway  ├── reviewFile.fileSystem             │   │
+│  │  └── selfUpdate.cli.gateway    ├── reviewRequestTracking.fileSystem  │   │
+│  │                                └── insights.fileSystem               │   │
 │  │                                                                      │   │
 │  │  api/                                                                │   │
 │  │  ├── threadFetch.gitlab.gateway                                      │   │
@@ -80,7 +84,20 @@ title: Target Architecture
 │  ├── executeFollowUpReview.usecase.ts   # Execute follow-up review          │
 │  ├── addReviewStats.usecase.ts          # Add stats after review            │
 │  ├── cancelReview.usecase.ts            # Cancel a review                   │
-│  └── handleReviewRequestPush.usecase.ts # Handle push on MR                 │
+│  ├── handleReviewRequestPush.usecase.ts # Handle push on MR                 │
+│  │                                                                          │
+│  ├── insights/                                                              │
+│  │   ├── computeDeveloperInsights      # Compute per-developer analysis     │
+│  │   ├── computeTeamInsights           # Compute team-level analysis        │
+│  │   ├── computeInsightsWithPersistence # Incremental insight persistence   │
+│  │   ├── generateAiInsights            # AI-powered narrative insights      │
+│  │   ├── getInsightsWithAiStatus       # Load insights + AI freshness      │
+│  │   └── insightLevelComputation       # Metric normalization & levels      │
+│  │                                                                          │
+│  ├── stats/                                                                 │
+│  │   ├── recalculateProjectStats       # Recalculate from review array      │
+│  │   ├── backfillDiffStats             # Backfill missing diff stats        │
+│  │   └── recalculateWithBackfill       # Recalculate + backfill orchestration │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -90,6 +107,7 @@ title: Target Architecture
 │  src/entities/    Each: types + schema + guard + gateway (port)              │
 │  ├── reviewAction/       # Actions on MR (ReviewAction union)               │
 │  ├── reviewStats/        # Statistics (ReviewStats, ProjectStats)            │
+│  ├── insight/            # Developer & team insights, AI insights           │
 │  ├── actionExecution/    # ExecutionContext, ExecutionResult                 │
 │  ├── reviewContext/      # Review context                                   │
 │  ├── reviewRequest/      # Abstract MR/PR                                   │

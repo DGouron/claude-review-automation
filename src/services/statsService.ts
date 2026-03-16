@@ -12,6 +12,19 @@ function getStatsPath(projectPath: string): string {
   return join(projectPath, '.claude', 'reviews', 'stats.json');
 }
 
+function hasProperty<K extends string>(object: object, key: K): object is Record<K, unknown> {
+  return key in object;
+}
+
+function isProjectStatsShape(value: unknown): value is ProjectStats {
+  if (typeof value !== 'object' || value === null) return false;
+  return (
+    hasProperty(value, 'totalReviews') && typeof value.totalReviews === 'number' &&
+    hasProperty(value, 'totalDuration') && typeof value.totalDuration === 'number' &&
+    hasProperty(value, 'lastUpdated') && typeof value.lastUpdated === 'string'
+  );
+}
+
 /**
  * Load project statistics
  */
@@ -24,14 +37,17 @@ export function loadProjectStats(projectPath: string): ProjectStats {
 
   try {
     const content = readFileSync(statsPath, 'utf-8');
-    const stats = JSON.parse(content) as ProjectStats;
+    const parsed: unknown = JSON.parse(content);
 
-    // Ensure arrays exist
-    if (!Array.isArray(stats.reviews)) {
-      stats.reviews = [];
+    if (!isProjectStatsShape(parsed)) {
+      return createEmptyStats();
     }
 
-    return stats;
+    if (!Array.isArray(parsed.reviews)) {
+      parsed.reviews = [];
+    }
+
+    return parsed;
   } catch {
     return createEmptyStats();
   }
@@ -214,43 +230,56 @@ export function addReviewStats(
     diffStats: diffStats ?? null,
   };
 
+  initializeCumulativeCounters(stats);
+
   stats.reviews.push(reviewStats);
+  updateAggregatesForNewReview(stats, reviewStats);
 
   if (stats.reviews.length > 100) {
     stats.reviews = stats.reviews.slice(-100);
   }
 
-  recalculateProjectStats(stats);
   saveProjectStats(projectPath, stats);
 
   return reviewStats;
 }
 
-function recalculateProjectStats(stats: ProjectStats): void {
-  stats.totalReviews = stats.reviews.length;
-  stats.totalDuration = stats.reviews.reduce((sum, r) => sum + r.duration, 0);
-  stats.averageDuration = stats.totalReviews > 0 ? stats.totalDuration / stats.totalReviews : 0;
-  stats.totalBlocking = stats.reviews.reduce((sum, r) => sum + r.blocking, 0);
-  stats.totalWarnings = stats.reviews.reduce((sum, r) => sum + r.warnings, 0);
+function initializeCumulativeCounters(stats: ProjectStats): void {
+  if (stats.totalScoreSum !== undefined) return;
 
   const reviewsWithScore = stats.reviews.filter((r) => r.score !== null);
-  if (reviewsWithScore.length > 0) {
-    stats.averageScore =
-      reviewsWithScore.reduce((sum, r) => sum + (r.score ?? 0), 0) / reviewsWithScore.length;
-  } else {
-    stats.averageScore = null;
-  }
+  stats.totalScoreSum = reviewsWithScore.reduce((sum, r) => sum + (r.score ?? 0), 0);
+  stats.scoredReviewCount = reviewsWithScore.length;
 
   const reviewsWithDiffStats = stats.reviews.filter((r) => r.diffStats != null);
-  stats.totalAdditions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.additions ?? 0), 0);
-  stats.totalDeletions = reviewsWithDiffStats.reduce((sum, r) => sum + (r.diffStats?.deletions ?? 0), 0);
+  stats.diffStatsReviewCount = reviewsWithDiffStats.length;
+}
 
-  if (reviewsWithDiffStats.length > 0) {
-    stats.averageAdditions = stats.totalAdditions / reviewsWithDiffStats.length;
-    stats.averageDeletions = stats.totalDeletions / reviewsWithDiffStats.length;
-  } else {
-    stats.averageAdditions = null;
-    stats.averageDeletions = null;
+function updateAggregatesForNewReview(stats: ProjectStats, review: ReviewStats): void {
+  stats.totalReviews += 1;
+  stats.totalDuration += review.duration;
+  stats.averageDuration = stats.totalDuration / stats.totalReviews;
+  stats.totalBlocking += review.blocking;
+  stats.totalWarnings += review.warnings;
+
+  if (review.score !== null) {
+    stats.totalScoreSum = (stats.totalScoreSum ?? 0) + review.score;
+    stats.scoredReviewCount = (stats.scoredReviewCount ?? 0) + 1;
+  }
+
+  if (stats.scoredReviewCount && stats.scoredReviewCount > 0) {
+    stats.averageScore = (stats.totalScoreSum ?? 0) / stats.scoredReviewCount;
+  }
+
+  if (review.diffStats) {
+    stats.totalAdditions += review.diffStats.additions;
+    stats.totalDeletions += review.diffStats.deletions;
+    stats.diffStatsReviewCount = (stats.diffStatsReviewCount ?? 0) + 1;
+  }
+
+  if (stats.diffStatsReviewCount && stats.diffStatsReviewCount > 0) {
+    stats.averageAdditions = stats.totalAdditions / stats.diffStatsReviewCount;
+    stats.averageDeletions = stats.totalDeletions / stats.diffStatsReviewCount;
   }
 }
 

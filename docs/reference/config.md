@@ -151,8 +151,11 @@ The automation server creates these files in `.claude/reviews/`:
 
 | File | Description | Key Fields |
 |------|-------------|------------|
-| `stats.json` | Review statistics history per project | `totalReviews`, `averageScore`, `reviews[]` (with score, blocking, warnings) |
+| `stats.json` | Review statistics history per project | `totalReviews`, `averageScore`, `reviews[]` (last 100), cumulative counters (`totalScoreSum`, `scoredReviewCount`, `diffStatsReviewCount`) |
 | `tracking.json` | MR/PR lifecycle tracking | `state`, `openThreads`, `reviews[]` (with type, score, duration) |
+| `insights.json` | Computed developer & team insights | `developerMetrics`, `teamInsight`, `aiInsights` (AI-generated narrative), `processedReviewIds` |
+
+**Note on `stats.json`**: The `reviews[]` array is capped at 100 entries for storage. Aggregate fields (`totalReviews`, `totalBlocking`, `averageScore`, etc.) reflect the full history thanks to cumulative counters that persist independently of the array.
 
 ---
 

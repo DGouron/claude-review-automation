@@ -26,4 +26,12 @@ describe('triggerSelfUpdate usecase', () => {
 
     expect(result).toEqual({ status: 'failed', error: 'Unknown error' })
   })
+
+  it('should return permission-denied with command when permission is denied', async () => {
+    const selfUpdateCommand = new StubSelfUpdateCommand(false, 'EACCES', true)
+
+    const result = await triggerSelfUpdate({ selfUpdateCommand })
+
+    expect(result).toEqual({ status: 'permission-denied', command: 'sudo npm update -g reviewflow' })
+  })
 })
