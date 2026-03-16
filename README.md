@@ -92,8 +92,31 @@ A WebSocket-powered dashboard shows live review progress:
 - Phase and agent-level progress bars
 - Running / queued / completed review counts
 - Review history with duration, scores, and error details
+- **Team tab** with developer cards, insights, and AI analysis
+- **Stats section** with canvas charts, score trends, and animated counters
 - Log stream for debugging
 - Auto-reconnection with exponential backoff
+
+### Developer & Team Insights
+
+The dashboard computes performance insights from your review history — no configuration needed.
+
+**Per-developer analysis** across 4 categories:
+
+| Category | What it measures |
+|----------|-----------------|
+| Quality | Average score, blocking issues ratio |
+| Responsiveness | Review turnaround time vs team average |
+| Code Volume | Additions/deletions per review |
+| Iteration | First-pass quality rate (reviews without blocking issues) |
+
+Each developer gets a **level** (beginner → expert), a **trend** (improving / stable / declining), identified **strengths and weaknesses**, and a title based on their strongest category (Architect, Firefighter, Workhorse, Sentinel, or Balanced).
+
+**Team-level analysis** shows top performer, most improved developer, and actionable tips.
+
+**AI-powered narrative** (optional): click "Generate AI Insights" to have Claude produce a written analysis with per-developer and team recommendations.
+
+Insights are computed from the first 5 reviews onward and persist across sessions.
 
 ### Follow-Up Reviews
 
@@ -210,6 +233,11 @@ For detailed setup, see the **[Quick Start Guide](https://dgouron.github.io/revi
 | `/webhooks/github` | POST | GitHub webhook receiver |
 | `/api/reviews` | GET | List reviews |
 | `/api/reviews/cancel/:jobId` | POST | Cancel a running review |
+| `/api/insights?path=` | GET | Developer & team insights |
+| `/api/insights/generate` | POST | Generate AI-powered insights via Claude |
+| `/api/stats/recalculate` | POST | Recalculate stats with optional diff backfill |
+| `/api/version/check` | GET | Check for updates |
+| `/api/version/update` | POST | Trigger self-update |
 | `/ws` | WS | Real-time progress updates |
 
 ---
