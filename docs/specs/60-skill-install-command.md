@@ -6,6 +6,8 @@ milestone: Skill Management
 status: DRAFT
 ---
 
+
+
 # SPEC-060: `reviewflow skill install` — Install Skills from Multiple Sources
 
 ## Problem Statement
@@ -158,10 +160,10 @@ Validation errors:
 
 | Check | Error message |
 |-------|---------------|
-| No SKILL.md | "No SKILL.md found in <path>." |
+| No SKILL.md | "No SKILL.md found in `<path>`." |
 | No frontmatter | "SKILL.md has no YAML frontmatter (must start with '---')." |
 | No `name` field | "SKILL.md frontmatter is missing the required 'name' field." |
-| Invalid `name` | "Skill name '<name>' contains invalid characters. Use only alphanumeric, hyphens, and underscores." |
+| Invalid `name` | "Skill name '`<name>`' contains invalid characters. Use only alphanumeric, hyphens, and underscores." |
 
 ### FR-6: Conflict Detection
 
@@ -170,7 +172,7 @@ Before copying, check if `<target>/.claude/skills/<skill-name>/` already exists.
 | Situation | `--force` absent | `--force` present |
 |-----------|------------------|-------------------|
 | Destination does not exist | Install proceeds | Install proceeds |
-| Destination exists | Error: "Skill '<name>' already exists. Use --force to overwrite." Exit 1. | Delete existing directory, then install. Print warning: "Overwriting existing skill '<name>'." |
+| Destination exists | Error: "Skill '`<name>`' already exists. Use --force to overwrite." Exit 1. | Delete existing directory, then install. Print warning: "Overwriting existing skill '`<name>`'." |
 
 ### FR-7: Skill Name Resolution
 
@@ -196,7 +198,7 @@ The `--target` flag specifies where to install the skill. Defaults to the curren
 
 1. The target directory must exist
 2. If `.claude/skills/` does not exist in the target, create it automatically (with `mkdir -p`)
-3. The `.claude/` directory is not created if the target has no `.claude/` directory at all -- error: "No .claude/ directory found in <target>. Is this a Claude Code project?"
+3. The `.claude/` directory is not created if the target has no `.claude/` directory at all -- error: "No .claude/ directory found in `<target>`. Is this a Claude Code project?"
 
 ### FR-10: CLI Integration
 
@@ -459,7 +461,7 @@ Feature: reviewflow skill install
 |------|--------|------------|
 | Git not installed on the user's system | Git URL installs fail | Check for `git` availability before attempting clone. Print: "Git is required for URL installs. Install Git or use a local path." |
 | Large Git repos take a long time to clone | UX feels slow for Git installs | Use `--depth 1` for shallow clone. Print progress: "Cloning repository..." |
-| Filesystem permissions prevent writing to `.claude/skills/` | Install fails with cryptic OS error | Catch permission errors and print a clear message: "Permission denied: cannot write to <path>." |
+| Filesystem permissions prevent writing to `.claude/skills/` | Install fails with cryptic OS error | Catch permission errors and print a clear message: "Permission denied: cannot write to `<path>`." |
 | Skill name collision between frontmatter and directory name | Ambiguity about which name takes precedence | Priority order is documented: `--name` > frontmatter `name` > directory name. Always show the resolved name in output. |
 | SKILL.md validation is too strict (rejects valid skills from other ecosystems) | Users cannot install skills with non-standard frontmatter | Validation requires only `name`. The `description` field is recommended but not required. |
 | #59 (skill list) not yet merged when this is implemented | `skill` command group does not exist in parser | The `skill` command group parser addition is small and can be included in this ticket if #59 has not landed. |

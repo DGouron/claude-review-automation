@@ -6,6 +6,8 @@ milestone: Skill Management
 status: DRAFT
 ---
 
+
+
 # SPEC-062: `reviewflow skill create` — Scaffold Custom Skills
 
 ## Problem Statement
@@ -258,8 +260,8 @@ Before creating files, check if `.claude/skills/<skill-name>/` already exists.
 | Situation | `--force` absent | `--force` present |
 |-----------|------------------|-------------------|
 | Destination does not exist | Create proceeds | Create proceeds |
-| Destination exists (interactive) | Prompt: "Skill '<name>' already exists. Overwrite? (y/N)" | Delete existing, create new. Print warning. |
-| Destination exists (non-interactive) | Error: "Skill '<name>' already exists. Use --force to overwrite." Exit 1. | Delete existing, create new. Print warning. |
+| Destination exists (interactive) | Prompt: "Skill '`<name>`' already exists. Overwrite? (y/N)" | Delete existing, create new. Print warning. |
+| Destination exists (non-interactive) | Error: "Skill '`<name>`' already exists. Use --force to overwrite." Exit 1. | Delete existing, create new. Print warning. |
 
 ### FR-6: Directory Structure
 
@@ -278,7 +280,7 @@ The command creates:
 
 If `.claude/skills/` does not exist but `.claude/` does, create `skills/` automatically.
 
-If `.claude/` does not exist, error: "No .claude/ directory found in <target>. Is this a Claude Code project?" Exit 1.
+If `.claude/` does not exist, error: "No .claude/ directory found in `<target>`. Is this a Claude Code project?" Exit 1.
 
 ### FR-7: Non-Interactive Mode (`-y`)
 

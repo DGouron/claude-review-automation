@@ -6,6 +6,8 @@ milestone: Skill Management
 status: DRAFT
 ---
 
+
+
 # SPEC-061: Skill Catalog System
 
 ## Problem Statement
@@ -152,7 +154,7 @@ The CLI caches the catalog locally to avoid network requests on every command:
 - **TTL**: 24 hours (configurable via `catalogTtlHours` in config, default: 24)
 - **Cache miss behavior**: Fetch from remote, write to cache, proceed
 - **Cache hit behavior**: Read from cache, proceed
-- **Stale cache + network error**: Use stale cache with a warning to stderr: "Using cached catalog (last updated: <date>). Run `reviewflow skill catalog update` to refresh."
+- **Stale cache + network error**: Use stale cache with a warning to stderr: "Using cached catalog (last updated: `<date>`). Run `reviewflow skill catalog update` to refresh."
 - **No cache + network error**: Error: "Cannot fetch skill catalog. Check your internet connection." Exit 1.
 
 ### FR-4: `reviewflow skill search <query>`
@@ -239,8 +241,8 @@ When `skill install` (SPEC-060) receives a bare name argument:
 2. Look up the name in `skills[].name`
 3. If found: extract `source` and `sourcePath`, delegate to the existing Git URL install flow
    - If `sourcePath` is present, clone the repo and extract only that subdirectory
-4. If not found: "Skill '<name>' not found in catalog. Search with: reviewflow skill search <name>"
-5. If catalog is unavailable (no cache, no network): "Cannot resolve skill name '<name>'. Provide a local path or Git URL instead."
+4. If not found: "Skill '`<name>`' not found in catalog. Search with: reviewflow skill search `<name>`"
+5. If catalog is unavailable (no cache, no network): "Cannot resolve skill name '`<name>`'. Provide a local path or Git URL instead."
 
 This replaces the current "catalog not available" placeholder message in SPEC-060 FR-4.
 
@@ -251,7 +253,7 @@ Force-refresh the local catalog cache regardless of TTL:
 1. Fetch catalog from remote URL
 2. Validate the fetched JSON against the catalog schema
 3. Write to `~/.claude-review/catalog.json`
-4. Print: "Catalog updated. <N> skills available (last updated: <date>)."
+4. Print: "Catalog updated. `<N>` skills available (last updated: `<date>`)."
 
 **Error handling**:
 - Network error: "Cannot fetch catalog. Check your internet connection." Exit 1.
@@ -521,7 +523,7 @@ Feature: reviewflow skill search
 | Catalog grows too large for a single JSON file | Slow to fetch and parse | At 500 entries with full metadata, the file is ~100KB. GitHub raw content serves files up to 100MB. Revisit if ecosystem exceeds 500 skills. |
 | Stale catalog shows skills that no longer exist | Install fails for removed skills | `skill install` failure message is clear. Catalog curation via PRs ensures removals are deliberate. |
 | Skill name squatting | Popular names taken by low-quality skills | PR-based curation acts as a gatekeeper. Catalog maintainers review entries before merge. |
-| `sourcePath` pointing to a moved/deleted directory | Install fails after clone | Clear error: "Skill not found at path '<sourcePath>' in repository." Catalog PR should be updated. |
+| `sourcePath` pointing to a moved/deleted directory | Install fails after clone | Clear error: "Skill not found at path '`<sourcePath>`' in repository." Catalog PR should be updated. |
 | Breaking change to catalog schema | Older CLI versions cannot parse new catalog | `version` field in catalog enables schema migration. CLI validates against expected version and warns if incompatible. |
 
 ## Dependencies
