@@ -1,4 +1,4 @@
 export interface SelfUpdateCommandPort {
-  runGlobalUpdate(): Promise<{ success: boolean; error: string | null }>
-  restartDaemon(): Promise<void>
+  runGlobalUpdate(): Promise<{ success: boolean; error: string | null; permissionDenied: boolean }>
+  restartDaemon(serverPort?: number): Promise<void>
 }

@@ -1,4 +1,4 @@
-import type { ReviewStats } from '@/services/statsService.js';
+import type { ReviewStats } from '@/entities/stats/projectStats.js';
 import type { DeveloperInsight, CategoryLevels, InsightDescription } from '@/entities/insight/developerInsight.js';
 import type { InsightCategory } from '@/entities/insight/insightCategory.js';
 import type { InsightTrend } from '@/entities/insight/insightTrend.js';

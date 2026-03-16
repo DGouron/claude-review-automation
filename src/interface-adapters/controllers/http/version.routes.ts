@@ -13,6 +13,7 @@ interface VersionRoutesOptions {
   packageVersionGateway: PackageVersionGateway
   versionCache: VersionCachePort
   selfUpdateCommand: SelfUpdateCommandPort
+  serverPort: number
 }
 
 export const versionRoutes: FastifyPluginAsync<VersionRoutesOptions> = async (fastify, options) => {
@@ -30,9 +31,13 @@ export const versionRoutes: FastifyPluginAsync<VersionRoutesOptions> = async (fa
       reply.code(500)
     }
 
+    if (result.status === 'permission-denied') {
+      reply.code(403)
+    }
+
     if (result.status === 'started') {
       setTimeout(() => {
-        options.selfUpdateCommand.restartDaemon().catch(() => {})
+        options.selfUpdateCommand.restartDaemon(options.serverPort).catch(() => {})
       }, 1000)
     }
 

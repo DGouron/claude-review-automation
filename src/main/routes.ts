@@ -114,6 +114,7 @@ export async function registerRoutes(
     packageVersionGateway,
     versionCache,
     selfUpdateCommand,
+    serverPort: deps.config.server.port,
   });
 
   await app.register(insightsRoutes, {

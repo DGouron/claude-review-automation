@@ -169,6 +169,10 @@ h1 { font-size: 1.75rem; font-weight: 600; }
 .btn-secondary:hover { background: rgba(255, 255, 255, 0.08); }
 
 /* Version update */
+.version-update-wrapper {
+  position: relative;
+}
+
 .version-update-area {
   display: flex;
   align-items: center;
@@ -209,6 +213,59 @@ h1 { font-size: 1.75rem; font-weight: 600; }
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.version-manual-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: var(--nsc-bg-elevated);
+  border: 1px solid var(--nsc-border-soft);
+  border-radius: 8px;
+  padding: 0.75rem;
+  min-width: 320px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.version-manual-dropdown p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--nsc-warning);
+}
+
+.version-command-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--nsc-bg-base);
+  border: 1px solid var(--nsc-border-soft);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.version-command-row code {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--nsc-text-primary);
+  user-select: all;
+}
+
+.version-command-row .btn-copy {
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--nsc-text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.version-command-row .btn-copy:hover {
+  color: var(--nsc-text-primary);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .btn-icon {

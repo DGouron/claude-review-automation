@@ -13,7 +13,10 @@
       <div class="logo"><i data-lucide="bot"></i></div>
       <h1>Reviewflow</h1>
       <div class="header-actions">
-        <div id="version-update-area" class="version-update-area"></div>
+        <div class="version-update-wrapper">
+          <div id="version-update-area" class="version-update-area"></div>
+          <div id="version-manual-update-container"></div>
+        </div>
         <button id="check-claude-btn" class="btn btn-primary" onclick="checkClaudeStatus()">
           <i data-lucide="search"></i> <span id="i18n-check-claude"></span>
         </button>
@@ -2510,6 +2513,9 @@
             }, 2000);
             setTimeout(() => clearInterval(checkInterval), 60000);
           }, 3000);
+        } else if (data.status === 'permission-denied') {
+          setVersionCheckState('idle', t);
+          showManualUpdateCommand(data.command);
         } else {
           showToast(data.error || t('version.updateFailed'), 'error');
           setVersionCheckState('idle', t);
@@ -2519,6 +2525,35 @@
         showToast(t('version.updateFailed'), 'error');
         setVersionCheckState('idle', t);
       }
+    }
+
+    function showManualUpdateCommand(command) {
+      const container = document.getElementById('version-manual-update-container');
+      if (!container) return;
+
+      if (container.children.length > 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="version-manual-dropdown">
+          <p>${t('version.permissionDenied')}</p>
+          <div class="version-command-row">
+            <code>${command}</code>
+            <button class="btn btn-icon btn-copy" title="${t('version.copyCommand')}" onclick="copyUpdateCommand('${command}')">
+              <i data-lucide="copy"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      refreshIcons();
+    }
+
+    function copyUpdateCommand(command) {
+      navigator.clipboard.writeText(command).then(() => {
+        showToast(t('version.commandCopied'), 'success');
+      });
     }
 
     function openMrSheet(encodedMrId) {
@@ -2561,6 +2596,7 @@
     // Expose functions to HTML onclick handlers
     window.checkForUpdates = checkForUpdates;
     window.triggerVersionUpdate = triggerVersionUpdate;
+    window.copyUpdateCommand = copyUpdateCommand;
     window.toggleCollapsibleList = toggleCollapsibleList;
     window.checkClaudeStatus = checkClaudeStatus;
     window.toggleLogs = toggleLogs;

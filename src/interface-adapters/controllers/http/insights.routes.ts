@@ -5,8 +5,7 @@ import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
 import type { ReviewFileGateway } from '@/entities/review/reviewFile.gateway.js';
 import type { ReviewRequestTrackingGateway } from '@/entities/tracking/reviewRequestTracking.gateway.js';
 import type { Language } from '@/entities/language/language.schema.js';
-import { generateAiInsights, type ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
-import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';
+import { generateAiInsights, persistAiInsightsResult, type ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
 import { getInsightsWithAiStatus } from '@/usecases/insights/getInsightsWithAiStatus.usecase.js';
 import { InsightsPresenter } from '@/interface-adapters/presenters/insights.presenter.js';
 
@@ -94,14 +93,11 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
         language: requestLanguage,
       });
 
-      const existingData = insightsGateway.loadPersistedInsights(projectPath);
-      const stats = statsGateway.loadProjectStats(projectPath);
-      const currentReviews = stats?.reviews ?? [];
-      const upToDateResult = computeInsightsWithPersistence(currentReviews, existingData);
-      insightsGateway.savePersistedInsights(projectPath, {
-        ...upToDateResult.persistedData,
+      persistAiInsightsResult({
+        projectPath,
         aiInsights,
-        reviewCountAtAiGeneration: upToDateResult.persistedData.processedReviewIds.length,
+        statsGateway,
+        insightsGateway,
       });
 
       return aiInsights;

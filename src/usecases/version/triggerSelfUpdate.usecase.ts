@@ -16,5 +16,9 @@ export async function triggerSelfUpdate(
     return { status: 'started' }
   }
 
+  if (updateResult.permissionDenied) {
+    return { status: 'permission-denied', command: 'sudo npm update -g reviewflow' }
+  }
+
   return { status: 'failed', error: updateResult.error ?? 'Unknown error' }
 }

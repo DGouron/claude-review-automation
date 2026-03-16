@@ -1,4 +1,4 @@
-import type { ReviewStats } from '@/services/statsService.js';
+import type { ReviewStats } from '@/entities/stats/projectStats.js';
 import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
 import type { Language } from '@/entities/language/language.schema.js';
 

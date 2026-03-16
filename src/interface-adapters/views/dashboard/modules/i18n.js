@@ -381,6 +381,9 @@ const translations = {
     'version.updateFailed': 'Update failed',
     'version.restarting': 'Restarting server...',
     'version.checkTooltip': 'Check for updates',
+    'version.permissionDenied': 'Permission denied. Run this command manually:',
+    'version.copyCommand': 'Copy command',
+    'version.commandCopied': 'Command copied!',
   },
   fr: {
     // Time
@@ -761,6 +764,9 @@ const translations = {
     'version.updateFailed': 'Échec de la mise à jour',
     'version.restarting': 'Redémarrage du serveur...',
     'version.checkTooltip': 'Vérifier les mises à jour',
+    'version.permissionDenied': 'Permission refusée. Exécutez cette commande manuellement :',
+    'version.copyCommand': 'Copier la commande',
+    'version.commandCopied': 'Commande copiée !',
   },
 };
 

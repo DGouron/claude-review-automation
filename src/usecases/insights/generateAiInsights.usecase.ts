@@ -1,11 +1,13 @@
 import type { Logger } from 'pino';
 import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
+import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
 import type { ReviewFileGateway } from '@/entities/review/reviewFile.gateway.js';
 import type { ReviewRequestTrackingGateway } from '@/entities/tracking/reviewRequestTracking.gateway.js';
 import type { AiInsightsResult } from '@/entities/insight/aiInsight.js';
 import type { Language } from '@/entities/language/language.schema.js';
 import { aiInsightsRawResponseSchema } from '@/entities/insight/aiInsight.schema.js';
 import { buildAiInsightsPrompt } from '@/usecases/insights/buildAiInsightsPrompt.js';
+import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';
 
 export type ClaudeInvoker = (prompt: string) => Promise<string>;
 
@@ -89,4 +91,26 @@ export async function generateAiInsights(
     ...result,
     generatedAt: new Date().toISOString(),
   };
+}
+
+interface PersistAiInsightsInput {
+  projectPath: string;
+  aiInsights: AiInsightsResult;
+  statsGateway: StatsGateway;
+  insightsGateway: InsightsGateway;
+}
+
+export function persistAiInsightsResult(input: PersistAiInsightsInput): void {
+  const { projectPath, aiInsights, statsGateway, insightsGateway } = input;
+
+  const existingData = insightsGateway.loadPersistedInsights(projectPath);
+  const stats = statsGateway.loadProjectStats(projectPath);
+  const currentReviews = stats?.reviews ?? [];
+  const upToDateResult = computeInsightsWithPersistence(currentReviews, existingData);
+
+  insightsGateway.savePersistedInsights(projectPath, {
+    ...upToDateResult.persistedData,
+    aiInsights,
+    reviewCountAtAiGeneration: upToDateResult.persistedData.processedReviewIds.length,
+  });
 }

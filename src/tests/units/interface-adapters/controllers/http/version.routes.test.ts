@@ -25,6 +25,7 @@ describe('version routes', () => {
         packageVersionGateway,
         versionCache,
         selfUpdateCommand,
+        serverPort: 3000,
       })
       await application.ready()
     })
@@ -55,6 +56,7 @@ describe('version routes', () => {
         packageVersionGateway: new StubPackageVersionGateway('2.0.0'),
         versionCache: new StubVersionCache(null, true),
         selfUpdateCommand,
+        serverPort: 3000,
       })
       await application.ready()
 
@@ -79,6 +81,7 @@ describe('version routes', () => {
         packageVersionGateway: new StubPackageVersionGateway('2.0.0'),
         versionCache: new StubVersionCache(null, true),
         selfUpdateCommand,
+        serverPort: 3000,
       })
       await application.ready()
 
@@ -91,6 +94,32 @@ describe('version routes', () => {
       expect(response.statusCode).toBe(500)
       expect(body.status).toBe('failed')
       expect(body.error).toBe('Permission denied')
+    })
+
+    it('should return 403 with command on permission denied', async () => {
+      const selfUpdateCommand = new StubSelfUpdateCommand(false, 'EACCES', true)
+
+      application = Fastify()
+      await application.register(versionRoutes, {
+        checkVersion,
+        triggerSelfUpdate,
+        currentVersion: '1.0.0',
+        packageVersionGateway: new StubPackageVersionGateway('2.0.0'),
+        versionCache: new StubVersionCache(null, true),
+        selfUpdateCommand,
+        serverPort: 3000,
+      })
+      await application.ready()
+
+      const response = await application.inject({
+        method: 'POST',
+        url: '/api/version/update',
+      })
+
+      const body = JSON.parse(response.body)
+      expect(response.statusCode).toBe(403)
+      expect(body.status).toBe('permission-denied')
+      expect(body.command).toBe('sudo npm update -g reviewflow')
     })
   })
 })
