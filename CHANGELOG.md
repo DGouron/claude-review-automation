@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.7.0...reviewflow-v3.8.0) (2026-03-16)
+
+
+### Added
+
+* developer & team insights with AI analysis ([ca9b6ae](https://github.com/DGouron/review-flow/commit/ca9b6aef1b6191b1cd32e135138c12ad0112f57f))
+
+
+### Fixed
+
+* self-update mechanism, stats cap, auto-review fixes and docs ([2c69c6d](https://github.com/DGouron/review-flow/commit/2c69c6daac18c82ebd7913cbb063f2754f10783a))
+
 ## [3.7.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.6.0...reviewflow-v3.7.0) (2026-03-15)
 
 
