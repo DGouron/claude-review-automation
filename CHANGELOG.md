@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.7.0...reviewflow-v3.8.0) (2026-03-16)
+
+
+### Added
+
+* developer & team insights with AI analysis ([ca9b6ae](https://github.com/DGouron/review-flow/commit/ca9b6aef1b6191b1cd32e135138c12ad0112f57f))
+
+
+### Fixed
+
+* self-update mechanism, stats cap, auto-review fixes and docs ([2c69c6d](https://github.com/DGouron/review-flow/commit/2c69c6daac18c82ebd7913cbb063f2754f10783a))
+
+## [3.7.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.6.0...reviewflow-v3.7.0) (2026-03-15)
+
+
+### Added
+
+* capture git diff stats per review (commits, additions, deletions) ([111b77f](https://github.com/DGouron/review-flow/commit/111b77f921a97df1ab9ffeea9cf6fee638cd4246))
+* capture git diff stats per review (commits, additions, deletions) ([fd4d753](https://github.com/DGouron/review-flow/commit/fd4d753a715aa25c73c8baa4c7c9824a0d793f22)), closes [#47](https://github.com/DGouron/review-flow/issues/47)
+* **cleanup:** add review file retention policy with scheduled cleanup ([c2baea8](https://github.com/DGouron/review-flow/commit/c2baea8856bb0be72b46a99d68f724bf7b230215))
+* **cleanup:** review file retention policy with scheduled cleanup ([56f4e6c](https://github.com/DGouron/review-flow/commit/56f4e6c32c9f54b8e7f673177a5e67cadfc05a10))
+* **dashboard:** add version update checker with self-update capability ([715d8ae](https://github.com/DGouron/review-flow/commit/715d8aed7ff39cb1f86edf0a8e33814c2fa728fc))
+* **dashboard:** canvas charts and animated counters in stats section ([abcf1af](https://github.com/DGouron/review-flow/commit/abcf1af3d6b07533aed1f0db1f834edecb44b426))
+* **dashboard:** collapsible lists for long MR lanes ([eba2441](https://github.com/DGouron/review-flow/commit/eba2441ba0f5768c44fd76979fe62641d439517a))
+* **dashboard:** diff stats in MR sheet + score trend per developer ([9235e0c](https://github.com/DGouron/review-flow/commit/9235e0c88392c2521edb0b2015387024843f925a))
+* **dashboard:** logs open in side sheet instead of inline section ([7737782](https://github.com/DGouron/review-flow/commit/773778259561f3d5b1108316b8d68d2acc06344e))
+* **dashboard:** logs sheet takes full height with sticky clear button ([632e2f2](https://github.com/DGouron/review-flow/commit/632e2f20f1ecb9f6377d77dd80ce5c91dd98b851))
+* **dashboard:** MR detail side sheet with canvas graphs ([bbb6065](https://github.com/DGouron/review-flow/commit/bbb6065945eda10a7092d9c304e764d88fa2a372))
+* **dashboard:** sticky action footer in MR sheet with approve button ([48041fe](https://github.com/DGouron/review-flow/commit/48041fe5bec7c43a43433a276c8147b9b6f96c4d))
+* **dashboard:** version update checker with self-update ([37f7ee4](https://github.com/DGouron/review-flow/commit/37f7ee48fff96adc69a64a9c44998a01681eca79))
+* stats recalculate button with diff stats backfill ([fa04c7c](https://github.com/DGouron/review-flow/commit/fa04c7c7f7be15c6a2ba416c9cc991bd5c45248a))
+* stats recalculate button with diff stats backfill ([7df16cf](https://github.com/DGouron/review-flow/commit/7df16cf8a360d814713c4c3f2281dc410f880b2f))
+
+
+### Fixed
+
+* address auto-review findings (null over undefined, port→gateway naming) ([c81937a](https://github.com/DGouron/review-flow/commit/c81937a5b9f64225077cc981d5b5c56c0f73ffb1))
+* address PR [#124](https://github.com/DGouron/review-flow/issues/124) review — architecture and code quality ([2b9b577](https://github.com/DGouron/review-flow/commit/2b9b5775361bd521a62ef86e692f6e29357c2c4f))
+* **dashboard:** auto-populate project selector from server config ([3c68e22](https://github.com/DGouron/review-flow/commit/3c68e22321660578b0805e74a61f5553b9e75dca))
+
 ## [3.6.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.5.0...reviewflow-v3.6.0) (2026-03-14)
 
 
