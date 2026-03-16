@@ -6,6 +6,8 @@ milestone: Skill Management
 status: DRAFT
 ---
 
+
+
 # SPEC-059: `reviewflow skill list` — Display Installed Skills
 
 ## Problem Statement
@@ -165,7 +167,7 @@ No decorative text, no color codes -- pure JSON to stdout. Errors go to stderr.
 | `.claude/skills/` directory missing in a project | Skip that project (no skills installed). |
 | `SKILL.md` has no frontmatter | Use directory name as `name`, "No description" as `description`. |
 | `SKILL.md` is unreadable (permissions) | Skip with warning to stderr. |
-| `--project` path does not exist | Print error: "Path does not exist: <path>". Exit 1. |
+| `--project` path does not exist | Print error: "Path does not exist: `<path>`". Exit 1. |
 
 ### FR-7: CLI Integration
 
