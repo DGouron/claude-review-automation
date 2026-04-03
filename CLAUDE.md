@@ -166,6 +166,7 @@ All tests in `/src/tests/` mirroring source code:
 
 ```
 /src/tests/
+├── acceptance/               # Acceptance tests (outer loop SDD — spec → test)
 ├── units/                    # Unit tests (mirror of /src/)
 ├── factories/                # Factories to create test data
 ├── helpers/                  # Shared test helpers
@@ -301,6 +302,20 @@ Use instead:
 2. `/architecture` -> Design the component structure
 3. `/tdd` -> Implement with Red-Green-Refactor cycle
 
+### SDD Pipeline (Spec-Driven Development)
+
+```
+/product-manager → spec DSL in docs/specs/ (Rules + Scenarios)
+/implement-feature docs/specs/XX.md → plan (persisted) + acceptance RED + TDD + acceptance GREEN + report (persisted)
+/commit → hooks verify spec/tracker → commit + push
+```
+
+- **Outer loop** (SDD): Acceptance test created FIRST, stays RED during implementation, passes GREEN when spec is satisfied
+- **Inner loop** (TDD): RED-GREEN-REFACTOR per file, inside-out (entity → use case → controller)
+- **Feature tracker**: `docs/feature-tracker.md` tracks status (drafted → planned → implementing → implemented)
+- **Plans persisted**: `docs/plans/<feature>.plan.md`
+- **Reports persisted**: `docs/reports/<feature>.report.md`
+
 ### Feature Pipeline Skills
 
 | Skill | When to use |
@@ -358,6 +373,22 @@ These rules ALWAYS apply:
 | debug | senior-dev | Diagnose a bug |
 | mentor | mentor | Explain a concept |
 | tdd | senior-dev | Double Loop ATDD/TDD |
+
+## Hooks (.claude/settings.json)
+
+Deterministic barriers enforced via PreToolUse hooks:
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `no-barrel-exports.sh` | Write\|Edit | Blocks `index.ts` creation |
+| `protect-main-branch.sh` | git commit | Blocks commit on master |
+| `pre-commit-gate.sh` | git commit | Runs tests before commit |
+| `verify-spec-updated.sh` | git commit | Checks spec status before commit |
+| `protect-main-push.sh` | git push | Blocks push to master and force push |
+| `require-spec.sh` | Agent | Blocks feature agents without spec |
+| `session-context.sh` | SessionStart | Injects feature tracker status |
+
+Scripts: `scripts/hooks/` — Tests: `scripts/hooks/tests/run-tests.sh`
 
 ## Commands (.claude/commands/)
 

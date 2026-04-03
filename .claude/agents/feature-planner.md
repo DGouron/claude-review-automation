@@ -3,7 +3,7 @@ name: feature-planner
 description: Use this agent to plan feature implementation by analyzing specs and mapping them to Clean Architecture layers. Reads existing modules as reference, produces a structured implementation plan with file paths, ordering, and architectural decisions.
 tools: Read, Glob, Grep, LS
 model: opus
-maxTurns: 15
+maxTurns: 30
 permissionMode: default
 skills:
   - clean-architecture
@@ -113,3 +113,14 @@ PLAN:
 ```
 
 Do NOT include implementation code. Only structure and architectural decisions.
+
+## Plan Persistence
+
+**MANDATORY**: Persist the plan in `docs/plans/<feature-name>.plan.md`.
+
+This file serves as:
+- Reference for the feature-implementer agent
+- Architectural documentation for future sessions
+- Evidence of the planning phase for the feature tracker
+
+Update the feature tracker (`docs/feature-tracker.md`) — set status to `planned`.

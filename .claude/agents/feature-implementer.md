@@ -3,7 +3,7 @@ name: feature-implementer
 description: Use this agent to implement features via TDD inside-out. Receives a validated plan and spec, creates all files with RED-GREEN-REFACTOR cycles, runs tests at each step, then self-reviews and fixes autonomously before reporting.
 tools: Read, Write, Edit, Bash, Glob, Grep, LS
 model: opus
-maxTurns: 100
+maxTurns: 50
 skills:
   - tdd
   - clean-architecture
@@ -26,6 +26,74 @@ Read `.claude/rules/coding-standards.md` BEFORE coding.
 - Zero comments in code unless vital
 - File naming: camelCase .ts with domain suffixes
 - Imports: `@/` alias + `.js` extension mandatory
+
+---
+
+## Phase 0: ACCEPTANCE TEST (outer loop SDD)
+
+BEFORE any implementation, create the acceptance test that materializes the outer loop.
+
+### What
+
+The acceptance test verifies that the feature satisfies the spec. It stays RED during the entire inside-out implementation. It passes GREEN at the end. It is the proof that the spec is satisfied.
+
+### How
+
+1. Read the spec (Rules + Scenarios sections)
+2. Create `src/tests/acceptance/<feature-name>.acceptance.test.ts`
+3. For each Rule in the spec → a `describe` block
+4. For each Scenario in the spec → an `it` block
+5. The test uses the use case + stub gateway (integration without infra)
+6. Run `yarn test:ci -- src/tests/acceptance/<feature-name>.acceptance.test.ts`
+7. **Confirm that ALL tests fail** (RED)
+
+### Spec format support
+
+The spec may use two formats:
+
+**DSL compact** (preferred for new specs):
+```
+## Rules
+- review requires: merge request URL, reviewer assignment
+- new review status: "pending"
+
+## Scenarios
+- valid: {mergeRequestUrl: "https://...", reviewer: "alice"} → status "pending" + jobId "RV-*"
+- no reviewer: {mergeRequestUrl: "https://..."} → reject "Le reviewer est obligatoire"
+```
+
+**Gherkin** (legacy specs):
+```
+## Acceptance Criteria
+### Scenario: Valid review creation
+Given a valid merge request URL
+When the reviewer is assigned
+Then the review status is "pending"
+```
+
+### Acceptance test example (from DSL)
+
+```typescript
+describe('Create Review (acceptance)', () => {
+  describe('review requires merge request URL and reviewer assignment', () => {
+    it('valid: creates review with pending status and job ID', async () => {
+      // arrange: stub gateway, use case
+      // act: execute use case with valid inputs
+      // assert: status "pending", jobId matches "RV-*"
+    })
+
+    it('no reviewer: rejects with error message', async () => {
+      // arrange: stub gateway, use case
+      // act: execute use case without reviewer
+      // assert: throws "Le reviewer est obligatoire"
+    })
+  })
+})
+```
+
+### Absolute rule
+
+The acceptance test is the FIRST file created. Nothing else starts until it is written and RED.
 
 ---
 
@@ -82,7 +150,20 @@ Follow the plan strictly. In general:
 
 ---
 
-## Phase 2: SELF-REVIEW (autonomous loop)
+## Phase 2: OUTER LOOP — GREEN
+
+After completing ALL layers inside-out:
+
+1. Rerun the acceptance test: `yarn test:ci -- src/tests/acceptance/<feature-name>.acceptance.test.ts`
+2. **It MUST pass GREEN**
+3. If it stays RED: diagnose, fix, rerun (max 3 attempts)
+4. If still RED after 3 attempts: escalate in the report
+
+This is the proof that the spec is satisfied by the implementation.
+
+---
+
+## Phase 3: SELF-REVIEW (autonomous loop)
 
 After completing ALL layers:
 
@@ -136,6 +217,8 @@ If after 3 iterations problems remain:
 - NEVER add comments unless vital for comprehension
 - Run tests after EACH step (RED and GREEN)
 - Include test output in the report
+- Persist the report in `docs/reports/<feature-name>.report.md`
+- Update the feature tracker (`docs/feature-tracker.md`) — status: `implementing` at Phase 0, `implemented` at Phase 3
 - Do NOT commit
 
 ---
@@ -159,7 +242,7 @@ Final report after self-review:
 
 ```
 FINAL_REPORT:
-  STATUS: Clean | Issues remaining
+  STATUS: OK Clean | WARN Issues remaining
   FILES_CREATED: [total count]
   TESTS_TOTAL: [count]
   TESTS_PASSED: [count]
@@ -168,7 +251,12 @@ FINAL_REPORT:
   VIOLATIONS_FIXED: [count]
   REMAINING_ISSUES:
     - [issue description] — [why auto-fix failed]
-  ACCEPTANCE_CRITERIA:
-    - [criterion] → covered by [test]
-    - [criterion] → [reason]
+  ACCEPTANCE_TEST:
+    file: src/tests/acceptance/<feature>.acceptance.test.ts
+    status: GREEN | RED
+  SPEC_COVERAGE:
+    - OK [rule/scenario] → covered by [test]
+    - KO [rule/scenario] → [reason]
 ```
+
+The report is persisted in `docs/reports/<feature-name>.report.md`.

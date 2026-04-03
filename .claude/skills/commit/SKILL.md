@@ -25,9 +25,35 @@ The project uses Husky which automatically runs:
 | `commit-msg` | commitlint (message format) |
 | `pre-push` | Vitest tests (modified files since `test`) |
 
-**No need to run `yarn verify` manually!**
+## Claude Code Hooks (automatic)
+
+The project also has PreToolUse hooks that run BEFORE git commands:
+
+| Hook | Action |
+|------|--------|
+| `protect-main-branch.sh` | Blocks commit on master |
+| `pre-commit-gate.sh` | Runs tests before commit |
+| `verify-spec-updated.sh` | Checks spec has `## Status: implemented` |
+| `protect-main-push.sh` | Blocks push to master and force push |
 
 ## Workflow
+
+### Step 0: Quality Gates (BLOCKING)
+
+**BEFORE any commit**, run:
+
+```bash
+yarn verify
+```
+
+**If it fails**: display errors and **STOP**. Do not commit until quality gates pass.
+
+### Step 0b: Spec & Tracker Verification
+
+If staged files include `src/` code:
+1. Check `docs/feature-tracker.md` — any feature in `implementing` status should be updated to `implemented`
+2. Check corresponding spec — should have `## Status: implemented` if feature is complete
+3. If missing, **WARN** the user (the hook will also catch this)
 
 ### Step 1: Analyze Changes
 
