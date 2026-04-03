@@ -121,15 +121,37 @@ SELF-REVIEW:
   Violations fixed: [count]
   Remaining issues: [list or "none"]
 
-ACCEPTANCE CRITERIA:
-  Given... When... Then... → covered by [test]
-  ...
+ACCEPTANCE TEST:
+  file: src/tests/acceptance/<feature>.acceptance.test.ts
+  status: GREEN | RED
 
-NEXT STEPS:
-  - [ ] /commit to commit changes
-  - [ ] E2E tests if relevant
-  - [ ] Wire routing if new endpoint
+SPEC COVERAGE:
+  [rule/scenario] → covered by [test]
+  ...
 ```
+
+### Step 5: UPDATE SPEC AND TRACKER (MANDATORY)
+
+**This step is NON-NEGOTIABLE. It must be executed before any commit.**
+
+1. **Update the spec** (`docs/specs/<feature>.md`):
+   - Add `## Status: implemented` after the title
+   - Add an `## Implementation` section with:
+     - Artefacts (entity, use cases, controller, gateways)
+     - Endpoints (method, route, use case) if applicable
+     - Architectural decisions taken
+
+2. **Update the feature tracker** (`docs/feature-tracker.md`):
+   - Change status from `drafted` or `planned` to `implemented`
+   - Update the date
+
+### Step 6: COMMIT (MANDATORY)
+
+Use `/commit` to commit and push. NEVER commit manually.
+
+The workflow is: implement → update spec → update tracker → /commit.
+
+The hook `verify-spec-updated.sh` will block the commit if the spec is not updated.
 
 ---
 
@@ -138,7 +160,8 @@ NEXT STEPS:
 - ALWAYS present the plan before implementing
 - NEVER code without user validation of the plan
 - If the spec is vague, REFUSE and redirect to `/product-manager`
-- Do NOT commit — the user decides when via `/commit`
+- ALWAYS update spec and tracker BEFORE committing
+- ALWAYS use `/commit` — NEVER commit manually
 
 ---
 
@@ -150,3 +173,5 @@ NEXT STEPS:
 | Plan too large (> 20 files) | Propose splitting into iterations |
 | Tests fail after 3 fix loops | Surface unresolved issues in the report |
 | Existing file conflict | Ask the user: modify or create new module |
+| Spec not updated before commit | Hook blocks the commit — update first |
+| Tracker not updated before commit | Hook warns — update first |
