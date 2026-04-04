@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.8.1...reviewflow-v3.9.0) (2026-04-03)
+
+
+### Added
+
+* **harness:** add SDD+TDD double loop with deterministic hooks ([793c8d8](https://github.com/DGouron/review-flow/commit/793c8d8d0c38ba88c770e0a5971fb670e4209ae9))
+* **harness:** add SDD+TDD double loop with deterministic hooks ([9a9a25a](https://github.com/DGouron/review-flow/commit/9a9a25af7925da8518ae53ebe5362a0a6743981f))
+
 ## [3.8.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.8.0...reviewflow-v3.8.1) (2026-03-16)
 
 
