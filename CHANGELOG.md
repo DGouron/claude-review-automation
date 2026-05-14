@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.9.0...reviewflow-v3.10.0) (2026-05-14)
+
+
+### Added
+
+* add hybrid model routing and token usage tracking ([#147](https://github.com/DGouron/review-flow/issues/147)) ([2479b43](https://github.com/DGouron/review-flow/commit/2479b43c33d234a1d1ae787284cfb8d3763458bb))
+* **harness:** bring harness + SDD to Shiplens parity ([#150](https://github.com/DGouron/review-flow/issues/150)) ([6ba6684](https://github.com/DGouron/review-flow/commit/6ba668468268368843feb36d2dd7eadf0a61efcc))
+
 ## [3.9.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.8.1...reviewflow-v3.9.0) (2026-04-03)
 
 
