@@ -8,6 +8,21 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/scripts/hooks/no-barrel-exports.sh\"",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/scripts/hooks/enforce-dependency-rule.sh\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/scripts/hooks/enforce-gateway-port-purity.sh\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/scripts/hooks/enforce-presenter-class.sh\"",
+            "timeout": 5
           }
         ]
       },
