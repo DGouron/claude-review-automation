@@ -171,3 +171,67 @@ describe('getProjectRetentionDays', () => {
     expect(getProjectRetentionDays('/nonexistent')).toBe(14);
   });
 });
+
+describe('loadProjectConfig — defaultModel haiku', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should return haiku when defaultModel is haiku', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'haiku',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.defaultModel).toBe('haiku');
+  });
+});
+
+describe('loadProjectConfig — routingPolicy', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should return routingPolicy when valid policy is provided', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        routingPolicy: { haikuMaxLines: 50, sonnetMaxLines: 500 },
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.routingPolicy).toEqual({ haikuMaxLines: 50, sonnetMaxLines: 500 });
+  });
+
+  it('should return undefined routingPolicy when not provided', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.routingPolicy).toBeUndefined();
+  });
+});

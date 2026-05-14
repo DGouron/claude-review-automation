@@ -1,0 +1,10 @@
+import type { RoutingPolicyGateway } from '@/entities/modelRouting/modelRouting.gateway.js';
+import type { RoutingPolicy } from '@/entities/modelRouting/modelRouting.schema.js';
+import { loadProjectConfig } from '@/config/projectConfig.js';
+
+export class ProjectConfigRoutingPolicyGateway implements RoutingPolicyGateway {
+  async load(localPath: string): Promise<RoutingPolicy | null> {
+    const config = loadProjectConfig(localPath);
+    return config?.routingPolicy ?? null;
+  }
+}

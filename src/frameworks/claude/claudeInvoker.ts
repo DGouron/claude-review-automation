@@ -8,7 +8,7 @@ import type { ReviewProgress, ProgressEvent } from '@/entities/progress/progress
 import { ProgressParser } from '@/frameworks/claude/progressParser.js';
 import { logInfo, logWarn, logError } from '@/frameworks/logging/logBuffer.js';
 import { getModel } from '@/frameworks/settings/runtimeSettings.js';
-import { getProjectAgents, getFollowupAgents } from '@/config/projectConfig.js';
+import { getProjectAgents, getFollowupAgents, loadProjectConfig } from '@/config/projectConfig.js';
 import { addReviewStats } from '@/services/statsService.js';
 import { FileSystemReviewRequestTrackingGateway } from '@/interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { ProjectStatsCalculator } from '@/interface-adapters/presenters/projectStats.calculator.js';
@@ -20,6 +20,13 @@ import type { DiffStats } from '@/entities/diffStats/diffStats.js';
 import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';
 import { buildLanguageDirective } from '@/frameworks/claude/languageDirective.js';
+import type { ClaudeModelName } from '@/entities/modelRouting/modelRouting.schema.js';
+import type { TokenUsage } from '@/entities/tokenUsage/tokenUsage.schema.js';
+import { SelectModelForReviewUseCase } from '@/usecases/selectModelForReview/selectModelForReview.usecase.js';
+import { ProjectConfigRoutingPolicyGateway } from '@/interface-adapters/gateways/projectConfig/routingPolicy.projectConfig.gateway.js';
+import { TrackTokenUsageUseCase } from '@/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
+import { FilesystemTokenUsageGateway } from '@/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
+import { StreamJsonParser } from '@/frameworks/claude/streamJsonParser.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -105,6 +112,49 @@ export interface InvocationResult {
   durationMs: number;
   finalProgress?: ReviewProgress;
   cancelled?: boolean;
+  usage?: TokenUsage | null;
+  selectedModel?: ClaudeModelName;
+}
+
+function fetchDiffStatsSafely(job: ReviewJob, logger: Logger): DiffStats | null {
+  try {
+    const gateway = job.platform === 'github'
+      ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
+      : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor);
+    return gateway.fetchDiffStats(job.projectPath, job.mrNumber);
+  } catch (error) {
+    logger.warn({ jobId: job.id, error }, 'Failed to fetch diff stats');
+    return null;
+  }
+}
+
+async function resolveModel(
+  job: ReviewJob,
+  diffStats: DiffStats | null,
+  logger: Logger
+): Promise<ClaudeModelName> {
+  if (job.model) {
+    return job.model;
+  }
+
+  let defaultModel: ClaudeModelName = getModel();
+  try {
+    const projectConfig = loadProjectConfig(job.localPath);
+    if (projectConfig?.defaultModel) {
+      defaultModel = projectConfig.defaultModel;
+    }
+  } catch (error) {
+    logger.warn({ jobId: job.id, error }, 'Failed to load project config, using runtime default');
+  }
+
+  const routingGateway = new ProjectConfigRoutingPolicyGateway();
+  const policy = await routingGateway.load(job.localPath);
+  if (!policy || !diffStats) {
+    return defaultModel;
+  }
+
+  const selector = new SelectModelForReviewUseCase();
+  return selector.execute({ diffStats, policy, defaultModel });
 }
 
 export type ProgressCallback = (progress: ReviewProgress, event?: ProgressEvent) => void;
@@ -236,8 +286,11 @@ export async function invokeClaudeReview(
   // Build the prompt
   const prompt = `/${job.skill} ${job.mrNumber}`;
 
-  // Get configured model
-  const model = getModel();
+  // Fetch diff stats once: reused for both model routing and end-of-review stats
+  const diffStats = fetchDiffStatsSafely(job, logger);
+
+  // Select model: explicit job override > routing policy + diff stats > project default > runtime default
+  const model = await resolveModel(job, diffStats, logger);
 
   // Build MCP system prompt injection
   const mcpSystemPrompt = buildMcpSystemPrompt(job);
@@ -251,7 +304,8 @@ export async function invokeClaudeReview(
   // --allowedTools / --disallowedTools: belt-and-suspenders to restrict tool scope
   // --mcp-config + --strict-mcp-config: use ONLY review-progress MCP server
   const args = [
-    '--print',
+    '--output-format', 'stream-json',
+    '--verbose',
     '--model', model,
     '--permission-mode', 'bypassPermissions',
     '--append-system-prompt', mcpSystemPrompt,
@@ -318,6 +372,7 @@ export async function invokeClaudeReview(
     let stdout = '';
     let stderr = '';
     let cancelled = false;
+    const streamParser = new StreamJsonParser();
 
     const childEnv = { ...process.env };
     // Remove CLAUDECODE to allow spawning Claude from within a Claude session
@@ -399,11 +454,12 @@ export async function invokeClaudeReview(
     child.stdout.on('data', (data: Buffer) => {
       const chunk = data.toString();
       stdout += chunk;
+      streamParser.feed(chunk);
 
-      // Parse progress markers from chunk
+      // Progress markers may still appear in assistant text within stream-json events;
+      // feeding the raw chunk keeps any legacy markers detected without coupling to JSON shape.
       progressParser.parseChunk(chunk);
 
-      // Log progress in real-time (truncated)
       const preview = chunk.length > 200 ? chunk.substring(0, 200) + '...' : chunk;
       logger.debug({ preview }, 'Claude stdout');
     });
@@ -429,7 +485,7 @@ export async function invokeClaudeReview(
       });
     });
 
-    child.on('close', (code) => {
+    child.on('close', async (code) => {
       // Cleanup interval, abort listener, and MCP context
       clearInterval(memoryCheckInterval);
       cleanupMcpContext(job.id);
@@ -440,7 +496,10 @@ export async function invokeClaudeReview(
       const durationMs = Date.now() - startTime;
       const success = code === 0 && !cancelled && !memoryExceeded;
 
-      // Save stdout to log file for debugging
+      const assistantText = streamParser.getAssistantText();
+      const tokenUsage = streamParser.getUsage();
+
+      // Save logs: raw stream-json + reconstructed human text for readability
       try {
         const logsDir = join(job.localPath, '.claude', 'reviews', 'logs');
         if (!existsSync(logsDir)) {
@@ -448,7 +507,7 @@ export async function invokeClaudeReview(
         }
         const sanitizedJobId = job.id.replace(/[:/\\]/g, '-');
         const logPath = join(logsDir, `${sanitizedJobId}-stdout.log`);
-        writeFileSync(logPath, `=== Claude Review Output ===\nJob: ${job.id}\nMR: ${job.mrNumber}\nSkill: ${job.skill}\nExit code: ${code}\nDuration: ${Math.round(durationMs / 1000)}s\nTimestamp: ${new Date().toISOString()}\n\n--- STDOUT ---\n${stdout}\n\n--- STDERR ---\n${stderr}\n`);
+        writeFileSync(logPath, `=== Claude Review Output ===\nJob: ${job.id}\nMR: ${job.mrNumber}\nSkill: ${job.skill}\nModel: ${model}\nExit code: ${code}\nDuration: ${Math.round(durationMs / 1000)}s\nTimestamp: ${new Date().toISOString()}\n\n--- ASSISTANT TEXT ---\n${assistantText}\n\n--- STDERR ---\n${stderr}\n\n--- RAW STREAM-JSON ---\n${stdout}\n`);
         logger.info({ logPath }, 'Review stdout saved to log file');
       } catch {
         // Non-critical
@@ -507,7 +566,8 @@ export async function invokeClaudeReview(
           jobId: job.id,
           mrNumber: job.mrNumber,
           duration: `${durationMin} min`,
-          outputLength: stdout.length,
+          outputLength: assistantText.length,
+          model,
         });
 
         // Save review statistics (followups are not counted as reviews)
@@ -518,28 +578,39 @@ export async function invokeClaudeReview(
             const mrDetails = trackingGateway.getById(job.localPath, mrId);
             const assignedBy = mrDetails?.assignment?.username;
 
-            let diffStats: DiffStats | null = null;
-            try {
-              const diffStatsFetchGateway = job.platform === 'github'
-                ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
-                : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor);
-              diffStats = diffStatsFetchGateway.fetchDiffStats(job.projectPath, job.mrNumber);
-            } catch {
-              logger.warn({ jobId: job.id }, 'Failed to fetch diff stats, continuing without');
-            }
-
-            const reviewStats = addReviewStats(job.localPath, job.mrNumber, durationMs, stdout, assignedBy, diffStats);
+            const reviewStats = addReviewStats(job.localPath, job.mrNumber, durationMs, assistantText, assignedBy, diffStats);
             logger.info({ reviewStats }, 'Stats de review enregistrées');
           } catch (statsError) {
             logger.warn({ error: statsError }, 'Erreur lors de l\'enregistrement des stats');
           }
         }
-        // Log stdout preview for debugging
-        if (stdout.length > 0) {
+
+        // Persist token usage for cost tracking (non-critical, never blocks the review result)
+        if (tokenUsage) {
+          try {
+            const tracker = new TrackTokenUsageUseCase(new FilesystemTokenUsageGateway());
+            await tracker.execute({
+              jobId: job.id,
+              mrNumber: job.mrNumber,
+              platform: job.platform,
+              projectPath: job.projectPath,
+              localPath: job.localPath,
+              model,
+              recordedAt: new Date().toISOString(),
+              usage: tokenUsage,
+            });
+            logger.info({ jobId: job.id, model, usage: tokenUsage }, 'Token usage recorded');
+          } catch (trackError) {
+            logger.warn({ jobId: job.id, error: trackError }, 'Failed to persist token usage');
+          }
+        }
+
+        // Log assistant text preview for debugging
+        if (assistantText.length > 0) {
           logInfo('Claude output preview', {
             jobId: job.id,
-            preview: stdout.substring(0, 1000),
-            fullLength: stdout.length,
+            preview: assistantText.substring(0, 1000),
+            fullLength: assistantText.length,
           });
         }
       } else {
@@ -549,18 +620,20 @@ export async function invokeClaudeReview(
           exitCode: code,
           duration: `${durationMin} min`,
           stderr: stderr.substring(0, 500),
-          stdoutPreview: stdout.substring(0, 300),
+          stdoutPreview: (assistantText || stdout).substring(0, 300),
         });
       }
 
       resolve({
         success,
         exitCode: memoryExceeded ? null : code,
-        stdout,
+        stdout: assistantText,
         stderr,
         durationMs,
         finalProgress,
         cancelled: cancelled || memoryExceeded,
+        usage: tokenUsage,
+        selectedModel: model,
       });
     });
   });

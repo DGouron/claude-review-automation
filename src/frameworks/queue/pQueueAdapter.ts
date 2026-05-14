@@ -3,6 +3,7 @@ import type { Logger } from 'pino';
 import { loadConfig } from '@/frameworks/config/configLoader.js';
 import type { ReviewProgress, ProgressEvent } from '@/entities/progress/progress.type.js';
 import type { Language } from '@/entities/language/language.schema.js';
+import type { ClaudeModelName } from '@/entities/modelRouting/modelRouting.schema.js';
 
 export interface ReviewJob {
   id: string; // Unique identifier: platform:project:mrNumber
@@ -18,6 +19,8 @@ export interface ReviewJob {
   jobType?: 'review' | 'followup';
   // Output language for the review
   language?: Language;
+  // Model selected by routing for this job
+  model?: ClaudeModelName;
   // Optional MR metadata
   title?: string;
   description?: string;
