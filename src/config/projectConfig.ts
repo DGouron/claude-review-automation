@@ -2,21 +2,19 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentDefinition } from '@/entities/progress/agentDefinition.type.js';
 import type { Language } from '@/entities/language/language.schema.js';
+import type { RoutingPolicy } from '@/entities/modelRouting/modelRouting.schema.js';
 
-/**
- * Project-specific review configuration
- * Located in each project's .claude/reviews/config.json
- */
 export interface ProjectConfig {
   github: boolean;
   gitlab: boolean;
-  defaultModel: 'sonnet' | 'opus';
+  defaultModel: 'haiku' | 'sonnet' | 'opus';
   reviewSkill: string;
   reviewFollowupSkill: string;
   language: Language;
   retentionDays: number;
   agents?: AgentDefinition[];
   followupAgents?: AgentDefinition[];
+  routingPolicy?: RoutingPolicy;
 }
 
 /**
@@ -50,6 +48,26 @@ function validateAgents(agents: unknown): agents is AgentDefinition[] {
       displayName.length > 0
     );
   });
+}
+
+function parseRoutingPolicy(value: unknown): RoutingPolicy | undefined {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const haikuMaxLines = record.haikuMaxLines;
+  const sonnetMaxLines = record.sonnetMaxLines;
+  if (
+    typeof haikuMaxLines === 'number' &&
+    Number.isInteger(haikuMaxLines) &&
+    haikuMaxLines > 0 &&
+    typeof sonnetMaxLines === 'number' &&
+    Number.isInteger(sonnetMaxLines) &&
+    sonnetMaxLines > 0
+  ) {
+    return { haikuMaxLines, sonnetMaxLines };
+  }
+  return undefined;
 }
 
 /**
@@ -97,13 +115,14 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
   return {
     github: Boolean(parsed.github),
     gitlab: Boolean(parsed.gitlab),
-    defaultModel: parsed.defaultModel === 'opus' ? 'opus' : 'sonnet',
+    defaultModel: parsed.defaultModel === 'opus' ? 'opus' : parsed.defaultModel === 'haiku' ? 'haiku' : 'sonnet',
     reviewSkill: String(parsed.reviewSkill),
     reviewFollowupSkill: String(parsed.reviewFollowupSkill),
     language: parsed.language === 'fr' ? 'fr' : 'en',
     retentionDays: parseRetentionDays(parsed.retentionDays),
     agents: parsed.agents as AgentDefinition[] | undefined,
     followupAgents: parsed.followupAgents as AgentDefinition[] | undefined,
+    routingPolicy: parseRoutingPolicy(parsed.routingPolicy),
   };
 }
 

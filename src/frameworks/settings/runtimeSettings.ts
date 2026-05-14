@@ -4,7 +4,7 @@
 
 import type { Language } from '@/entities/language/language.schema.js';
 
-export type ClaudeModel = 'sonnet' | 'opus';
+export type ClaudeModel = 'haiku' | 'sonnet' | 'opus';
 
 interface RuntimeSettings {
   model: ClaudeModel;
@@ -21,7 +21,7 @@ export function getModel(): ClaudeModel {
 }
 
 export function setModel(model: ClaudeModel): void {
-  if (model !== 'sonnet' && model !== 'opus') {
+  if (model !== 'haiku' && model !== 'sonnet' && model !== 'opus') {
     throw new Error(`Invalid model: ${model}`);
   }
   settings.model = model;
