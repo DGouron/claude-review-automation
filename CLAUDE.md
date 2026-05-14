@@ -253,14 +253,35 @@ Use instead:
 
 ## Backlog Management
 
-**Source of truth**: [GitHub Issues](https://github.com/DGouron/review-flow/issues) and [ReviewFlow Roadmap](https://github.com/users/DGouron/projects/3) project board.
+**Two distinct backlogs** (Shiplens-style):
 
-### Conventions
+| Backlog | Source of truth | Used for |
+|---------|----------------|----------|
+| **Features** | `docs/specs/<n>-<slug>.md` + `docs/feature-tracker.md` | New capabilities, enhancements, refactorings |
+| **Bugs** | [GitHub Issues](https://github.com/DGouron/review-flow/issues) | Reproducible defects only |
 
-- **Issues** are the single source of truth for all features, bugs, and refactoring tickets
-- **Milestones** group issues by release scope
-- **Labels** indicate type (`enhancement`, `bug`, `refactor`), priority (`P1-critical`, `P2-important`, `P3-nice-to-have`), and scope (`cli`, `dashboard`, `mcp`, `skills`, etc.)
-- Use conventional commit format and reference issues in PRs (`Fixes #43`)
+### Rules
+
+- **GitHub Issues are reserved for bugs.** No features, no refactors, no docs tickets.
+- **Features live in `docs/specs/`** — produced by `/product-manager`, indexed in `docs/feature-tracker.md` (status: `drafted` → `planned` → `implementing` → `implemented`).
+- **One spec = one feature.** Implementation reports go to `docs/reports/<feature>.report.md`.
+- **Labels on bug issues**: priority (`P1-critical`, `P2-important`, `P3-nice-to-have`) and scope (`cli`, `dashboard`, `mcp`, `webhook`, etc.).
+- Use conventional commit format. PRs reference the spec slug (`feat(webhook): implement spec-046 github followup`) or the bug issue (`fix: #46 plain-bug-description`).
+
+### Workflow
+
+```
+New idea / improvement → /product-manager → docs/specs/<n>-<slug>.md
+                                          ↓
+                                  feature-tracker.md (drafted)
+                                          ↓
+                                  /implement-feature → docs/reports/<slug>.report.md
+                                          ↓
+                                  feature-tracker.md (implemented)
+
+Bug found → gh issue create --label bug,P{1,2,3},scope
+         → fix on branch → PR closes issue
+```
 
 ## Git Workflow
 
