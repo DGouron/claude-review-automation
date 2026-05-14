@@ -9,7 +9,7 @@
 | Capture git diff stats | [47-capture-git-diff-stats](specs/47-capture-git-diff-stats.md) | drafted | 2026-03-14 |
 | Review focus selection | [48-review-focus-selection](specs/48-review-focus-selection.md) | drafted | 2026-03-14 |
 | Update skills project examples | [50-update-skills-project-examples](specs/50-update-skills-project-examples.md) | drafted | 2026-03-14 |
-| Dashboard unit tests | [51-dashboard-unit-tests](specs/51-dashboard-unit-tests.md) | drafted | 2026-03-14 |
+| Dashboard unit tests | [51-dashboard-unit-tests](specs/51-dashboard-unit-tests.md) | drafted | 2026-05-15 |
 | Automated webhook secret generation | [52-automated-webhook-secret-generation](specs/52-automated-webhook-secret-generation.md) | drafted | 2026-03-14 |
 | Configuration validation command | [55-configuration-validation-command](specs/55-configuration-validation-command.md) | drafted | 2026-03-14 |
 | MCP-ready skeleton skill templates | [56-mcp-ready-skeleton-skill-templates](specs/56-mcp-ready-skeleton-skill-templates.md) | drafted | 2026-03-14 |
