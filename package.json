@@ -54,7 +54,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "@fastify/static": "^8.0.0",
+    "@fastify/static": "^9.1.1",
     "@fastify/websocket": "^11.0.0",
     "@hono/node-server": "1.19.13",
     "@inquirer/prompts": "^8.2.0",
