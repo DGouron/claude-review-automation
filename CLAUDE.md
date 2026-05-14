@@ -1,5 +1,9 @@
 # ReviewFlow CLAUDE.md
 
+## Quick start
+
+New here? Read **[docs/HARNESS-ONBOARDING.md](docs/HARNESS-ONBOARDING.md)** first — covers the 5 key commands, active hooks, and the SDD pipeline.
+
 ## Behavior
 
 Important: Each response will start with "I read the rules." This demonstrates you have followed our guidelines.

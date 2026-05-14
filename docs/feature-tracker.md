@@ -29,4 +29,5 @@
 | Dashboard multi-project overview | [91-dashboard-multi-project-overview](specs/91-dashboard-multi-project-overview.md) | implemented | 2026-03-14 |
 | Split CLI god file | [92-split-cli-god-file](specs/92-split-cli-god-file.md) | drafted | 2026-03-14 |
 | Developer & team insights | [125-developer-team-insights](specs/125-developer-team-insights.md) | implemented | 2026-04-01 |
+| Hybrid model routing + token tracking | (no spec — see report) | implemented | 2026-05-14 |
 | Skill templates | [skill-templates](specs/skill-templates.md) | drafted | 2026-03-14 |
