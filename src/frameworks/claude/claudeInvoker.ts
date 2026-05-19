@@ -28,6 +28,39 @@ import { TrackTokenUsageUseCase } from '@/modules/token-accounting/usecases/trac
 import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
 import { StreamJsonParser } from '@/frameworks/claude/streamJsonParser.js';
 
+/**
+ * Gateways and use cases required by invokeClaudeReview. Extracted from the
+ * function body so production wiring stays in the composition root and tests
+ * can inject stubs without mocking the entire function.
+ */
+export interface ClaudeInvokerDependencies {
+  diffStatsFetchFactory: (
+    platform: 'gitlab' | 'github',
+  ) => GitLabDiffStatsFetchGateway | GitHubDiffStatsFetchGateway;
+  routingPolicyGateway: ProjectConfigRoutingPolicyGateway;
+  selectModelForReview: SelectModelForReviewUseCase;
+  trackingGateway: FileSystemReviewRequestTrackingGateway;
+  trackTokenUsage: TrackTokenUsageUseCase;
+}
+
+/**
+ * Default production wiring. Used when no deps are passed to invokeClaudeReview,
+ * preserving backward compatibility with existing callers that don't yet
+ * thread these dependencies through their own composition root.
+ */
+export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependencies {
+  return {
+    diffStatsFetchFactory: platform =>
+      platform === 'github'
+        ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
+        : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor),
+    routingPolicyGateway: new ProjectConfigRoutingPolicyGateway(),
+    selectModelForReview: new SelectModelForReviewUseCase(),
+    trackingGateway: new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator()),
+    trackTokenUsage: new TrackTokenUsageUseCase(new FilesystemTokenUsageGateway()),
+  };
+}
+
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 export function resolveMcpServerPath(): string {
@@ -116,11 +149,13 @@ export interface InvocationResult {
   selectedModel?: ClaudeModelName;
 }
 
-function fetchDiffStatsSafely(job: ReviewJob, logger: Logger): DiffStats | null {
+function fetchDiffStatsSafely(
+  job: ReviewJob,
+  deps: ClaudeInvokerDependencies,
+  logger: Logger,
+): DiffStats | null {
   try {
-    const gateway = job.platform === 'github'
-      ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
-      : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor);
+    const gateway = deps.diffStatsFetchFactory(job.platform);
     return gateway.fetchDiffStats(job.projectPath, job.mrNumber);
   } catch (error) {
     logger.warn({ jobId: job.id, error }, 'Failed to fetch diff stats');
@@ -131,7 +166,8 @@ function fetchDiffStatsSafely(job: ReviewJob, logger: Logger): DiffStats | null 
 async function resolveModel(
   job: ReviewJob,
   diffStats: DiffStats | null,
-  logger: Logger
+  deps: ClaudeInvokerDependencies,
+  logger: Logger,
 ): Promise<ClaudeModelName> {
   if (job.model) {
     return job.model;
@@ -147,14 +183,12 @@ async function resolveModel(
     logger.warn({ jobId: job.id, error }, 'Failed to load project config, using runtime default');
   }
 
-  const routingGateway = new ProjectConfigRoutingPolicyGateway();
-  const policy = await routingGateway.load(job.localPath);
+  const policy = await deps.routingPolicyGateway.load(job.localPath);
   if (!policy || !diffStats) {
     return defaultModel;
   }
 
-  const selector = new SelectModelForReviewUseCase();
-  return selector.execute({ diffStats, policy, defaultModel });
+  return deps.selectModelForReview.execute({ diffStats, policy, defaultModel });
 }
 
 export type ProgressCallback = (progress: ReviewProgress, event?: ProgressEvent) => void;
@@ -279,7 +313,8 @@ export async function invokeClaudeReview(
   job: ReviewJob,
   logger: Logger,
   onProgress?: ProgressCallback,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  deps: ClaudeInvokerDependencies = createDefaultClaudeInvokerDependencies(),
 ): Promise<InvocationResult> {
   const startTime = Date.now();
 
@@ -287,10 +322,10 @@ export async function invokeClaudeReview(
   const prompt = `/${job.skill} ${job.mrNumber}`;
 
   // Fetch diff stats once: reused for both model routing and end-of-review stats
-  const diffStats = fetchDiffStatsSafely(job, logger);
+  const diffStats = fetchDiffStatsSafely(job, deps, logger);
 
   // Select model: explicit job override > routing policy + diff stats > project default > runtime default
-  const model = await resolveModel(job, diffStats, logger);
+  const model = await resolveModel(job, diffStats, deps, logger);
 
   // Build MCP system prompt injection
   const mcpSystemPrompt = buildMcpSystemPrompt(job);
@@ -574,8 +609,7 @@ export async function invokeClaudeReview(
         if (job.jobType !== 'followup') {
           try {
             const mrId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
-            const trackingGateway = new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator());
-            const mrDetails = trackingGateway.getById(job.localPath, mrId);
+            const mrDetails = deps.trackingGateway.getById(job.localPath, mrId);
             const assignedBy = mrDetails?.assignment?.username;
 
             const reviewStats = addReviewStats(job.localPath, job.mrNumber, durationMs, assistantText, assignedBy, diffStats);
@@ -588,8 +622,7 @@ export async function invokeClaudeReview(
         // Persist token usage for cost tracking (non-critical, never blocks the review result)
         if (tokenUsage) {
           try {
-            const tracker = new TrackTokenUsageUseCase(new FilesystemTokenUsageGateway());
-            await tracker.execute({
+            await deps.trackTokenUsage.execute({
               jobId: job.id,
               mrNumber: job.mrNumber,
               platform: job.platform,
