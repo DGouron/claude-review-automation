@@ -18,7 +18,10 @@ if ! is_push_command; then
 fi
 
 is_force_push() {
-  echo "$COMMAND" | grep -qE "\-\-force|\-f"
+  # Match --force, --force-with-lease, etc., or -f as standalone short flag.
+  # Requires whitespace/start before and whitespace/end after to avoid matching
+  # substrings inside paths or words (e.g. "review-flow", "-foo").
+  echo "$COMMAND" | grep -qE "(^|[[:space:]])(--force[a-z-]*|-f)([[:space:]]|$)"
 }
 
 if is_force_push; then
