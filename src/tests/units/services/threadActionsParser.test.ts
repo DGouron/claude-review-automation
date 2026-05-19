@@ -3,7 +3,7 @@ import {
   type ThreadReplyAction,
   type ThreadResolveAction,
   type PostCommentAction,
-} from '../../../services/threadActionsParser.js'
+} from '@/modules/review-execution/services/threadActionsParser.js'
 
 describe('parseThreadActions', () => {
   describe('THREAD_REPLY marker', () => {

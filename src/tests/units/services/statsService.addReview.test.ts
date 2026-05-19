@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, rmSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { addReviewStats, loadProjectStats, saveProjectStats } from '@/services/statsService.js'
+import { addReviewStats, loadProjectStats, saveProjectStats } from '@/modules/statistics-insights/services/statsService.js'
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js'
 
 const REVIEW_OUTPUT = '[REVIEW_STATS:blocking=1:warnings=2:suggestions=3:score=7.5]'

@@ -14,10 +14,10 @@ import {
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
 import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
-import { parseReviewOutput } from '@/services/statsService.js';
-import { parseThreadActions } from '@/services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
-import { executeActionsFromContext } from '@/services/contextActionsExecutor.js';
+import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
+import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
+import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';

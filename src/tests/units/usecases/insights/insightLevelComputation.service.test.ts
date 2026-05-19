@@ -7,7 +7,7 @@ import {
   computeCategoryLevels,
 } from '@/modules/statistics-insights/usecases/insights/insightLevelComputation.service.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
-import type { ReviewStats } from '@/services/statsService.js';
+import type { ReviewStats } from '@/modules/statistics-insights/services/statsService.js';
 
 function createReviewsForDeveloper(
   developerName: string,
