@@ -1,5 +1,5 @@
-import type { TokenUsageGateway } from '@/entities/tokenUsage/tokenUsage.gateway.js';
-import type { TokenUsageRecord } from '@/entities/tokenUsage/tokenUsage.schema.js';
+import type { TokenUsageGateway } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.gateway.js';
+import type { TokenUsageRecord } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
 
 export class StubTokenUsageGateway implements TokenUsageGateway {
   records: TokenUsageRecord[] = [];

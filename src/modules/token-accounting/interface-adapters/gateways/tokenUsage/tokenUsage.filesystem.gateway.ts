@@ -1,7 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { TokenUsageGateway } from '@/entities/tokenUsage/tokenUsage.gateway.js';
-import { tokenUsageRecordSchema, type TokenUsageRecord } from '@/entities/tokenUsage/tokenUsage.schema.js';
+import type { TokenUsageGateway } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.gateway.js';
+import { tokenUsageRecordSchema, type TokenUsageRecord } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
 
 const USAGE_FILE = '.claude/reviews/usage.jsonl';
 

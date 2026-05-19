@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SummarizeTokenUsageUseCase } from '@/usecases/summarizeTokenUsage/summarizeTokenUsage.usecase.js';
+import { SummarizeTokenUsageUseCase } from '@/modules/token-accounting/usecases/summarizeTokenUsage/summarizeTokenUsage.usecase.js';
 import { StubTokenUsageGateway } from '@/tests/stubs/tokenUsage.stub.js';
 import { TokenUsageRecordFactory } from '@/tests/factories/tokenUsage.factory.js';
 

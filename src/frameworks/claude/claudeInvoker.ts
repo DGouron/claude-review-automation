@@ -21,11 +21,11 @@ import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';
 import { buildLanguageDirective } from '@/frameworks/claude/languageDirective.js';
 import type { ClaudeModelName } from '@/entities/modelRouting/modelRouting.schema.js';
-import type { TokenUsage } from '@/entities/tokenUsage/tokenUsage.schema.js';
+import type { TokenUsage } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
 import { SelectModelForReviewUseCase } from '@/usecases/selectModelForReview/selectModelForReview.usecase.js';
 import { ProjectConfigRoutingPolicyGateway } from '@/interface-adapters/gateways/projectConfig/routingPolicy.projectConfig.gateway.js';
-import { TrackTokenUsageUseCase } from '@/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
-import { FilesystemTokenUsageGateway } from '@/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
+import { TrackTokenUsageUseCase } from '@/modules/token-accounting/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
+import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
 import { StreamJsonParser } from '@/frameworks/claude/streamJsonParser.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));

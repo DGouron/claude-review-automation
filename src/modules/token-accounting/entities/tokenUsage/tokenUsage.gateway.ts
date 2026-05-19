@@ -1,4 +1,4 @@
-import type { TokenUsageRecord } from '@/entities/tokenUsage/tokenUsage.schema.js';
+import type { TokenUsageRecord } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
 
 export interface TokenUsageGateway {
   record(record: TokenUsageRecord): Promise<void>;

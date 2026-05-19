@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TokenUsage } from '@/entities/tokenUsage/tokenUsage.schema.js';
+import type { TokenUsage } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
 
 const systemEventSchema = z.object({
   type: z.literal('system'),

@@ -1,4 +1,4 @@
-import type { TokenUsageGateway } from '@/entities/tokenUsage/tokenUsage.gateway.js';
+import type { TokenUsageGateway } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.gateway.js';
 
 export type TokenUsageSummary = {
   totalInputTokens: number;
