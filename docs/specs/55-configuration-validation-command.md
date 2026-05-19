@@ -7,6 +7,8 @@ blocked-by: "#29 (closed)"
 status: DRAFT
 ---
 
+
+
 # SPEC-055: `reviewflow validate` — Configuration Validation Command
 
 ## Problem Statement
