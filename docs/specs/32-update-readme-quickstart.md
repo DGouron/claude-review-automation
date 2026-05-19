@@ -7,6 +7,8 @@ status: READY
 blocked_by: "#30 (init-project), #55 (config validation)"
 ---
 
+
+
 # SPEC-032: Update README and Quick-Start for `npm install -g reviewflow` Flow
 
 ## Problem Statement

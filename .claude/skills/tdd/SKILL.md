@@ -120,6 +120,60 @@ it("should reject rating below 1", () => { ... })
 
 ---
 
+## Transformation Priority Premise (Robert C. Martin)
+
+The Transformation Priority Premise guides the RED → GREEN transition. When writing minimal code to pass a test, we apply **transformations** — and these transformations have a **natural priority order**.
+
+**Always choose the highest transformation in the list (the simplest).** Skipping steps often leads to suboptimal design.
+
+### Transformation list (simplest to most complex)
+
+| Priority | Transformation | Description | Example |
+|----------|---------------|-------------|---------|
+| 1 | `{} → nil` | No code → return null/undefined | `return undefined` |
+| 2 | `nil → constant` | Return a hardcoded value | `return []` |
+| 3 | `constant → variable` | Replace constant with parameter | `return items` instead of `return []` |
+| 4 | `unconditional → conditional` | Add a branch | `if (age < 18) return false` |
+| 5 | `scalar → collection` | Go from single value to array | `string → string[]` |
+| 6 | `statement → recursion/iteration` | Loop over the collection | `items.map(transform)` |
+| 7 | `value → mutated value` | Transform the accumulated value | `items.reduce(accumulate)` |
+
+### When to apply
+
+The TPP is a **guide**, not an absolute rule. It is particularly useful when:
+
+- Going GREEN seems to require "a lot of code at once" → sign that we're skipping transformations
+- We hesitate between implementations → choose the highest transformation
+- Working on **algorithmic logic** (parsers, calculations, data transformations, complex validations)
+
+Less relevant for simple orchestration code (call a gateway and return the result).
+
+### Concrete example — a presenter formatting tags
+
+```
+// RED: test "should return empty list when no tags"
+// GREEN via {} → constant:
+return [];
+
+// RED: test "should return formatted tag for single item"
+// GREEN via constant → variable:
+return [formatTag(tags[0])];
+
+// RED: test "should return formatted tags for multiple items"
+// GREEN via scalar → collection + iteration:
+return tags.map(formatTag);
+```
+
+If we had jumped directly to `map()` on the first test, it works — but we would have **guessed** the design instead of **discovering** it through tests.
+
+### Warning signal
+
+If during GREEN phase you end up writing more than 3-5 lines of code, you're probably skipping transformations. Options:
+1. Go back and add a simpler intermediate test
+2. Check which transformation you're applying in the list
+
+---
+
 ## Activation
 
 This skill activates whenever the user asks to touch code:

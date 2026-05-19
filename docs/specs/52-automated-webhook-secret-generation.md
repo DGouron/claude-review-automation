@@ -6,6 +6,8 @@ blocked-by: "#29 (closed)"
 milestone: "Setup Wizard"
 ---
 
+
+
 # SPEC-052: Automated Webhook Secret Generation
 
 ## User Story
