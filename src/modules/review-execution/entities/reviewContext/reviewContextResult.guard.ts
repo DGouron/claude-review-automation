@@ -4,7 +4,7 @@ import {
   type ReviewContextResult,
 } from './reviewContextResult.schema.js'
 
-export const reviewContextResultGuard = createGuard(reviewContextResultSchema)
+export const reviewContextResultGuard = createGuard(reviewContextResultSchema, 'reviewContextResult')
 
 export function parseReviewContextResult(data: unknown): ReviewContextResult {
   return reviewContextResultGuard.parse(data)

@@ -54,6 +54,6 @@ const gitLabMergeRequestEventSchema = z.object({
     .optional(),
 })
 
-export const gitLabMergeRequestEventGuard = createGuard(gitLabMergeRequestEventSchema)
+export const gitLabMergeRequestEventGuard = createGuard(gitLabMergeRequestEventSchema, 'gitLabMergeRequestEvent')
 
 export type GitLabMergeRequestEvent = z.infer<typeof gitLabMergeRequestEventSchema>

@@ -1,7 +1,7 @@
 import { createGuard } from '@/shared/foundation/guard.base.js'
 import { npmRegistryResponseSchema, type NpmRegistryResponse } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.schema.js'
 
-const npmRegistryResponseGuard = createGuard(npmRegistryResponseSchema)
+const npmRegistryResponseGuard = createGuard(npmRegistryResponseSchema, 'npmRegistryResponse')
 
 export function parseNpmRegistryResponse(data: unknown): NpmRegistryResponse {
   return npmRegistryResponseGuard.parse(data)
