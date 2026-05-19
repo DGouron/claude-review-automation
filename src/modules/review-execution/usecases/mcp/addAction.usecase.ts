@@ -1,6 +1,6 @@
 import type { JobContextGateway } from "../../entities/job/jobContext.gateway.js";
 import type { ReviewContextGateway } from "../../entities/reviewContext/reviewContext.gateway.js";
-import type { ReviewContextAction } from "../../entities/reviewContext/reviewContextAction.schema.js";
+import type { ReviewContextAction } from "@/modules/review-execution/entities/reviewAction/reviewAction.js";
 
 export type ActionInput =
 	| { type: "THREAD_RESOLVE"; threadId: string; message?: string }
