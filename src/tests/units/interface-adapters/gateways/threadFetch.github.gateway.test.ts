@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { GitHubThreadFetchGateway } from '../../../../interface-adapters/gateways/threadFetch.github.gateway.js'
+import { GitHubThreadFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js'
 import { GitHubApiResponseFactory } from '../../../factories/githubApiResponse.factory.js'
 
 describe('GitHubThreadFetchGateway', () => {

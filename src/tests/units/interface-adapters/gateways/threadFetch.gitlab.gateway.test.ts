@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { GitLabThreadFetchGateway } from '../../../../interface-adapters/gateways/threadFetch.gitlab.gateway.js'
+import { GitLabThreadFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js'
 import { GitLabApiResponseFactory } from '../../../factories/gitlabApiResponse.factory.js'
 
 describe('GitLabThreadFetchGateway', () => {

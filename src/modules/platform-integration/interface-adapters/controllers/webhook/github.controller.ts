@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
 import { verifyGitHubSignature, getGitHubEventType } from '@/security/verifier.js';
-import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose } from '@/interface-adapters/controllers/webhook/eventFilter.js';
-import { gitHubPullRequestEventGuard } from '@/entities/github/githubPullRequestEvent.guard.js';
+import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
+import { gitHubPullRequestEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
 import { findRepositoryByRemoteUrl } from '@/config/loader.js';
 import {
   enqueueReview,
@@ -23,8 +23,8 @@ import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/we
 import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS } from '@/entities/progress/agentDefinition.type.js';
 import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
-import type { ThreadFetchGateway } from '@/entities/threadFetch/threadFetch.gateway.js';
-import type { DiffMetadataFetchGateway } from '@/entities/diffMetadata/diffMetadata.gateway.js';
+import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
+import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/entities/diffMetadata/diffMetadata.gateway.js';
 import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 
 export interface GitHubWebhookDependencies {
@@ -214,7 +214,7 @@ export async function handleGitHubWebhook(
 
     try {
       const threads = threadFetchGateway.fetchThreads(j.projectPath, j.mrNumber);
-      let diffMetadata: import('../../../entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+      let diffMetadata: import('@/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
       try {
         diffMetadata = diffMetadataFetchGateway.fetchDiffMetadata(j.projectPath, j.mrNumber);
       } catch (error) {

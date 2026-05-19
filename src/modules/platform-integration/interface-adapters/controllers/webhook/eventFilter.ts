@@ -1,6 +1,6 @@
-import { loadConfig } from '../../../config/loader.js';
-import type { GitHubPullRequestEvent } from '../../../entities/github/githubPullRequestEvent.guard.js';
-import type { GitLabMergeRequestEvent } from '../../../entities/gitlab/gitlabMergeRequestEvent.guard.js';
+import { loadConfig } from '@/config/loader.js';
+import type { GitHubPullRequestEvent } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
+import type { GitLabMergeRequestEvent } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
 
 export type { GitHubPullRequestEvent, GitLabMergeRequestEvent };
 

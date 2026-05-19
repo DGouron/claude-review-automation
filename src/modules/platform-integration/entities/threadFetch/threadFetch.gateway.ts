@@ -1,4 +1,4 @@
-import type { ReviewContextThread } from '../reviewContext/reviewContext.js'
+import type { ReviewContextThread } from '@/entities/reviewContext/reviewContext.js'
 
 export interface ThreadFetchGateway {
   fetchThreads(projectPath: string, mergeRequestNumber: number): ReviewContextThread[]

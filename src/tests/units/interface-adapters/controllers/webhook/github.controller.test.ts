@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { RepositoryConfig } from '../../../../../config/loader.js';
-import type { GitHubWebhookDependencies } from '../../../../../interface-adapters/controllers/webhook/github.controller.js';
+import type { GitHubWebhookDependencies } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
 
 const mockConfig = {
   server: { port: 3000 },
@@ -53,7 +53,7 @@ vi.mock('../../../../../main/websocket.js', () => ({
 }));
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleGitHubWebhook } from '../../../../../interface-adapters/controllers/webhook/github.controller.js';
+import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
 import { GitHubEventFactory } from '../../../../factories/gitHubEvent.factory.js';
 import { createStubLogger } from '../../../../stubs/logger.stub.js';
 import { enqueueReview } from '../../../../../frameworks/queue/pQueueAdapter.js';

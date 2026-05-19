@@ -1,6 +1,6 @@
 import type { UseCase } from '../../shared/foundation/usecase.base.js';
 import type { ReviewRequestTrackingGateway } from '../../interface-adapters/gateways/reviewRequestTracking.gateway.js';
-import type { ThreadFetchGateway } from '../../entities/threadFetch/threadFetch.gateway.js';
+import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
 import type { TrackedMr } from '../../entities/tracking/trackedMr.js';
 
 interface SyncThreadsInput {

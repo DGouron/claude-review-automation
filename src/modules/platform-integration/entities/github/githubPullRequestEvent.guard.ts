@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createGuard } from '../../shared/foundation/guard.base.js'
+import { createGuard } from '@/shared/foundation/guard.base.js'
 
 const gitHubPullRequestEventSchema = z.object({
   action: z.string(),

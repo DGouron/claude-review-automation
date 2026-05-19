@@ -1,5 +1,5 @@
-import type { DiffMetadataFetchGateway } from '../../entities/diffMetadata/diffMetadata.gateway.js'
-import type { DiffMetadata } from '../../entities/reviewContext/reviewContext.js'
+import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/entities/diffMetadata/diffMetadata.gateway.js'
+import type { DiffMetadata } from '@/entities/reviewContext/reviewContext.js'
 
 export type CommandExecutor = (command: string) => string
 

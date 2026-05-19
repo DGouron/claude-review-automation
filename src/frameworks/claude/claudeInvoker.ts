@@ -14,8 +14,8 @@ import { FileSystemReviewRequestTrackingGateway } from '@/interface-adapters/gat
 import { ProjectStatsCalculator } from '@/interface-adapters/presenters/projectStats.calculator.js';
 import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
-import { defaultGitLabExecutor } from '@/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
-import { defaultGitHubExecutor } from '@/interface-adapters/gateways/threadFetch.github.gateway.js';
+import { defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
+import { defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
 import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';

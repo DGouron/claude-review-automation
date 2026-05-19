@@ -1,4 +1,4 @@
-import type { ThreadFetchGateway } from '../../entities/threadFetch/threadFetch.gateway.js';
+import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
 import type { ReviewContextThread } from '../../entities/reviewContext/reviewContext.js';
 
 export class InMemoryThreadFetchGateway implements ThreadFetchGateway {

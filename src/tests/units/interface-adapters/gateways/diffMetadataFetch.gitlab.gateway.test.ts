@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { GitLabDiffMetadataFetchGateway } from '../../../../interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js'
+import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js'
 import { GitLabApiResponseFactory } from '../../../factories/gitlabApiResponse.factory.js'
 
 describe('GitLabDiffMetadataFetchGateway', () => {

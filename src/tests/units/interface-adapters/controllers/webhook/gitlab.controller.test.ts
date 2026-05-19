@@ -64,21 +64,21 @@ vi.mock('@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () 
   })),
 }));
 
-vi.mock('@/interface-adapters/gateways/threadFetch.gitlab.gateway.js', () => ({
+vi.mock('@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js', () => ({
   GitLabThreadFetchGateway: vi.fn().mockImplementation(() => ({
     fetchThreads: vi.fn(() => []),
   })),
   defaultGitLabExecutor: vi.fn(),
 }));
 
-vi.mock('@/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js', () => ({
+vi.mock('@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js', () => ({
   GitLabDiffMetadataFetchGateway: vi.fn().mockImplementation(() => ({
     fetchDiffMetadata: vi.fn(() => undefined),
   })),
 }));
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
+import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview } from '@/claude/invoker.js';
 import { GitLabEventFactory } from '@/tests/factories/gitLabEvent.factory.js';
