@@ -9,7 +9,7 @@ import { ProgressParser } from '@/frameworks/claude/progressParser.js';
 import { logInfo, logWarn, logError } from '@/frameworks/logging/logBuffer.js';
 import { getModel } from '@/frameworks/settings/runtimeSettings.js';
 import { getProjectAgents, getFollowupAgents, loadProjectConfig } from '@/config/projectConfig.js';
-import { addReviewStats } from '@/services/statsService.js';
+import { addReviewStats } from '@/modules/statistics-insights/services/statsService.js';
 import { FileSystemReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { ProjectStatsCalculator } from '@/modules/statistics-insights/interface-adapters/presenters/projectStats.calculator.js';
 import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';

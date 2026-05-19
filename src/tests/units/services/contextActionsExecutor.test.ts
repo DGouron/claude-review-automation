@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { executeActionsFromContext } from '../../../services/contextActionsExecutor.js'
+import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js'
 import type { ReviewContext } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
 describe('executeActionsFromContext', () => {

@@ -11,7 +11,7 @@ import { FileSystemInsightsGateway } from '@/modules/statistics-insights/interfa
 import { FileSystemReviewFileGateway } from '@/modules/review-execution/interface-adapters/gateways/fileSystem/reviewFile.fileSystem.js';
 import { FileSystemReviewLogFileGateway } from '@/modules/data-lifecycle/interface-adapters/gateways/fileSystem/reviewLogFile.fileSystem.gateway.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
-import { ReviewContextWatcherService } from '../services/reviewContextWatcher.service.js';
+import { ReviewContextWatcherService } from '@/modules/review-execution/services/reviewContextWatcher.service.js';
 import { ReviewContextProgressPresenter } from '@/modules/review-execution/interface-adapters/presenters/reviewContextProgress.presenter.js';
 import { ProjectStatsCalculator } from '@/modules/statistics-insights/interface-adapters/presenters/projectStats.calculator.js';
 import { pino, type Logger, type LoggerOptions } from 'pino';

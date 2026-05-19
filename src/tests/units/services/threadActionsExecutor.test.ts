@@ -2,8 +2,8 @@ import {
   executeThreadActions,
   type ExecutionContext,
   type CommandExecutor,
-} from '../../../services/threadActionsExecutor.js'
-import type { ThreadAction } from '../../../services/threadActionsParser.js'
+} from '@/modules/review-execution/services/threadActionsExecutor.js'
+import type { ThreadAction } from '@/modules/review-execution/services/threadActionsParser.js'
 
 describe('executeThreadActions', () => {
   const mockExecutor: CommandExecutor = vi.fn()

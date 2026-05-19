@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ReviewContextWatcherService } from '../../../services/reviewContextWatcher.service.js'
+import { ReviewContextWatcherService } from '@/modules/review-execution/services/reviewContextWatcher.service.js'
 import { StubReviewContextGateway } from '../../stubs/reviewContextGateway.stub.js'
 import { ReviewContextFactory } from '../../factories/reviewContext.factory.js'
 
