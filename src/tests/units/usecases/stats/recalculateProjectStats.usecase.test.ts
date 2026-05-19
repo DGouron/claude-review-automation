@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recalculateProjectStats } from '@/usecases/stats/recalculateProjectStats.usecase.js';
+import { recalculateProjectStats } from '@/modules/statistics-insights/usecases/stats/recalculateProjectStats.usecase.js';
 import { InMemoryStatsGateway } from '@/tests/stubs/stats.stub.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 

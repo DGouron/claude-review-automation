@@ -1,9 +1,9 @@
-import type { ReviewProgressGateway } from "../entities/progress/progress.gateway.js";
-import type { ReviewProgress } from "../entities/progress/progress.type.js";
-import type { JobContextGateway } from "../entities/job/jobContext.gateway.js";
-import type { ReviewContextGateway } from "../entities/reviewContext/reviewContext.gateway.js";
-import { ReviewProgressMemoryGateway } from "../interface-adapters/gateways/reviewProgress.memory.gateway.js";
-import { JobContextMemoryGateway } from "../interface-adapters/gateways/jobContext.memory.gateway.js";
+import type { ReviewProgressGateway } from "@/modules/review-execution/entities/progress/progress.gateway.js";
+import type { ReviewProgress } from "@/modules/review-execution/entities/progress/progress.type.js";
+import type { JobContextGateway } from "@/modules/review-execution/entities/job/jobContext.gateway.js";
+import type { ReviewContextGateway } from "@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { JobContextMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/jobContext.memory.gateway.js";
 
 export type ProgressChangeCallback = (
 	jobId: string,

@@ -1,4 +1,4 @@
-import type { AgentInstructions } from '../entities/reviewContext/reviewContext.js'
+import type { AgentInstructions } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
 export function buildAgentInstructions(contextFilePath: string): AgentInstructions {
   return {

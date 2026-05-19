@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { JobStatusPresenter } from '../../../../interface-adapters/presenters/jobStatus.presenter.js'
+import { JobStatusPresenter } from '@/modules/review-execution/interface-adapters/presenters/jobStatus.presenter.js'
 import { ReviewJobFactory } from '../../../factories/reviewJob.factory.js'
 
 describe('JobStatusPresenter', () => {

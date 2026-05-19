@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ReviewProgressMemoryGateway } from "../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
-import { setPhase } from "../../../../usecases/mcp/setPhase.usecase.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { setPhase } from "@/modules/review-execution/usecases/mcp/setPhase.usecase.js";
 
 describe("setPhase usecase", () => {
 	it("should set phase to agents-running and return success", () => {

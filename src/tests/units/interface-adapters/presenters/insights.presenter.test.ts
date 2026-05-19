@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { InsightsPresenter } from '@/interface-adapters/presenters/insights.presenter.js';
+import { InsightsPresenter } from '@/modules/statistics-insights/interface-adapters/presenters/insights.presenter.js';
 import { DeveloperInsightFactory } from '@/tests/factories/developerInsight.factory.js';
 import { TeamInsightFactory } from '@/tests/factories/teamInsight.factory.js';
-import type { DeveloperInsight } from '@/entities/insight/developerInsight.js';
+import type { DeveloperInsight } from '@/modules/statistics-insights/entities/insight/developerInsight.js';
 
 describe('InsightsPresenter', () => {
   const presenter = new InsightsPresenter();

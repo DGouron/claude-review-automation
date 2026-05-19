@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateAiInsights, persistAiInsightsResult } from '@/usecases/insights/generateAiInsights.usecase.js';
+import { generateAiInsights, persistAiInsightsResult } from '@/modules/statistics-insights/usecases/insights/generateAiInsights.usecase.js';
 import { InMemoryStatsGateway } from '@/tests/stubs/stats.stub.js';
 import { InMemoryReviewFileGateway } from '@/tests/stubs/reviewFile.stub.js';
 import { InMemoryReviewRequestTrackingGateway } from '@/tests/stubs/reviewRequestTracking.stub.js';
@@ -7,8 +7,8 @@ import { InMemoryInsightsGateway } from '@/tests/stubs/insights.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import { TrackedMrFactory, MrTrackingDataFactory } from '@/tests/factories/trackedMr.factory.js';
-import type { AiInsightsResult } from '@/entities/insight/aiInsight.js';
-import type { ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
+import type { AiInsightsResult } from '@/modules/statistics-insights/entities/insight/aiInsight.js';
+import type { ClaudeInvoker } from '@/modules/statistics-insights/usecases/insights/generateAiInsights.usecase.js';
 
 function createSuccessfulClaudeInvoker(result: AiInsightsResult): ClaudeInvoker {
   return async () => JSON.stringify(result);

@@ -14,10 +14,10 @@ import type {
   ReviewProgress,
   ProgressEvent,
   ProgressEventType,
-} from '../../entities/progress/progress.type.js';
-import type { AgentDefinition } from '../../entities/progress/agentDefinition.type.js';
-import { createInitialProgress } from '../../entities/progress/progress.factory.js';
-import { calculateOverallProgress } from '../../entities/progress/progress.calculator.js';
+} from '@/modules/review-execution/entities/progress/progress.type.js';
+import type { AgentDefinition } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
+import { createInitialProgress } from '@/modules/review-execution/entities/progress/progress.factory.js';
+import { calculateOverallProgress } from '@/modules/review-execution/entities/progress/progress.calculator.js';
 
 // Regex patterns for parsing markers
 const PROGRESS_PATTERN = /\[PROGRESS:([a-z-]+):(started|completed|failed)(?::([^\]]+))?\]/gi;

@@ -1,4 +1,4 @@
-import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.gateway.js'
+import type { SelfUpdateCommandPort } from '@/modules/cli-configuration/entities/packageVersion/selfUpdateCommand.gateway.js'
 
 export class StubSelfUpdateCommand implements SelfUpdateCommandPort {
   private readonly shouldSucceed: boolean

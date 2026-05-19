@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { executeStart, type StartDependencies } from '../../../main/cli.js';
-import type { StartDaemonDependencies } from '../../../usecases/cli/startDaemon.usecase.js';
+import type { StartDaemonDependencies } from '@/modules/cli-configuration/usecases/cli/startDaemon.usecase.js';
 
 function createFakeStartDaemonDeps(
   overrides?: Partial<StartDaemonDependencies>,

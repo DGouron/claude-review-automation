@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import { DiffStatsFactory } from '@/tests/factories/diffStats.factory.js';
-import type { ReviewStats } from '@/entities/stats/projectStats.js';
+import type { ReviewStats } from '@/modules/statistics-insights/entities/stats/projectStats.js';
 
 describe('StatsService DiffStats', () => {
   describe('ReviewStats', () => {

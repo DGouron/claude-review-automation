@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   AddRepositoriesToConfigUseCase,
   type AddRepositoriesToConfigDependencies,
-} from '@/usecases/cli/addRepositoriesToConfig.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/addRepositoriesToConfig.usecase.js';
 
 function createFakeDeps(
   overrides?: Partial<AddRepositoriesToConfigDependencies>,

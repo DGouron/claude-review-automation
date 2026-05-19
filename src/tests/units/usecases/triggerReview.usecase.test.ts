@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { triggerReview, type TriggerReviewParams } from '../../../usecases/triggerReview.usecase.js';
+import { triggerReview, type TriggerReviewParams } from '@/modules/review-execution/usecases/triggerReview.usecase.js';
 import { StubReviewQueuePort } from '../../stubs/reviewQueue.stub.js';
 import { InMemoryReviewRequestTrackingGateway } from '../../stubs/reviewRequestTracking.stub.js';
 import { createStubLogger } from '../../stubs/logger.stub.js';

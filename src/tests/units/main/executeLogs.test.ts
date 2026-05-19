@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { executeLogs, type LogsDeps } from '../../../main/cli.js';
-import type { ReadLogsDependencies } from '../../../usecases/cli/readLogs.usecase.js';
+import type { ReadLogsDependencies } from '@/modules/cli-configuration/usecases/cli/readLogs.usecase.js';
 
 function createFakeReadLogsDeps(
   overrides?: Partial<ReadLogsDependencies>,

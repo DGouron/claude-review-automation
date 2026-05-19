@@ -4,8 +4,8 @@ import {
   type InitDependencies,
   type PlatformChoice,
 } from '@/main/cli.js';
-import type { DiscoveredRepository } from '@/usecases/cli/discoverRepositories.usecase.js';
-import type { ConfigureMcpResult } from '@/usecases/cli/configureMcp.usecase.js';
+import type { DiscoveredRepository } from '@/modules/cli-configuration/usecases/cli/discoverRepositories.usecase.js';
+import type { ConfigureMcpResult } from '@/modules/cli-configuration/usecases/cli/configureMcp.usecase.js';
 
 function createFakeInitDeps(
   overrides?: Partial<InitDependencies>,

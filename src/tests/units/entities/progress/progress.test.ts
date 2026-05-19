@@ -2,11 +2,11 @@ import type {
   ReviewProgress,
   AgentStatus,
   ReviewPhase,
-} from '../../../../entities/progress/progress.type.js'
-import type { AgentDefinition } from '../../../../entities/progress/agentDefinition.type.js'
-import { DEFAULT_AGENTS } from '../../../../entities/progress/agentDefinition.type.js'
-import { createInitialProgress } from '../../../../entities/progress/progress.factory.js'
-import { calculateOverallProgress } from '../../../../entities/progress/progress.calculator.js'
+} from '@/modules/review-execution/entities/progress/progress.type.js'
+import type { AgentDefinition } from '@/modules/review-execution/entities/progress/agentDefinition.type.js'
+import { DEFAULT_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js'
+import { createInitialProgress } from '@/modules/review-execution/entities/progress/progress.factory.js'
+import { calculateOverallProgress } from '@/modules/review-execution/entities/progress/progress.calculator.js'
 
 describe('createInitialProgress', () => {
   describe('with default agents', () => {

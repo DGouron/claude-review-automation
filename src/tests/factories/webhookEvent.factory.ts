@@ -1,4 +1,4 @@
-import type { GitLabMergeRequestEvent, GitHubPullRequestEvent } from '../../interface-adapters/controllers/webhook/eventFilter.js';
+import type { GitLabMergeRequestEvent, GitHubPullRequestEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 
 export class GitLabEventFactory {
   static createMergeRequestEvent(

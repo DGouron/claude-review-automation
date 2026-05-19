@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { insightsRoutes } from '@/interface-adapters/controllers/http/insights.routes.js';
+import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
 import { InMemoryStatsGateway } from '@/tests/stubs/stats.stub.js';
 import { InMemoryInsightsGateway } from '@/tests/stubs/insights.stub.js';
 import { InMemoryReviewFileGateway } from '@/tests/stubs/reviewFile.stub.js';
 import { InMemoryReviewRequestTrackingGateway } from '@/tests/stubs/reviewRequestTracking.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
-import type { ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
-import type { AiInsightsResult } from '@/entities/insight/aiInsight.js';
+import type { ClaudeInvoker } from '@/modules/statistics-insights/usecases/insights/generateAiInsights.usecase.js';
+import type { AiInsightsResult } from '@/modules/statistics-insights/entities/insight/aiInsight.js';
 
 const validAiResult: AiInsightsResult = {
   developers: [

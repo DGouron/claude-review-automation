@@ -1,4 +1,4 @@
-import type { RoutingPolicy } from '@/entities/modelRouting/modelRouting.schema.js';
+import type { RoutingPolicy } from '@/modules/review-execution/entities/modelRouting/modelRouting.schema.js';
 
 export class RoutingPolicyFactory {
   static create(overrides?: Partial<RoutingPolicy>): RoutingPolicy {

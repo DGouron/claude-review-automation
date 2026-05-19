@@ -5,9 +5,9 @@ export type {
   PostCommentAction,
   FetchThreadsAction,
   ThreadAction,
-} from '../entities/reviewAction/reviewAction.js'
+} from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
 
-import type { ThreadAction } from '../entities/reviewAction/reviewAction.js'
+import type { ThreadAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
 
 const THREAD_REPLY_REGEX = /\[THREAD_REPLY:([^:\]]+):([^\]]*)\]/g
 const THREAD_RESOLVE_REGEX = /\[THREAD_RESOLVE:([^\]]+)\]/g

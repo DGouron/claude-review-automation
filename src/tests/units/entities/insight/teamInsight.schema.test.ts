@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { teamInsightSchema } from '@/entities/insight/teamInsight.schema.js';
+import { teamInsightSchema } from '@/modules/statistics-insights/entities/insight/teamInsight.schema.js';
 import { TeamInsightFactory } from '@/tests/factories/teamInsight.factory.js';
 
 describe('TeamInsight schema', () => {

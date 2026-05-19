@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';
-import { computeDeveloperInsights } from '@/usecases/insights/computeDeveloperInsights.usecase.js';
-import { computeTeamInsights } from '@/usecases/insights/computeTeamInsights.usecase.js';
+import { computeInsightsWithPersistence } from '@/modules/statistics-insights/usecases/insights/computeInsightsWithPersistence.usecase.js';
+import { computeDeveloperInsights } from '@/modules/statistics-insights/usecases/insights/computeDeveloperInsights.usecase.js';
+import { computeTeamInsights } from '@/modules/statistics-insights/usecases/insights/computeTeamInsights.usecase.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import { PersistedInsightsDataFactory, PersistedDeveloperMetricsFactory } from '@/tests/factories/persistedInsightsData.factory.js';
 import type { ReviewStats } from '@/services/statsService.js';

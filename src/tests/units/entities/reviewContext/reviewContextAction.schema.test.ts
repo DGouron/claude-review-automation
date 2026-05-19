@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   reviewContextActionSchema,
   reviewContextResultSchema,
-} from '../../../../entities/reviewContext/reviewContextAction.schema.js'
+} from '@/modules/review-execution/entities/reviewContext/reviewContextAction.schema.js'
 
 describe('ReviewContextAction', () => {
   describe('ThreadResolveAction', () => {

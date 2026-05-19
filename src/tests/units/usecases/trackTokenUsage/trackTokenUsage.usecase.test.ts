@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TrackTokenUsageUseCase } from '@/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
+import { TrackTokenUsageUseCase } from '@/modules/token-accounting/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
 import { StubTokenUsageGateway } from '@/tests/stubs/tokenUsage.stub.js';
 import { TokenUsageRecordFactory } from '@/tests/factories/tokenUsage.factory.js';
 

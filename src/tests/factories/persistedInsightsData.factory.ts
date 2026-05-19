@@ -1,4 +1,4 @@
-import type { PersistedDeveloperMetrics, PersistedInsightsData } from '@/entities/insight/persistedInsightsData.js';
+import type { PersistedDeveloperMetrics, PersistedInsightsData } from '@/modules/statistics-insights/entities/insight/persistedInsightsData.js';
 import type { ReviewStats } from '@/services/statsService.js';
 
 export class PersistedDeveloperMetricsFactory {

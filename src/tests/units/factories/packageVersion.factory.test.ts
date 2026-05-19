@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { PackageVersionFactory } from '@/tests/factories/packageVersion.factory.js'
-import { versionCheckResultSchema, npmRegistryResponseSchema } from '@/entities/packageVersion/packageVersion.schema.js'
+import { versionCheckResultSchema, npmRegistryResponseSchema } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.schema.js'
 
 describe('PackageVersionFactory', () => {
   describe('createVersionCheckResult', () => {

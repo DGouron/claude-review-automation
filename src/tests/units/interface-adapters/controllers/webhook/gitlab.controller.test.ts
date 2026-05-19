@@ -55,7 +55,7 @@ vi.mock('@/config/projectConfig.js', () => ({
   getProjectLanguage: vi.fn(() => 'en'),
 }));
 
-vi.mock('@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({
+vi.mock('@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({
   ReviewContextFileSystemGateway: vi.fn().mockImplementation(() => ({
     create: vi.fn(),
     read: vi.fn(() => null),
@@ -64,33 +64,33 @@ vi.mock('@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () 
   })),
 }));
 
-vi.mock('@/interface-adapters/gateways/threadFetch.gitlab.gateway.js', () => ({
+vi.mock('@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js', () => ({
   GitLabThreadFetchGateway: vi.fn().mockImplementation(() => ({
     fetchThreads: vi.fn(() => []),
   })),
   defaultGitLabExecutor: vi.fn(),
 }));
 
-vi.mock('@/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js', () => ({
+vi.mock('@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js', () => ({
   GitLabDiffMetadataFetchGateway: vi.fn().mockImplementation(() => ({
     fetchDiffMetadata: vi.fn(() => undefined),
   })),
 }));
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleGitLabWebhook } from '@/interface-adapters/controllers/webhook/gitlab.controller.js';
+import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview } from '@/claude/invoker.js';
 import { GitLabEventFactory } from '@/tests/factories/gitLabEvent.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
-import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
-import { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
-import { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
-import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
-import { TransitionStateUseCase } from '@/usecases/tracking/transitionState.usecase.js';
-import { CheckFollowupNeededUseCase } from '@/usecases/tracking/checkFollowupNeeded.usecase.js';
-import { SyncThreadsUseCase } from '@/usecases/tracking/syncThreads.usecase.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
+import { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
+import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
+import { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPush.usecase.js';
+import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
+import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
+import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({

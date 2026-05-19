@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FilesystemTokenUsageGateway } from '@/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
+import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
 import { TokenUsageRecordFactory } from '@/tests/factories/tokenUsage.factory.js';
 
 describe('FilesystemTokenUsageGateway', () => {

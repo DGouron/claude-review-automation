@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { languageSchema } from '@/entities/language/language.schema.js';
+import { languageSchema } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 describe('Language schema', () => {
   it('should accept "en" as a valid language', () => {

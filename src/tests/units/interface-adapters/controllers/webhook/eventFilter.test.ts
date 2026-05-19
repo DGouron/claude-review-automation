@@ -22,7 +22,7 @@ import {
   filterGitHubLabelEvent,
   filterGitHubPrClose,
   REVIEW_TRIGGER_LABEL,
-} from '../../../../../interface-adapters/controllers/webhook/eventFilter.js'
+} from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js'
 
 describe('filterGitLabEvent', () => {
   describe('when MR is opened with reviewer assigned', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gitLabMergeRequestEventGuard } from '../../../../entities/gitlab/gitlabMergeRequestEvent.guard.js'
+import { gitLabMergeRequestEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js'
 import { GitLabEventFactory } from '../../../factories/gitLabEvent.factory.js'
 
 describe('gitLabMergeRequestEventGuard', () => {

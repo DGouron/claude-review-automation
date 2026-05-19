@@ -3,7 +3,7 @@ import {
   DiscoverRepositoriesUseCase,
   type DiscoverRepositoriesDependencies,
   type DiscoverRepositoriesInput,
-} from '../../../../usecases/cli/discoverRepositories.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/discoverRepositories.usecase.js';
 
 function createFakeDeps(
   overrides?: Partial<DiscoverRepositoriesDependencies>,

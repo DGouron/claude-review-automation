@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ReviewProgressMemoryGateway } from "../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
 
 describe("ReviewProgressMemoryGateway", () => {
 	describe("createProgress", () => {

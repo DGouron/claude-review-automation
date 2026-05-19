@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createDependencies } from '../../../main/dependencies.js';
 import { createTestConfig } from '../../factories/config.factory.js';
 import { ReviewContextWatcherService } from '../../../services/reviewContextWatcher.service.js';
-import { ReviewContextProgressPresenter } from '../../../interface-adapters/presenters/reviewContextProgress.presenter.js';
+import { ReviewContextProgressPresenter } from '@/modules/review-execution/interface-adapters/presenters/reviewContextProgress.presenter.js';
 
 describe('createDependencies', () => {
   it('should create all gateways from config', () => {

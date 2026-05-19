@@ -3,7 +3,7 @@ import {
   StopDaemonUseCase,
   type StopDaemonDependencies,
   type StopDaemonInput,
-} from '../../../../usecases/cli/stopDaemon.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/stopDaemon.usecase.js';
 import { createPidFileContent } from '../../../factories/pidFileContent.factory.js';
 
 function createFakeInput(overrides?: Partial<StopDaemonInput>): StopDaemonInput {

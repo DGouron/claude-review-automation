@@ -1,4 +1,4 @@
-import type { GitHubPullRequestEvent } from '../../interface-adapters/controllers/webhook/eventFilter.js'
+import type { GitHubPullRequestEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js'
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]

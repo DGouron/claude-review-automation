@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SyncThreadsUseCase } from '../../../../usecases/tracking/syncThreads.usecase.js';
+import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { InMemoryReviewRequestTrackingGateway } from '../../../stubs/reviewRequestTracking.stub.js';
 import { InMemoryThreadFetchGateway } from '../../../stubs/threadFetch.stub.js';
 import { TrackedMrFactory } from '../../../factories/trackedMr.factory.js';

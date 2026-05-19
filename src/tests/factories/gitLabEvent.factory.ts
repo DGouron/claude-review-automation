@@ -1,5 +1,5 @@
-import type { GitLabMergeRequestEvent } from '../../entities/gitlab/gitlabMergeRequestEvent.guard.js'
-import type { GitLabPushEvent } from '../../interface-adapters/controllers/webhook/eventFilter.js'
+import type { GitLabMergeRequestEvent } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js'
+import type { GitLabPushEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js'
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]

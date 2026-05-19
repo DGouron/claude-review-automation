@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { createGetWorkflowHandler } from "../../../../../interface-adapters/controllers/mcp/getWorkflow.handler.js";
-import { ReviewProgressMemoryGateway } from "../../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { createGetWorkflowHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/getWorkflow.handler.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
 import type { McpToolResult } from "../../../../../mcp/types.js";
 
 describe("getWorkflow handler", () => {

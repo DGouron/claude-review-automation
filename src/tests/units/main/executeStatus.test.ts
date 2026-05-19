@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { executeStatus, type StatusDeps } from '../../../main/cli.js';
-import type { QueryStatusDependencies } from '../../../usecases/cli/queryStatus.usecase.js';
+import type { QueryStatusDependencies } from '@/modules/cli-configuration/usecases/cli/queryStatus.usecase.js';
 import { createPidFileContent } from '../../factories/pidFileContent.factory.js';
 
 function createFakeQueryDeps(

@@ -1,4 +1,4 @@
-import type { PackageVersionGateway } from '@/entities/packageVersion/packageVersion.gateway.js'
+import type { PackageVersionGateway } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.gateway.js'
 
 export class StubPackageVersionGateway implements PackageVersionGateway {
   private readonly latestVersion: string | null

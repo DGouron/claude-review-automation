@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ReviewContextProgressPresenter } from '../../../../interface-adapters/presenters/reviewContextProgress.presenter.js'
-import type { ReviewContextProgress } from '../../../../entities/reviewContext/reviewContext.js'
+import { ReviewContextProgressPresenter } from '@/modules/review-execution/interface-adapters/presenters/reviewContextProgress.presenter.js'
+import type { ReviewContextProgress } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
 describe('ReviewContextProgressPresenter', () => {
   const presenter = new ReviewContextProgressPresenter()

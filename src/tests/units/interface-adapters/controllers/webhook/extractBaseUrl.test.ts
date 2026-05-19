@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractBaseUrl } from '@/interface-adapters/controllers/webhook/gitlab.controller.js'
+import { extractBaseUrl } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js'
 
 describe('extractBaseUrl', () => {
   it('should extract protocol://host from HTTPS URL', () => {

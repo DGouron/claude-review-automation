@@ -4,7 +4,7 @@ import {
   reviewContextProgressSchema,
   reviewContextSchema,
   createReviewContextInputSchema,
-} from '../../../../entities/reviewContext/reviewContext.schema.js'
+} from '@/modules/review-execution/entities/reviewContext/reviewContext.schema.js'
 
 describe('reviewContextThreadSchema', () => {
   it('should validate a complete thread', () => {

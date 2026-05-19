@@ -6,7 +6,7 @@ import {
   parseReviewContextActions,
   parseReviewContextResult,
   isValidReviewContextResult,
-} from '../../../../entities/reviewContext/reviewContextAction.guard.js'
+} from '@/modules/review-execution/entities/reviewContext/reviewContextAction.guard.js'
 
 describe('ReviewContextAction Guard', () => {
   describe('parseReviewContextAction', () => {

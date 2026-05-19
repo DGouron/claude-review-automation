@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMcpDependencies } from "../../../main/mcpDependencies.js";
-import { ReviewContextFileSystemGateway } from "../../../interface-adapters/gateways/reviewContext.fileSystem.gateway.js";
+import { ReviewContextFileSystemGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";

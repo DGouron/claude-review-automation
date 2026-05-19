@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
-import { ReviewContextFileSystemGateway } from '../../../../interface-adapters/gateways/reviewContext.fileSystem.gateway.js'
+import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js'
 
 describe('ReviewContextFileSystemGateway', () => {
   const testDir = '/tmp/test-review-context'

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gitHubPullRequestEventGuard } from '../../../../entities/github/githubPullRequestEvent.guard.js'
+import { gitHubPullRequestEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js'
 import { GitHubEventFactory } from '../../../factories/gitHubEvent.factory.js'
 
 describe('gitHubPullRequestEventGuard', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getWorkflow } from "../../../../usecases/mcp/getWorkflow.usecase.js";
-import { ReviewProgressMemoryGateway } from "../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { getWorkflow } from "@/modules/review-execution/usecases/mcp/getWorkflow.usecase.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
 
 describe("getWorkflow usecase", () => {
 	let progressGateway: ReviewProgressMemoryGateway;

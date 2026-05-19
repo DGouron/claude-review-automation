@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDeveloperInsights } from '@/usecases/insights/computeDeveloperInsights.usecase.js';
+import { computeDeveloperInsights } from '@/modules/statistics-insights/usecases/insights/computeDeveloperInsights.usecase.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import type { ReviewStats } from '@/services/statsService.js';
 

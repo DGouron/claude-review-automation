@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ReviewProgressMemoryGateway } from "../../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
-import { createCompleteAgentHandler } from "../../../../../interface-adapters/controllers/mcp/completeAgent.handler.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { createCompleteAgentHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/completeAgent.handler.js";
 
 describe("completeAgent handler", () => {
 	it("should return success when completing an agent with success status", () => {

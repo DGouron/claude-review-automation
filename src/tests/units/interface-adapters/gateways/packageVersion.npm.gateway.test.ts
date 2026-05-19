@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { NpmPackageVersionGateway } from '@/interface-adapters/gateways/packageVersion.npm.gateway.js'
+import { NpmPackageVersionGateway } from '@/modules/cli-configuration/interface-adapters/gateways/packageVersion.npm.gateway.js'
 
 describe('NpmPackageVersionGateway', () => {
   const originalFetch = globalThis.fetch

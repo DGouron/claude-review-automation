@@ -2,7 +2,7 @@ import type {
   ReviewContext,
   ReviewContextProgress,
   ReviewContextThread,
-} from '../../entities/reviewContext/reviewContext.js'
+} from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
 export class ReviewContextFactory {
   static create(overrides?: Partial<ReviewContext>): ReviewContext {

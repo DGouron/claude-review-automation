@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { VersionCacheMemoryGateway } from '@/interface-adapters/gateways/versionCache.memory.gateway.js'
+import { VersionCacheMemoryGateway } from '@/modules/cli-configuration/interface-adapters/gateways/versionCache.memory.gateway.js'
 import { PackageVersionFactory } from '@/tests/factories/packageVersion.factory.js'
 
 describe('VersionCacheMemoryGateway', () => {

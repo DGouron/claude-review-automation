@@ -1,5 +1,5 @@
-import type { ReviewContextGateway } from '../entities/reviewContext/reviewContext.gateway.js'
-import type { ReviewContextProgress } from '../entities/reviewContext/reviewContext.js'
+import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js'
+import type { ReviewContextProgress } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
 export type ProgressCallback = (progress: ReviewContextProgress) => void
 

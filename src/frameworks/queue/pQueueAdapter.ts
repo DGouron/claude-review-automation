@@ -1,9 +1,9 @@
 import PQueue from 'p-queue';
 import type { Logger } from 'pino';
 import { loadConfig } from '@/frameworks/config/configLoader.js';
-import type { ReviewProgress, ProgressEvent } from '@/entities/progress/progress.type.js';
-import type { Language } from '@/entities/language/language.schema.js';
-import type { ClaudeModelName } from '@/entities/modelRouting/modelRouting.schema.js';
+import type { ReviewProgress, ProgressEvent } from '@/modules/review-execution/entities/progress/progress.type.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
+import type { ClaudeModelName } from '@/modules/review-execution/entities/modelRouting/modelRouting.schema.js';
 
 export interface ReviewJob {
   id: string; // Unique identifier: platform:project:mrNumber

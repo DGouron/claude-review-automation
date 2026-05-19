@@ -3,7 +3,7 @@ import { startCleanupScheduler } from '@/frameworks/scheduler/cleanupScheduler.j
 import { InMemoryReviewFileGateway } from '@/tests/stubs/reviewFile.stub.js';
 import { InMemoryReviewLogFileGateway } from '@/tests/stubs/reviewLogFile.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
-import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile.gateway.js';
+import type { ReviewFileGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewFile.gateway.js';
 
 describe('cleanupScheduler', () => {
   beforeEach(() => {

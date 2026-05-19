@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RetentionPolicy } from '@/entities/cleanup/retentionPolicy.valueObject.js';
+import { RetentionPolicy } from '@/modules/data-lifecycle/entities/cleanup/retentionPolicy.valueObject.js';
 
 describe('RetentionPolicy', () => {
   it('should create with default 14 days', () => {

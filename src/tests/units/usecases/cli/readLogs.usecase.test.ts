@@ -3,7 +3,7 @@ import {
   ReadLogsUseCase,
   type ReadLogsDependencies,
   type ReadLogsInput,
-} from '../../../../usecases/cli/readLogs.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/readLogs.usecase.js';
 
 function createFakeInput(overrides?: Partial<ReadLogsInput>): ReadLogsInput {
   return {

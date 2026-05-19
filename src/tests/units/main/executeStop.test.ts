@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { executeStop, type StopDeps } from '../../../main/cli.js';
-import type { StopDaemonDependencies } from '../../../usecases/cli/stopDaemon.usecase.js';
+import type { StopDaemonDependencies } from '@/modules/cli-configuration/usecases/cli/stopDaemon.usecase.js';
 import { createPidFileContent } from '../../factories/pidFileContent.factory.js';
 
 function createFakeStopDeps(

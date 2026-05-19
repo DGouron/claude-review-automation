@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkVersion } from '@/usecases/version/checkVersion.usecase.js'
+import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js'
 import { StubPackageVersionGateway } from '@/tests/stubs/packageVersion.stub.js'
 import { StubVersionCache } from '@/tests/stubs/versionCache.stub.js'
 import { PackageVersionFactory } from '@/tests/factories/packageVersion.factory.js'

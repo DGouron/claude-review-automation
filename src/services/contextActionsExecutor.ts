@@ -1,8 +1,8 @@
-import type { ReviewContext } from '../entities/reviewContext/reviewContext.js'
-import type { ReviewAction } from '../entities/reviewAction/reviewAction.js'
-import { GitLabReviewActionCliGateway } from '../interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
-import { GitHubReviewActionCliGateway } from '../interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
-import type { ExecutionResult, CommandExecutor } from '../entities/reviewAction/reviewAction.gateway.js'
+import type { ReviewContext } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
+import type { ReviewAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
+import { GitLabReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
+import { GitHubReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
+import type { ExecutionResult, CommandExecutor } from '@/modules/review-execution/entities/reviewAction/reviewAction.gateway.js'
 
 /**
  * @deprecated Use ReviewContextAction from reviewAction entity instead

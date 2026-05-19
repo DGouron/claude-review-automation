@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanupExpiredReviews } from '@/usecases/cleanup/cleanupExpiredReviews.usecase.js';
+import { cleanupExpiredReviews } from '@/modules/data-lifecycle/usecases/cleanup/cleanupExpiredReviews.usecase.js';
 import { InMemoryReviewFileGateway } from '@/tests/stubs/reviewFile.stub.js';
 import { InMemoryReviewLogFileGateway } from '@/tests/stubs/reviewLogFile.stub.js';
 

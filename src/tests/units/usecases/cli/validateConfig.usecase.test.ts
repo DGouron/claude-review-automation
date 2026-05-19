@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   ValidateConfigUseCase,
   type ValidateConfigDependencies,
-} from '../../../../usecases/cli/validateConfig.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/validateConfig.usecase.js';
 
 function createFakeDeps(
   overrides?: Partial<ValidateConfigDependencies>,
