@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { getModel, setModel, getDefaultLanguage, setDefaultLanguage, getSettings, type ClaudeModel } from '@/frameworks/settings/runtimeSettings.js';
-import { languageSchema } from '@/entities/language/language.schema.js';
+import { languageSchema } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/settings', async () => {

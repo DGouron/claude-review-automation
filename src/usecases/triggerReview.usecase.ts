@@ -1,7 +1,7 @@
 import type { Logger } from 'pino';
 import type { ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
 import type { ReviewRequestTrackingGateway, Platform } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 export interface TriggerReviewParams {
   platform: Platform;

@@ -1,6 +1,6 @@
 import type { ReviewStats } from '@/entities/stats/projectStats.js';
 import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 interface DeveloperData {
   name: string;

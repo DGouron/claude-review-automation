@@ -1,5 +1,5 @@
 import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
-import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
+import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
 import { backfillDiffStats } from '@/usecases/stats/backfillDiffStats.usecase.js';
 import { recalculateProjectStats } from '@/usecases/stats/recalculateProjectStats.usecase.js';

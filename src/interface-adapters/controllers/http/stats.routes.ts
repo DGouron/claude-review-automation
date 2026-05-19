@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
-import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
+import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
 import { getStatsSummary } from '@/services/statsService.js';
 import { recalculateWithBackfill } from '@/usecases/stats/recalculateWithBackfill.usecase.js';

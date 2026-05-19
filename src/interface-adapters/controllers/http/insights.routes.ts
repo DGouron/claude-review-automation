@@ -4,7 +4,7 @@ import type { StatsGateway } from '@/entities/stats/stats.gateway.js';
 import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
 import type { ReviewFileGateway } from '@/entities/review/reviewFile.gateway.js';
 import type { ReviewRequestTrackingGateway } from '@/entities/tracking/reviewRequestTracking.gateway.js';
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 import { generateAiInsights, persistAiInsightsResult, type ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
 import { getInsightsWithAiStatus } from '@/usecases/insights/getInsightsWithAiStatus.usecase.js';
 import { InsightsPresenter } from '@/interface-adapters/presenters/insights.presenter.js';

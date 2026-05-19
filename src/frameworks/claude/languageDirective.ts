@@ -1,4 +1,4 @@
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 const LANGUAGE_LABELS: Record<Language, string> = {
   en: 'English',

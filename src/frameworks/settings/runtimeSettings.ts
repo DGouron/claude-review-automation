@@ -2,7 +2,7 @@
  * Runtime settings that can be changed without restart
  */
 
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 export type ClaudeModel = 'haiku' | 'sonnet' | 'opus';
 

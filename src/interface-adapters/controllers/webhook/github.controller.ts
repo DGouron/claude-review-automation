@@ -25,7 +25,7 @@ import { DEFAULT_AGENTS } from '@/entities/progress/agentDefinition.type.js';
 import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/entities/diffMetadata/diffMetadata.gateway.js';
-import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
+import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 
 export interface GitHubWebhookDependencies {
   reviewContextGateway: ReviewContextGateway;

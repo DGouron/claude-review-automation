@@ -1,6 +1,6 @@
 import type { JobStatus, ReviewJob } from '../../frameworks/queue/pQueueAdapter.js'
 import type { Presenter } from '../../shared/foundation/presenter.base.js'
-import { Duration } from '../../entities/shared/duration.valueObject.js'
+import { Duration } from '@/modules/shared-kernel/entities/shared/duration.valueObject.js'
 
 export type StatusColor = 'gray' | 'blue' | 'green' | 'red' | 'orange'
 export type JobType = 'review' | 'followup'

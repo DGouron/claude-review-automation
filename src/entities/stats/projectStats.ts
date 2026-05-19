@@ -1,4 +1,4 @@
-import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
 
 /**
  * Statistics for a single code review, including score, issue counts,

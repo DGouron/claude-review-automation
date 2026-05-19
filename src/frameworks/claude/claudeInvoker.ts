@@ -16,7 +16,7 @@ import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffS
 import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import { defaultGitLabExecutor } from '@/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { defaultGitHubExecutor } from '@/interface-adapters/gateways/threadFetch.github.gateway.js';
-import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
 import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';
 import { buildLanguageDirective } from '@/frameworks/claude/languageDirective.js';

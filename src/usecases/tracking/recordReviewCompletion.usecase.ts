@@ -2,7 +2,7 @@ import type { UseCase } from '../../shared/foundation/usecase.base.js';
 import type { ReviewRequestTrackingGateway } from '../../interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackedMr } from '../../entities/tracking/trackedMr.js';
 import type { ReviewEvent } from '../../entities/tracking/reviewEvent.js';
-import type { DiffStats } from '@/entities/diffStats/diffStats.js';
+import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
 
 interface RecordReviewCompletionInput {
   projectPath: string;

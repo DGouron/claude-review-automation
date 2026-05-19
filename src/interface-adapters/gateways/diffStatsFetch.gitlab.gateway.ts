@@ -1,5 +1,5 @@
-import type { DiffStats } from '@/entities/diffStats/diffStats.js';
-import type { DiffStatsFetchGateway } from '@/entities/diffStats/diffStatsFetch.gateway.js';
+import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
+import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 
 import type { SimpleCommandExecutor } from '@/shared/foundation/commandExecutor.js';
 

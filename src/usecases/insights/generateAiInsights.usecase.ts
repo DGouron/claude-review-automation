@@ -4,7 +4,7 @@ import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
 import type { ReviewFileGateway } from '@/entities/review/reviewFile.gateway.js';
 import type { ReviewRequestTrackingGateway } from '@/entities/tracking/reviewRequestTracking.gateway.js';
 import type { AiInsightsResult } from '@/entities/insight/aiInsight.js';
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 import { aiInsightsRawResponseSchema } from '@/entities/insight/aiInsight.schema.js';
 import { buildAiInsightsPrompt } from '@/usecases/insights/buildAiInsightsPrompt.js';
 import { computeInsightsWithPersistence } from '@/usecases/insights/computeInsightsWithPersistence.usecase.js';

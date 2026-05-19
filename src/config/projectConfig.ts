@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentDefinition } from '@/entities/progress/agentDefinition.type.js';
-import type { Language } from '@/entities/language/language.schema.js';
+import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 import type { RoutingPolicy } from '@/entities/modelRouting/modelRouting.schema.js';
 
 export interface ProjectConfig {
