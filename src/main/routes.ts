@@ -32,6 +32,7 @@ import { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPu
 import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js';
 import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js';
 import { NpmPackageVersionGateway } from '@/modules/cli-configuration/interface-adapters/gateways/packageVersion.npm.gateway.js';
@@ -94,9 +95,26 @@ export async function registerRoutes(
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
   });
 
+  const threadFetchGatewayFactory = (platform: 'gitlab' | 'github') =>
+    platform === 'github'
+      ? new GitHubThreadFetchGateway(defaultGitHubExecutor)
+      : new GitLabThreadFetchGateway(defaultGitLabExecutor);
   await app.register(mrTrackingAdvancedRoutes, {
     getRepositories: () => deps.config.repositories,
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+    reviewContextGateway: new ReviewContextFileSystemGateway(),
+    threadFetchGatewayFactory,
+    diffMetadataFetchGatewayFactory: (platform) =>
+      platform === 'github'
+        ? new GitHubDiffMetadataFetchGateway(defaultGitHubExecutor)
+        : new GitLabDiffMetadataFetchGateway(defaultGitLabExecutor),
+    diffStatsFetchGatewayFactory: (platform) =>
+      platform === 'github'
+        ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
+        : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor),
+    createSyncThreadsUseCase: (platform) =>
+      new SyncThreadsUseCase(deps.reviewRequestTrackingGateway, threadFetchGatewayFactory(platform)),
+    recordReviewCompletion: new RecordReviewCompletionUseCase(deps.reviewRequestTrackingGateway),
     logger: deps.logger,
   });
 
