@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
+import type { BackfillProgress } from '@/modules/statistics-insights/entities/backfill/backfillProgress.js';
 
 describe('BackfillProgress', () => {
   it('should represent an idle backfill progress', () => {

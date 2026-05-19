@@ -1,4 +1,4 @@
-import type { ProjectStats, ReviewStats } from '@/entities/stats/projectStats.js';
+import type { ProjectStats, ReviewStats } from '@/modules/statistics-insights/entities/stats/projectStats.js';
 import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
 
 export class ReviewStatsFactory {

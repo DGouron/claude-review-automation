@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getModel } from '@/frameworks/settings/runtimeSettings.js';
-import type { ClaudeInvoker } from '@/usecases/insights/generateAiInsights.usecase.js';
+import type { ClaudeInvoker } from '@/modules/statistics-insights/usecases/insights/generateAiInsights.usecase.js';
 
 const INSIGHTS_TIMEOUT_MS = 300000;
 

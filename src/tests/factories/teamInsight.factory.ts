@@ -1,4 +1,4 @@
-import type { TeamInsight } from '@/entities/insight/teamInsight.js';
+import type { TeamInsight } from '@/modules/statistics-insights/entities/insight/teamInsight.js';
 
 export class TeamInsightFactory {
   static create(overrides: Record<string, unknown> = {}): Record<string, unknown> {

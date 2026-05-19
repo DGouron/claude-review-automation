@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 
 describe('GitHubDiffStatsFetchGateway', () => {
   describe('fetchDiffStats', () => {

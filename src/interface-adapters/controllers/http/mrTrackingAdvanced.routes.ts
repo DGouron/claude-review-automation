@@ -17,8 +17,8 @@ import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platf
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '../../../main/websocket.js';
-import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
-import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
+import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
 
 interface MrTrackingAdvancedRoutesOptions {

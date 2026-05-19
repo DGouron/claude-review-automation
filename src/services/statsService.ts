@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import type { ReviewStats, ProjectStats } from '@/entities/stats/projectStats.js';
+import type { ReviewStats, ProjectStats } from '@/modules/statistics-insights/entities/stats/projectStats.js';
 import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
 
 export type { ReviewStats, ProjectStats };

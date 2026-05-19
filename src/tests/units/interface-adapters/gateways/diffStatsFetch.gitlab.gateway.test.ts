@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 
 describe('GitLabDiffStatsFetchGateway', () => {
   describe('fetchDiffStats', () => {

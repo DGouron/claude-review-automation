@@ -1,4 +1,4 @@
-import type { DeveloperInsight } from '@/entities/insight/developerInsight.js';
+import type { DeveloperInsight } from '@/modules/statistics-insights/entities/insight/developerInsight.js';
 
 export class DeveloperInsightFactory {
   static create(overrides: Record<string, unknown> = {}): Record<string, unknown> {

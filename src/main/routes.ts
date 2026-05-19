@@ -7,7 +7,7 @@ import type { Dependencies } from '@/main/dependencies.js';
 import { healthRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/health.routes.js';
 import { settingsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/settings.routes.js';
 import { reviewRoutes } from '@/interface-adapters/controllers/http/reviews.routes.js';
-import { statsRoutes } from '@/interface-adapters/controllers/http/stats.routes.js';
+import { statsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/stats.routes.js';
 import { mrTrackingRoutes } from '@/interface-adapters/controllers/http/mrTracking.routes.js';
 import { mrTrackingAdvancedRoutes } from '@/interface-adapters/controllers/http/mrTrackingAdvanced.routes.js';
 import { logsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/logs.routes.js';
@@ -15,7 +15,7 @@ import { cliStatusRoutes } from '@/modules/cli-configuration/interface-adapters/
 import { projectConfigRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/projectConfig.routes.js';
 import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js';
-import { insightsRoutes } from '@/interface-adapters/controllers/http/insights.routes.js';
+import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
@@ -24,8 +24,8 @@ import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platf
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
-import { GitLabDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
-import { GitHubDiffStatsFetchGateway } from '@/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
+import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
 import { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
 import { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';

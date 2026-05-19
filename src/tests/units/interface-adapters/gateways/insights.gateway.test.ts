@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { FileSystemInsightsGateway } from '@/interface-adapters/gateways/fileSystem/insights.fileSystem.js';
-import type { PersistedInsightsData } from '@/entities/insight/persistedInsightsData.js';
+import { FileSystemInsightsGateway } from '@/modules/statistics-insights/interface-adapters/gateways/fileSystem/insights.fileSystem.js';
+import type { PersistedInsightsData } from '@/modules/statistics-insights/entities/insight/persistedInsightsData.js';
 
 describe('FileSystemInsightsGateway', () => {
   let gateway: FileSystemInsightsGateway;

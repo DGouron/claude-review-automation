@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   persistedDeveloperMetricsSchema,
   persistedInsightsDataSchema,
-} from '@/entities/insight/persistedInsightsData.schema.js';
+} from '@/modules/statistics-insights/entities/insight/persistedInsightsData.schema.js';
 
 describe('persistedDeveloperMetricsSchema', () => {
   it('should accept valid developer metrics', () => {

@@ -5,7 +5,7 @@ import {
   computeDeveloperMetrics,
   computeTeamMetrics,
   computeCategoryLevels,
-} from '@/usecases/insights/insightLevelComputation.service.js';
+} from '@/modules/statistics-insights/usecases/insights/insightLevelComputation.service.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import type { ReviewStats } from '@/services/statsService.js';
 

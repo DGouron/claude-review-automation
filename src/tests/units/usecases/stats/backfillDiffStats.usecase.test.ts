@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { backfillDiffStats } from '@/usecases/stats/backfillDiffStats.usecase.js';
+import { backfillDiffStats } from '@/modules/statistics-insights/usecases/stats/backfillDiffStats.usecase.js';
 import { InMemoryStatsGateway } from '@/tests/stubs/stats.stub.js';
 import { StubDiffStatsFetchGateway } from '@/tests/stubs/diffStatsFetch.stub.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
-import type { BackfillProgress } from '@/entities/backfill/backfillProgress.js';
+import type { BackfillProgress } from '@/modules/statistics-insights/entities/backfill/backfillProgress.js';
 
 describe('backfillDiffStats', () => {
   beforeEach(() => {

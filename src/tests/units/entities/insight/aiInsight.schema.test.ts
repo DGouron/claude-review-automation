@@ -3,7 +3,7 @@ import {
   aiDeveloperInsightSchema,
   aiTeamInsightSchema,
   aiInsightsResultSchema,
-} from '@/entities/insight/aiInsight.schema.js';
+} from '@/modules/statistics-insights/entities/insight/aiInsight.schema.js';
 
 describe('aiDeveloperInsightSchema', () => {
   it('should validate a valid developer insight', () => {

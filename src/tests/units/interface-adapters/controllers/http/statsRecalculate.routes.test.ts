@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
-import { statsRoutes } from '@/interface-adapters/controllers/http/stats.routes.js';
+import { statsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/stats.routes.js';
 import { InMemoryStatsGateway } from '@/tests/stubs/stats.stub.js';
 import { StubDiffStatsFetchGateway } from '@/tests/stubs/diffStatsFetch.stub.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';

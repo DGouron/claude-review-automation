@@ -1,5 +1,5 @@
-import type { InsightsGateway } from '@/entities/insight/insights.gateway.js';
-import type { PersistedInsightsData } from '@/entities/insight/persistedInsightsData.js';
+import type { InsightsGateway } from '@/modules/statistics-insights/entities/insight/insights.gateway.js';
+import type { PersistedInsightsData } from '@/modules/statistics-insights/entities/insight/persistedInsightsData.js';
 
 export class InMemoryInsightsGateway implements InsightsGateway {
   private storage = new Map<string, PersistedInsightsData>();
