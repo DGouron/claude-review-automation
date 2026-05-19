@@ -1,6 +1,6 @@
 # Event Storming Big Picture — ReviewFlow
 
-*Last update: 2026-03-22*
+*Last update: 2026-05-19*
 
 ## Identified Bounded Contexts
 
@@ -12,13 +12,14 @@
 | **Platform Integration** | gitlab, github, diffMetadata, threadFetch | GitLabMergeRequestEvent, GitHubPullRequestEvent | ✅ Analyzed |
 | **CLI & Configuration** | packageVersion, mcpSettings, language | PackageVersion | ✅ Analyzed |
 | **Data Lifecycle** | cleanup | RetentionPolicy | ✅ Analyzed |
+| **Token Accounting** | tokenUsage, tokenUsageSummary | TokenUsageRecord | ✅ Analyzed |
 
 ### Domain Classification
 
 | Classification | Bounded Contexts | Rationale |
 |----------------|-----------------|-----------|
 | **Core Domain** | Review Execution, Tracking | Unique business value — AI-powered code review lifecycle |
-| **Supporting Domain** | Statistics & Insights, Data Lifecycle | Enhances core but could be replaced |
+| **Supporting Domain** | Statistics & Insights, Data Lifecycle, Token Accounting | Enhances core but could be replaced |
 | **Generic Domain** | Platform Integration, CLI & Configuration | Technical plumbing, no business differentiation |
 
 ## Context Map (Vaughn Vernon patterns)
@@ -38,6 +39,7 @@ graph TB
     subgraph "Supporting Domain"
         Stats["📈 Statistics & Insights<br/><small>ProjectStats, DeveloperInsight,<br/>TeamInsight, AiInsight</small>"]
         Cleanup["🧹 Data Lifecycle<br/><small>RetentionPolicy</small>"]
+        TokenAcct["💰 Token Accounting<br/><small>TokenUsageRecord,<br/>TokenUsageSummary</small>"]
     end
 
     Platform -->|"ACL"| Review
@@ -46,6 +48,7 @@ graph TB
     Tracking -->|"Customer-Supplier"| Stats
     Review -->|"Published Language"| Stats
     Cleanup -->|"Conformist"| Review
+    Review -->|"Customer-Supplier"| TokenAcct
     CLI -.->|"Separate Ways"| Review
     CLI -->|"Open Host Service<br/>(HTTP API)"| Tracking
     Platform -->|"Customer-Supplier"| Stats
@@ -68,6 +71,8 @@ graph TB
 | Platform Integration | Statistics & Insights | **Customer-Supplier** | `DiffStatsFetchGateway` platform-specific implementations used by Stats backfill. |
 | CLI & Configuration | Review Execution | **Separate Ways** | CLI manages daemon lifecycle; review execution is independent once server runs. |
 | CLI & Configuration | Tracking | **Open Host Service** | `FollowupImportants` CLI command triggers followup via HTTP API. |
+| Review Execution | Token Accounting | **Customer-Supplier** | After a `ReviewJob` completes, `claudeInvoker` supplies the `TokenUsage` extracted from the Claude CLI stream and triggers `TrackTokenUsage`. |
+| Platform Integration | Token Accounting | **Conformist** | `TokenUsageRecord` embeds `platform`, `projectPath` and `mrNumber` with no ACL. |
 | (shared) | Tracking ↔ Stats | **Shared Kernel** | `DiffStats` type from `entities/diffStats/` imported by both. |
 
 ## Shared Kernel
@@ -169,6 +174,8 @@ sequenceDiagram
 | DiffStats | Shared Kernel | Commit count, additions, deletions, changed files |
 | RetentionPolicy | Data Lifecycle | Rule for determining data expiration |
 | Thread | Platform Integration | Code comment discussion requiring resolution |
+| TokenUsageRecord | Token Accounting | Immutable ledger entry of Claude token consumption and cost for one ReviewJob |
+| TokenUsageSummary | Token Accounting | Aggregated token consumption and cost across records, broken down by model |
 
 *Full reference: `docs/reference/ubiquitous-language.md`*
 
@@ -186,6 +193,8 @@ sequenceDiagram
 | Large ReviewRequestTrackingGateway | Tracking | 🟡 Low | 12+ methods on a single gateway contract — may benefit from Interface Segregation. |
 | DiffStats cross-domain coupling | Tracking, Statistics | 🟡 Low | Shared type creates implicit coupling between two BCs. |
 | CLI tool dependency | Platform Integration | 🟠 Medium | All platform interactions depend on `glab`/`gh` CLI tools — no REST API fallback. |
+| SummarizeTokenUsage not wired | Token Accounting | 🔴 High | `SummarizeTokenUsageUseCase` has no controller, HTTP route, MCP tool or presenter — the cost-aggregation feature is built but unreachable by any consumer. |
+| Token usage ledger never pruned | Token Accounting, Data Lifecycle | 🟡 Low | `.claude/reviews/usage.jsonl` is append-only and grows without bound — not covered by the Data Lifecycle retention policy. |
 
 ## Architecture Quality Metrics
 
@@ -203,3 +212,4 @@ sequenceDiagram
 | Date | BC analyzed | Key discoveries |
 |------|------------|-----------------|
 | 2026-03-22 | All (global audit) | 6 BCs identified, 37 use cases, 14 gateway contracts. Main hot spot: fat webhook controllers. Architecture is clean with minimal cross-domain coupling (only DiffStats). Strangler Fig migration in progress on reviewContextAction. |
+| 2026-05-19 | Token Accounting | 7th BC identified — cost/token tracking added after the global storming. Supplied by Review Execution (Customer-Supplier). Hot spot: `SummarizeTokenUsage` built but never wired to any consumer. |
