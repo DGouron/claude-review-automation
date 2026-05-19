@@ -1,5 +1,5 @@
 import { createGuard } from '@/shared/foundation/guard.base.js'
-import { npmRegistryResponseSchema, type NpmRegistryResponse } from '@/entities/packageVersion/packageVersion.schema.js'
+import { npmRegistryResponseSchema, type NpmRegistryResponse } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.schema.js'
 
 const npmRegistryResponseGuard = createGuard(npmRegistryResponseSchema)
 

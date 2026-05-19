@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SelfUpdateCliGateway, type SelfUpdateCliDependencies } from '@/interface-adapters/gateways/selfUpdate.cli.gateway.js'
+import { SelfUpdateCliGateway, type SelfUpdateCliDependencies } from '@/modules/cli-configuration/interface-adapters/gateways/selfUpdate.cli.gateway.js'
 import { writePidFile, removePidFile } from '@/shared/services/pidFileManager.js'
 import { PID_FILE_PATH } from '@/shared/services/daemonPaths.js'
 

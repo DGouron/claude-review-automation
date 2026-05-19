@@ -1,6 +1,6 @@
-import type { VersionCheckResult } from '@/entities/packageVersion/packageVersion.js'
-import type { PackageVersionGateway } from '@/entities/packageVersion/packageVersion.gateway.js'
-import type { VersionCachePort } from '@/entities/packageVersion/versionCache.gateway.js'
+import type { VersionCheckResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
+import type { PackageVersionGateway } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.gateway.js'
+import type { VersionCachePort } from '@/modules/cli-configuration/entities/packageVersion/versionCache.gateway.js'
 
 export interface CheckVersionDependencies {
   packageVersionGateway: PackageVersionGateway

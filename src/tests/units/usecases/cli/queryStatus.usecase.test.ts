@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   QueryStatusUseCase,
   type QueryStatusDependencies,
-} from '../../../../usecases/cli/queryStatus.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/queryStatus.usecase.js';
 import { createPidFileContent } from '../../../factories/pidFileContent.factory.js';
 
 function createFakeDeps(

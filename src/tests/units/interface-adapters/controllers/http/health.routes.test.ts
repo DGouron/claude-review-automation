@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import Fastify from 'fastify'
 import type { FastifyInstance } from 'fastify'
-import { healthRoutes } from '@/interface-adapters/controllers/http/health.routes.js'
+import { healthRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/health.routes.js'
 import { StubVersionCache } from '@/tests/stubs/versionCache.stub.js'
 import { PackageVersionFactory } from '@/tests/factories/packageVersion.factory.js'
 

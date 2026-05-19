@@ -1,4 +1,4 @@
-import type { UseCase } from '../../shared/foundation/usecase.base.js';
+import type { UseCase } from '@/shared/foundation/usecase.base.js';
 
 export interface ReadLogsInput {
   lines: number;

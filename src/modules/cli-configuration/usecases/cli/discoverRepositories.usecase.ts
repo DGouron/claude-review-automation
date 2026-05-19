@@ -1,4 +1,4 @@
-import type { UseCase } from '../../shared/foundation/usecase.base.js';
+import type { UseCase } from '@/shared/foundation/usecase.base.js';
 
 interface DirEntry {
   name: string;

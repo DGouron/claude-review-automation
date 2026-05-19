@@ -3,7 +3,7 @@ import {
   WriteInitConfigUseCase,
   type WriteInitConfigDependencies,
   type WriteInitConfigInput,
-} from '../../../../usecases/cli/writeInitConfig.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/writeInitConfig.usecase.js';
 
 function createFakeDeps(
   overrides?: Partial<WriteInitConfigDependencies>,

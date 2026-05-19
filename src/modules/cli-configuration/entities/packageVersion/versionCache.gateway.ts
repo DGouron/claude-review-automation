@@ -1,4 +1,4 @@
-import type { VersionCheckResult } from '@/entities/packageVersion/packageVersion.js'
+import type { VersionCheckResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
 
 export interface VersionCachePort {
   get(): VersionCheckResult | null

@@ -1,10 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify'
-import type { VersionCheckResult, SelfUpdateResult } from '@/entities/packageVersion/packageVersion.js'
-import type { PackageVersionGateway } from '@/entities/packageVersion/packageVersion.gateway.js'
-import type { VersionCachePort } from '@/entities/packageVersion/versionCache.gateway.js'
-import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.gateway.js'
-import type { CheckVersionInput, CheckVersionDependencies } from '@/usecases/version/checkVersion.usecase.js'
-import type { TriggerSelfUpdateDependencies } from '@/usecases/version/triggerSelfUpdate.usecase.js'
+import type { VersionCheckResult, SelfUpdateResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
+import type { PackageVersionGateway } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.gateway.js'
+import type { VersionCachePort } from '@/modules/cli-configuration/entities/packageVersion/versionCache.gateway.js'
+import type { SelfUpdateCommandPort } from '@/modules/cli-configuration/entities/packageVersion/selfUpdateCommand.gateway.js'
+import type { CheckVersionInput, CheckVersionDependencies } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js'
+import type { TriggerSelfUpdateDependencies } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js'
 
 interface VersionRoutesOptions {
   checkVersion: (input: CheckVersionInput, dependencies: CheckVersionDependencies) => Promise<VersionCheckResult>

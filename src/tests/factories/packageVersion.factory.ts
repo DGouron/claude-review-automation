@@ -1,5 +1,5 @@
-import type { VersionCheckResult } from '@/entities/packageVersion/packageVersion.js'
-import type { NpmRegistryResponse } from '@/entities/packageVersion/packageVersion.schema.js'
+import type { VersionCheckResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
+import type { NpmRegistryResponse } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.schema.js'
 
 export class PackageVersionFactory {
   static createVersionCheckResult(overrides?: Partial<VersionCheckResult>): VersionCheckResult {

@@ -2,17 +2,17 @@ import { describe, it, expect } from 'vitest'
 import {
   npmRegistryResponseSchema,
   versionCheckResultSchema,
-} from '@/entities/packageVersion/packageVersion.schema.js'
+} from '@/modules/cli-configuration/entities/packageVersion/packageVersion.schema.js'
 import {
   parseNpmRegistryResponse,
   safeParseNpmRegistryResponse,
   isValidNpmRegistryResponse,
-} from '@/entities/packageVersion/packageVersion.guard.js'
+} from '@/modules/cli-configuration/entities/packageVersion/packageVersion.guard.js'
 import type {
   VersionCheckResult,
   SelfUpdateResult,
   UpdateStatus,
-} from '@/entities/packageVersion/packageVersion.js'
+} from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
 
 describe('npmRegistryResponseSchema', () => {
   it('should validate a valid npm registry response', () => {

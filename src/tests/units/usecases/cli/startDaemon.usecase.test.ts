@@ -3,7 +3,7 @@ import {
   StartDaemonUseCase,
   type StartDaemonDependencies,
   type StartDaemonInput,
-} from '../../../../usecases/cli/startDaemon.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/startDaemon.usecase.js';
 import { createPidFileContent } from '../../../factories/pidFileContent.factory.js';
 
 function createFakeInput(overrides?: Partial<StartDaemonInput>): StartDaemonInput {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   checkInitPrerequisites,
   type CheckInitPrerequisitesDependencies,
-} from '@/usecases/cli/checkInitPrerequisites.js';
+} from '@/modules/cli-configuration/usecases/cli/checkInitPrerequisites.js';
 
 function createFakeDeps(
   overrides?: Partial<CheckInitPrerequisitesDependencies>,

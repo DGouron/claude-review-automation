@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { triggerSelfUpdate } from '@/usecases/version/triggerSelfUpdate.usecase.js'
+import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js'
 import { StubSelfUpdateCommand } from '@/tests/stubs/selfUpdate.stub.js'
 
 describe('triggerSelfUpdate usecase', () => {

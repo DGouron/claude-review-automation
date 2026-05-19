@@ -1,5 +1,5 @@
-import type { VersionCheckResult } from '@/entities/packageVersion/packageVersion.js'
-import type { VersionCachePort } from '@/entities/packageVersion/versionCache.gateway.js'
+import type { VersionCheckResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
+import type { VersionCachePort } from '@/modules/cli-configuration/entities/packageVersion/versionCache.gateway.js'
 
 export class VersionCacheMemoryGateway implements VersionCachePort {
   private cachedResult: VersionCheckResult | null = null

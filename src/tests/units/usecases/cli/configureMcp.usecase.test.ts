@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   ConfigureMcpUseCase,
   type ConfigureMcpDependencies,
-} from '@/usecases/cli/configureMcp.usecase.js';
+} from '@/modules/cli-configuration/usecases/cli/configureMcp.usecase.js';
 
 function createFakeDeps(
   overrides?: Partial<ConfigureMcpDependencies>,

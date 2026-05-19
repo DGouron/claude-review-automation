@@ -1,4 +1,4 @@
-import { hasServerEntry, safeParseMcpSettings } from '@/entities/mcpSettings/mcpSettings.guard.js';
+import { hasServerEntry, safeParseMcpSettings } from '@/modules/cli-configuration/entities/mcpSettings/mcpSettings.guard.js';
 
 export type ConfigureMcpResult = 'configured' | 'already-configured' | 'claude-not-found' | 'validation-failed' | 'failed';
 

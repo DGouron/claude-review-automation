@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import Fastify from 'fastify'
 import type { FastifyInstance } from 'fastify'
-import { versionRoutes } from '@/interface-adapters/controllers/http/version.routes.js'
+import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js'
 import { StubPackageVersionGateway } from '@/tests/stubs/packageVersion.stub.js'
 import { StubVersionCache } from '@/tests/stubs/versionCache.stub.js'
 import { StubSelfUpdateCommand } from '@/tests/stubs/selfUpdate.stub.js'
-import { checkVersion } from '@/usecases/version/checkVersion.usecase.js'
-import { triggerSelfUpdate } from '@/usecases/version/triggerSelfUpdate.usecase.js'
+import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js'
+import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js'
 
 describe('version routes', () => {
   let application: FastifyInstance

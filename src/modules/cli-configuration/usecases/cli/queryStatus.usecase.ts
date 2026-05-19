@@ -1,5 +1,5 @@
-import type { UseCase } from '../../shared/foundation/usecase.base.js';
-import type { PidFileContent } from '../../shared/services/pidFileManager.js';
+import type { UseCase } from '@/shared/foundation/usecase.base.js';
+import type { PidFileContent } from '@/shared/services/pidFileManager.js';
 
 export interface QueryStatusDependencies {
   readPidFile: () => PidFileContent | null;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { FollowupImportantsUseCase } from '../../../../usecases/cli/followupImportants.usecase.js';
+import { FollowupImportantsUseCase } from '@/modules/cli-configuration/usecases/cli/followupImportants.usecase.js';
 
 function createMockFetch(response: object) {
   return vi.fn().mockResolvedValue({

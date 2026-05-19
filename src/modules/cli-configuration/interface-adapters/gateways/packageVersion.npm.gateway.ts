@@ -1,5 +1,5 @@
-import type { PackageVersionGateway } from '@/entities/packageVersion/packageVersion.gateway.js'
-import { safeParseNpmRegistryResponse } from '@/entities/packageVersion/packageVersion.guard.js'
+import type { PackageVersionGateway } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.gateway.js'
+import { safeParseNpmRegistryResponse } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.guard.js'
 
 export class NpmPackageVersionGateway implements PackageVersionGateway {
   private readonly registryUrl: string

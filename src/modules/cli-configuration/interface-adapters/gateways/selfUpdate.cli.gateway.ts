@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { SelfUpdateCommandPort } from '@/entities/packageVersion/selfUpdateCommand.gateway.js'
+import type { SelfUpdateCommandPort } from '@/modules/cli-configuration/entities/packageVersion/selfUpdateCommand.gateway.js'
 import { readPidFile, removePidFile } from '@/shared/services/pidFileManager.js'
 import { PID_FILE_PATH } from '@/shared/services/daemonPaths.js'
 

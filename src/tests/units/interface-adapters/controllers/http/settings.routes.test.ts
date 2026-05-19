@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import Fastify from 'fastify'
 import type { FastifyInstance } from 'fastify'
-import { settingsRoutes } from '@/interface-adapters/controllers/http/settings.routes.js'
+import { settingsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/settings.routes.js'
 import { setModel } from '@/frameworks/settings/runtimeSettings.js'
 
 describe('settings routes', () => {
