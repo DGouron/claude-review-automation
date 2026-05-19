@@ -2,7 +2,7 @@ import { createGuard } from '@/shared/foundation/guard.base.js';
 import { persistedInsightsDataSchema } from '@/modules/statistics-insights/entities/insight/persistedInsightsData.schema.js';
 import type { PersistedInsightsData } from '@/modules/statistics-insights/entities/insight/persistedInsightsData.js';
 
-export const persistedInsightsDataGuard = createGuard(persistedInsightsDataSchema);
+export const persistedInsightsDataGuard = createGuard(persistedInsightsDataSchema, 'persistedInsightsData');
 
 export function parsePersistedInsightsData(data: unknown): PersistedInsightsData {
   return persistedInsightsDataGuard.parse(data);

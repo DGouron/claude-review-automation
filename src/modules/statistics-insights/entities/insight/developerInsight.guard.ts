@@ -2,7 +2,7 @@ import { createGuard } from '@/shared/foundation/guard.base.js';
 import { developerInsightSchema } from '@/modules/statistics-insights/entities/insight/developerInsight.schema.js';
 import type { DeveloperInsight } from '@/modules/statistics-insights/entities/insight/developerInsight.js';
 
-export const developerInsightGuard = createGuard(developerInsightSchema);
+export const developerInsightGuard = createGuard(developerInsightSchema, 'developerInsight');
 
 export function parseDeveloperInsight(data: unknown): DeveloperInsight {
   return developerInsightGuard.parse(data);

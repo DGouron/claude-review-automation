@@ -10,7 +10,7 @@ describe('createGuard', () => {
 
   describe('parse', () => {
     it('should return parsed data when input is valid', () => {
-      const guard = createGuard(testSchema)
+      const guard = createGuard(testSchema, 'test')
       const input = { name: 'John', age: 30 }
 
       const result = guard.parse(input)
@@ -19,7 +19,7 @@ describe('createGuard', () => {
     })
 
     it('should throw ZodError when input is invalid', () => {
-      const guard = createGuard(testSchema)
+      const guard = createGuard(testSchema, 'test')
       const invalidInput = { name: 'John', age: 'not a number' }
 
       expect(() => guard.parse(invalidInput)).toThrow()
@@ -28,7 +28,7 @@ describe('createGuard', () => {
 
   describe('safeParse', () => {
     it('should return success result when input is valid', () => {
-      const guard = createGuard(testSchema)
+      const guard = createGuard(testSchema, 'test')
       const input = { name: 'John', age: 30 }
 
       const result = guard.safeParse(input)
@@ -40,7 +40,7 @@ describe('createGuard', () => {
     })
 
     it('should return failure result when input is invalid', () => {
-      const guard = createGuard(testSchema)
+      const guard = createGuard(testSchema, 'test')
       const invalidInput = { name: 'John', age: 'not a number' }
 
       const result = guard.safeParse(invalidInput)

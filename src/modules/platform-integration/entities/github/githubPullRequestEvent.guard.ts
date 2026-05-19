@@ -26,6 +26,6 @@ const gitHubPullRequestEventSchema = z.object({
   label: z.object({ name: z.string() }).optional(),
 })
 
-export const gitHubPullRequestEventGuard = createGuard(gitHubPullRequestEventSchema)
+export const gitHubPullRequestEventGuard = createGuard(gitHubPullRequestEventSchema, 'gitHubPullRequestEvent')
 
 export type GitHubPullRequestEvent = z.infer<typeof gitHubPullRequestEventSchema>
