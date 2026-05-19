@@ -3,17 +3,23 @@ import { execSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Run integration tests against the TypeScript source via tsx — avoids the
+// requirement of a prior `yarn build`, keeping the tests stable in fresh
+// checkouts and on CI without a build step.
 const currentDir = dirname(fileURLToPath(import.meta.url));
-const cliPath = join(currentDir, '../../../../dist/main/cli.js');
+const repoRoot = join(currentDir, '../../../..');
+const tsxBin = join(repoRoot, 'node_modules/.bin/tsx');
+const cliSrc = join(repoRoot, 'src/main/cli.ts');
+const cliCommand = `${tsxBin} ${cliSrc}`;
 
 describe('CLI integration', () => {
   it('should print version when called with --version', () => {
-    const output = execSync(`node ${cliPath} --version`).toString().trim();
+    const output = execSync(`${cliCommand} --version`).toString().trim();
     expect(output).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it('should print help when called with --help', () => {
-    const output = execSync(`node ${cliPath} --help`).toString();
+    const output = execSync(`${cliCommand} --help`).toString();
     expect(output).toContain('reviewflow');
     expect(output).toContain('start');
     expect(output).toContain('stop');
@@ -27,7 +33,7 @@ describe('CLI integration', () => {
 
   it('should exit with code 1 when status is checked and server is not running', () => {
     try {
-      execSync(`node ${cliPath} status`, { env: { ...process.env, NO_COLOR: '1' } });
+      execSync(`${cliCommand} status`, { env: { ...process.env, NO_COLOR: '1' } });
       expect.unreachable('should have thrown');
     } catch (error) {
       const execError = error as { status: number; stdout: Buffer };
@@ -38,7 +44,7 @@ describe('CLI integration', () => {
 
   it('should output JSON for status --json when stopped', () => {
     try {
-      execSync(`node ${cliPath} status --json`);
+      execSync(`${cliCommand} status --json`);
       expect.unreachable('should have thrown');
     } catch (error) {
       const execError = error as { status: number; stdout: Buffer };
