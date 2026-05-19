@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import type { Dependencies } from '@/main/dependencies.js';
 import { healthRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/health.routes.js';
 import { settingsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/settings.routes.js';
-import { reviewRoutes } from '@/interface-adapters/controllers/http/reviews.routes.js';
+import { reviewRoutes } from '@/modules/review-execution/interface-adapters/controllers/http/reviews.routes.js';
 import { statsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/stats.routes.js';
 import { mrTrackingRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.js';
 import { mrTrackingAdvancedRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTrackingAdvanced.routes.js';

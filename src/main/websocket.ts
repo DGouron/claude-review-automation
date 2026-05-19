@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import type { ReviewProgress, ProgressEvent } from '../entities/progress/progress.type.js';
+import type { ReviewProgress, ProgressEvent } from '@/modules/review-execution/entities/progress/progress.type.js';
 import type { BackfillProgress } from '@/modules/statistics-insights/entities/backfill/backfillProgress.js';
 import type { Dependencies } from './dependencies.js';
 import { getJobsStatus, setProgressChangeCallback, setStateChangeCallback, updateJobProgress } from '../frameworks/queue/pQueueAdapter.js';

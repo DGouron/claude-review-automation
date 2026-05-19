@@ -1,12 +1,12 @@
-import type { ReviewContextGateway, UpdateResult } from '../../entities/reviewContext/reviewContext.gateway.js'
+import type { ReviewContextGateway, UpdateResult } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js'
 import type {
   CreateReviewContextInput,
   CreateReviewContextResult,
   DeleteReviewContextResult,
   ReviewContext,
   ReviewContextProgress,
-} from '../../entities/reviewContext/reviewContext.js'
-import type { ReviewContextAction, ReviewContextResult } from '../../entities/reviewContext/reviewContextAction.schema.js'
+} from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
+import type { ReviewContextAction, ReviewContextResult } from '@/modules/review-execution/entities/reviewContext/reviewContextAction.schema.js'
 import { ReviewContextFactory } from '../factories/reviewContext.factory.js'
 
 export class StubReviewContextGateway implements ReviewContextGateway {

@@ -1,4 +1,4 @@
-import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile.gateway.js';
+import type { ReviewFileGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewFile.gateway.js';
 import type { ReviewLogFileGateway } from '@/modules/data-lifecycle/interface-adapters/gateways/reviewLogFile.gateway.js';
 import { RetentionPolicy } from '@/modules/data-lifecycle/entities/cleanup/retentionPolicy.valueObject.js';
 

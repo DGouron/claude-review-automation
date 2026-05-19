@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { JobContextMemoryGateway } from "../../../../interface-adapters/gateways/jobContext.memory.gateway.js";
-import { ReviewContextFileSystemGateway } from "../../../../interface-adapters/gateways/reviewContext.fileSystem.gateway.js";
-import { getThreads } from "../../../../usecases/mcp/getThreads.usecase.js";
+import { JobContextMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/jobContext.memory.gateway.js";
+import { ReviewContextFileSystemGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js";
+import { getThreads } from "@/modules/review-execution/usecases/mcp/getThreads.usecase.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";

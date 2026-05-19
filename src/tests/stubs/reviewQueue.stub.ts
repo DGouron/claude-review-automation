@@ -1,6 +1,6 @@
 import type { ReviewJob } from '../../frameworks/queue/pQueueAdapter.js';
-import type { ReviewQueuePort } from '../../usecases/triggerReview.usecase.js';
-import type { CancelReviewQueuePort } from '../../usecases/cancelReview.usecase.js';
+import type { ReviewQueuePort } from '@/modules/review-execution/usecases/triggerReview.usecase.js';
+import type { CancelReviewQueuePort } from '@/modules/review-execution/usecases/cancelReview.usecase.js';
 
 type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 

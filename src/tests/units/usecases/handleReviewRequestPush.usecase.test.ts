@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   handleReviewRequestPush,
   type HandleReviewRequestPushParams,
-} from '../../../usecases/handleReviewRequestPush.usecase.js';
+} from '@/modules/review-execution/usecases/handleReviewRequestPush.usecase.js';
 import { StubReviewQueuePort } from '../../stubs/reviewQueue.stub.js';
 import { InMemoryReviewRequestTrackingGateway } from '../../stubs/reviewRequestTracking.stub.js';
 import { createStubLogger } from '../../stubs/logger.stub.js';

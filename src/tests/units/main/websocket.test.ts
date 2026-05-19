@@ -17,8 +17,8 @@ import {
   stopWatchingReviewContext,
 } from '../../../main/websocket.js'
 import { updateJobProgress } from '../../../frameworks/queue/pQueueAdapter.js'
-import type { ReviewContextProgress } from '../../../entities/reviewContext/reviewContext.js'
-import type { ReviewProgress } from '../../../entities/progress/progress.type.js'
+import type { ReviewContextProgress } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
+import type { ReviewProgress } from '@/modules/review-execution/entities/progress/progress.type.js'
 
 function createMockDeps() {
   return {

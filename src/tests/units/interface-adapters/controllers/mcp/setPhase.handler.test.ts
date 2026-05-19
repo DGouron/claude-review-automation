@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ReviewProgressMemoryGateway } from "../../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
-import { createSetPhaseHandler } from "../../../../../interface-adapters/controllers/mcp/setPhase.handler.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { createSetPhaseHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/setPhase.handler.js";
 
 describe("setPhase handler", () => {
 	it("should return success when setting a valid phase", () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ReviewProgressMemoryGateway } from "../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
-import { completeAgent } from "../../../../usecases/mcp/completeAgent.usecase.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { completeAgent } from "@/modules/review-execution/usecases/mcp/completeAgent.usecase.js";
 
 describe("completeAgent usecase", () => {
 	it("should complete a running agent with success status", () => {

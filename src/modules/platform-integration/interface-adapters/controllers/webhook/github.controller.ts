@@ -21,8 +21,8 @@ import { executeActionsFromContext } from '@/services/contextActionsExecutor.js'
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';
-import { DEFAULT_AGENTS } from '@/entities/progress/agentDefinition.type.js';
-import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
+import { DEFAULT_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
+import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/entities/diffMetadata/diffMetadata.gateway.js';
 import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
@@ -214,7 +214,7 @@ export async function handleGitHubWebhook(
 
     try {
       const threads = threadFetchGateway.fetchThreads(j.projectPath, j.mrNumber);
-      let diffMetadata: import('@/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+      let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
       try {
         diffMetadata = diffMetadataFetchGateway.fetchDiffMetadata(j.projectPath, j.mrNumber);
       } catch (error) {

@@ -1,4 +1,4 @@
-import type { ExecutionResult, CommandExecutor } from '../../entities/reviewAction/reviewAction.gateway.js'
+import type { ExecutionResult, CommandExecutor } from '@/modules/review-execution/entities/reviewAction/reviewAction.gateway.js'
 
 export interface CommandInfo {
   command: string

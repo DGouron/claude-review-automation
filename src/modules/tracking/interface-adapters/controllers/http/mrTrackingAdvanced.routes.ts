@@ -3,7 +3,7 @@ import type { RepositoryConfig } from '@/config/loader.js';
 import { logInfo, logError } from '@/frameworks/logging/logBuffer.js';
 import { enqueueReview, createJobId, updateJobProgress } from '@/frameworks/queue/pQueueAdapter.js';
 import { loadProjectConfig, getFollowupAgents } from '@/config/projectConfig.js';
-import { DEFAULT_FOLLOWUP_AGENTS } from '@/entities/progress/agentDefinition.type.js';
+import { DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
 import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
@@ -11,7 +11,7 @@ import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThr
 import { parseReviewOutput } from '@/services/statsService.js';
 import { parseThreadActions } from '@/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
-import { ReviewContextFileSystemGateway } from '@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
+import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
@@ -116,7 +116,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
 
       try {
         const threads = threadFetchGateway.fetchThreads(job.projectPath, job.mrNumber);
-        let diffMetadata: import('@/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+        let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
         try {
           diffMetadata = diffMetadataFetchGateway.fetchDiffMetadata(job.projectPath, job.mrNumber);
         } catch (error) {

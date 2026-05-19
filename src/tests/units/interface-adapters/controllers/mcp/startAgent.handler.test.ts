@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ReviewProgressMemoryGateway } from "../../../../../interface-adapters/gateways/reviewProgress.memory.gateway.js";
-import { createStartAgentHandler } from "../../../../../interface-adapters/controllers/mcp/startAgent.handler.js";
+import { ReviewProgressMemoryGateway } from "@/modules/review-execution/interface-adapters/gateways/reviewProgress.memory.gateway.js";
+import { createStartAgentHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/startAgent.handler.js";
 
 describe("startAgent handler", () => {
 	it("should return success when starting a pending agent", () => {

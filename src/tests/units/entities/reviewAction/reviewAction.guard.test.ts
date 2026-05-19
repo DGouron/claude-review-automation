@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseReviewAction, isValidReviewAction } from '../../../../entities/reviewAction/reviewAction.guard.js'
+import { parseReviewAction, isValidReviewAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.guard.js'
 
 describe('reviewAction.guard', () => {
   describe('isValidReviewAction', () => {

@@ -1,8 +1,8 @@
 import { execSync } from 'node:child_process'
-import type { ReviewAction } from '../entities/reviewAction/reviewAction.js'
-import { GitLabReviewActionCliGateway } from '../interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
-import { GitHubReviewActionCliGateway } from '../interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
-import type { ExecutionResult, CommandExecutor, ExecutionContext as GatewayExecutionContext } from '../entities/reviewAction/reviewAction.gateway.js'
+import type { ReviewAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
+import { GitLabReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
+import { GitHubReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
+import type { ExecutionResult, CommandExecutor, ExecutionContext as GatewayExecutionContext } from '@/modules/review-execution/entities/reviewAction/reviewAction.gateway.js'
 
 const COMMAND_TIMEOUT_MS = 30000
 
@@ -16,7 +16,7 @@ export interface ExecutionContext {
   projectPath: string
   mrNumber: number
   localPath: string
-  diffMetadata?: import('../entities/reviewContext/reviewContext.js').DiffMetadata
+  diffMetadata?: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata
 }
 
 export type { ExecutionResult, CommandExecutor }

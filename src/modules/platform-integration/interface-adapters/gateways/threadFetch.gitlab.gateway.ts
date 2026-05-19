@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js'
-import type { ReviewContextThread } from '@/entities/reviewContext/reviewContext.js'
+import type { ReviewContextThread } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
 export type CommandExecutor = (command: string) => string
 

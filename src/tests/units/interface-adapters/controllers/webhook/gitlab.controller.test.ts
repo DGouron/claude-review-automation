@@ -55,7 +55,7 @@ vi.mock('@/config/projectConfig.js', () => ({
   getProjectLanguage: vi.fn(() => 'en'),
 }));
 
-vi.mock('@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({
+vi.mock('@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js', () => ({
   ReviewContextFileSystemGateway: vi.fn().mockImplementation(() => ({
     create: vi.fn(),
     read: vi.fn(() => null),

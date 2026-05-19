@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { GitLabReviewActionCliGateway } from '../../../../../interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
-import type { ReviewAction } from '../../../../../entities/reviewAction/reviewAction.js'
+import { GitLabReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
+import type { ReviewAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
 
 describe('GitLabReviewActionCliGateway', () => {
   it('should execute THREAD_RESOLVE action with correct glab command', async () => {

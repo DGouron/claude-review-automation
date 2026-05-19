@@ -1,5 +1,5 @@
 import type { GitHubPullRequestEvent } from '../controllers/webhook/eventFilter.js';
-import type { ReviewRequest, ReviewRequestState } from '@/entities/reviewRequest/reviewRequest.entity.js';
+import type { ReviewRequest, ReviewRequestState } from '@/modules/review-execution/entities/reviewRequest/reviewRequest.entity.js';
 
 function mapGitHubState(state: string, merged?: boolean): ReviewRequestState {
   if (merged) return 'merged';

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { cancelReview } from '../../../usecases/cancelReview.usecase.js';
+import { cancelReview } from '@/modules/review-execution/usecases/cancelReview.usecase.js';
 import { StubReviewQueuePort } from '../../stubs/reviewQueue.stub.js';
 import { createStubLogger } from '../../stubs/logger.stub.js';
 

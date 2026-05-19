@@ -20,13 +20,13 @@ import type { TransitionStateUseCase } from '@/modules/tracking/usecases/trackin
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
-import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/entities/progress/agentDefinition.type.js';
+import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '@/services/statsService.js';
 import { parseThreadActions } from '@/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
 import { executeActionsFromContext } from '@/services/contextActionsExecutor.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
-import type { ReviewContextGateway } from '@/entities/reviewContext/reviewContext.gateway.js';
+import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/entities/diffMetadata/diffMetadata.gateway.js';
 import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
@@ -257,7 +257,7 @@ export async function handleGitLabWebhook(
 
             try {
               const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
-              let diffMetadata: import('@/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+              let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
               try {
                 diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
               } catch (error) {
@@ -493,7 +493,7 @@ export async function handleGitLabWebhook(
 
     try {
       const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
-      let diffMetadata: import('@/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+      let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
       try {
         diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
       } catch (error) {

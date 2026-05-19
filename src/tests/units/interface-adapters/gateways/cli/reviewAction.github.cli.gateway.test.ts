@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { GitHubReviewActionCliGateway } from '../../../../../interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
-import type { ReviewAction } from '../../../../../entities/reviewAction/reviewAction.js'
+import { GitHubReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
+import type { ReviewAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
 
 describe('GitHubReviewActionCliGateway', () => {
   it('should execute THREAD_RESOLVE action with gh graphql mutation', async () => {
