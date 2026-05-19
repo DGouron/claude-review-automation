@@ -1,22 +1,22 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { RepositoryConfig } from '../../../config/loader.js';
-import { logInfo, logError } from '../../../frameworks/logging/logBuffer.js';
-import { enqueueReview, createJobId, updateJobProgress } from '../../../frameworks/queue/pQueueAdapter.js';
-import { loadProjectConfig, getFollowupAgents } from '../../../config/projectConfig.js';
-import { DEFAULT_FOLLOWUP_AGENTS } from '../../../entities/progress/agentDefinition.type.js';
-import { invokeClaudeReview, sendNotification } from '../../../claude/invoker.js';
+import type { RepositoryConfig } from '@/config/loader.js';
+import { logInfo, logError } from '@/frameworks/logging/logBuffer.js';
+import { enqueueReview, createJobId, updateJobProgress } from '@/frameworks/queue/pQueueAdapter.js';
+import { loadProjectConfig, getFollowupAgents } from '@/config/projectConfig.js';
+import { DEFAULT_FOLLOWUP_AGENTS } from '@/entities/progress/agentDefinition.type.js';
+import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
-import { RecordReviewCompletionUseCase } from '../../../usecases/tracking/recordReviewCompletion.usecase.js';
-import { SyncThreadsUseCase } from '../../../usecases/tracking/syncThreads.usecase.js';
-import { parseReviewOutput } from '../../../services/statsService.js';
-import { parseThreadActions } from '../../../services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '../../../services/threadActionsExecutor.js';
-import { ReviewContextFileSystemGateway } from '../../gateways/reviewContext.fileSystem.gateway.js';
+import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
+import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import { parseReviewOutput } from '@/services/statsService.js';
+import { parseThreadActions } from '@/services/threadActionsParser.js';
+import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
+import { ReviewContextFileSystemGateway } from '@/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
-import { startWatchingReviewContext, stopWatchingReviewContext } from '../../../main/websocket.js';
+import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 import { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
@@ -116,7 +116,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
 
       try {
         const threads = threadFetchGateway.fetchThreads(job.projectPath, job.mrNumber);
-        let diffMetadata: import('../../../entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+        let diffMetadata: import('@/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
         try {
           diffMetadata = diffMetadataFetchGateway.fetchDiffMetadata(job.projectPath, job.mrNumber);
         } catch (error) {
@@ -316,7 +316,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
       repos = getRepositories().filter(r => r.enabled);
     }
 
-    const candidates: Array<{ mr: import('../../../entities/tracking/trackedMr.js').TrackedMr; projectPath: string }> = [];
+    const candidates: Array<{ mr: import('@/modules/tracking/entities/tracking/trackedMr.js').TrackedMr; projectPath: string }> = [];
     for (const repo of repos) {
       const mrs = reviewRequestTrackingGateway.getByState(repo.localPath, 'pending-approval');
       for (const mr of mrs) {

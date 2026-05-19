@@ -59,7 +59,7 @@ import { createStubLogger } from '../../../../stubs/logger.stub.js';
 import { enqueueReview } from '../../../../../frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview } from '../../../../../claude/invoker.js';
 import { TrackedMrFactory } from '../../../../factories/trackedMr.factory.js';
-import type { TrackedMr } from '../../../../../entities/tracking/trackedMr.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 
 function createMockDeps(): GitHubWebhookDependencies {
   return {

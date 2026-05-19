@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RecordReviewCompletionUseCase } from '../../../../usecases/tracking/recordReviewCompletion.usecase.js';
+import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
 import { InMemoryReviewRequestTrackingGateway } from '../../../stubs/reviewRequestTracking.stub.js';
 import { TrackedMrFactory } from '../../../factories/trackedMr.factory.js';
 import { DiffStatsFactory } from '@/tests/factories/diffStats.factory.js';

@@ -12,13 +12,13 @@ import {
   type ReviewJob,
 } from '@/frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
-import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
-import type { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
-import type { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
-import type { RecordPushUseCase } from '@/usecases/tracking/recordPush.usecase.js';
-import type { TransitionStateUseCase } from '@/usecases/tracking/transitionState.usecase.js';
-import type { CheckFollowupNeededUseCase } from '@/usecases/tracking/checkFollowupNeeded.usecase.js';
-import type { SyncThreadsUseCase } from '@/usecases/tracking/syncThreads.usecase.js';
+import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
+import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
+import type { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPush.usecase.js';
+import type { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
+import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
+import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '@/services/statsService.js';

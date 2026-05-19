@@ -1,5 +1,5 @@
 import type { ReviewStats } from '@/modules/statistics-insights/entities/stats/projectStats.js';
-import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 interface DeveloperData {

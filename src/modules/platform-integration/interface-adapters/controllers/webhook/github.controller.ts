@@ -11,9 +11,9 @@ import {
   cancelJob,
   type ReviewJob,
 } from '@/frameworks/queue/pQueueAdapter.js';
-import type { ReviewRequestTrackingGateway } from '@/interface-adapters/gateways/reviewRequestTracking.gateway.js';
-import type { TrackAssignmentUseCase } from '@/usecases/tracking/trackAssignment.usecase.js';
-import type { RecordReviewCompletionUseCase } from '@/usecases/tracking/recordReviewCompletion.usecase.js';
+import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
+import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
+import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
 import { parseReviewOutput } from '@/services/statsService.js';
 import { parseThreadActions } from '@/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';

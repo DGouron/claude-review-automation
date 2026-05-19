@@ -1,5 +1,5 @@
-import type { TrackedMr } from '@/entities/tracking/trackedMr.js';
-import type { ProjectStats } from '@/entities/tracking/mrTrackingData.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
+import type { ProjectStats } from '@/modules/tracking/entities/tracking/mrTrackingData.js';
 
 export class ProjectStatsCalculator {
   compute(mrs: TrackedMr[]): ProjectStats {

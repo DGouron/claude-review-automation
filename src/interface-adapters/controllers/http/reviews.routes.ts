@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { Logger } from 'pino';
 import type { ReviewFileGateway } from '../../gateways/reviewFile.gateway.js';
-import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
+import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import { cancelReview } from '../../../usecases/cancelReview.usecase.js';
 import type { CancelReviewQueuePort } from '../../../usecases/cancelReview.usecase.js';
 import { sanitizeJobId } from '../../../shared/services/mcpJobContext.js';

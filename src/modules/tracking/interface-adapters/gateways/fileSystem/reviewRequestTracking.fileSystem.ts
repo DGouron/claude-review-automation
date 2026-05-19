@@ -4,9 +4,9 @@ import type {
   ReviewRequestTrackingGateway,
   Platform,
 } from '../reviewRequestTracking.gateway.js';
-import { createEmptyStats, type MrTrackingData } from '../../../entities/tracking/mrTrackingData.js';
-import type { TrackedMr } from '../../../entities/tracking/trackedMr.js';
-import type { ReviewEvent } from '../../../entities/tracking/reviewEvent.js';
+import { createEmptyStats, type MrTrackingData } from '@/modules/tracking/entities/tracking/mrTrackingData.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
+import type { ReviewEvent } from '@/modules/tracking/entities/tracking/reviewEvent.js';
 import type { ProjectStatsCalculator } from '@/modules/statistics-insights/interface-adapters/presenters/projectStats.calculator.js';
 
 function getTrackingPath(projectPath: string): string {
