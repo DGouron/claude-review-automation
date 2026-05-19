@@ -13,7 +13,7 @@ import { mrTrackingAdvancedRoutes } from '@/interface-adapters/controllers/http/
 import { logsRoutes } from '@/interface-adapters/controllers/http/logs.routes.js';
 import { cliStatusRoutes } from '@/interface-adapters/controllers/http/cliStatus.routes.js';
 import { projectConfigRoutes } from '@/interface-adapters/controllers/http/projectConfig.routes.js';
-import { cleanupRoutes } from '@/interface-adapters/controllers/http/cleanup.routes.js';
+import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/interface-adapters/controllers/http/version.routes.js';
 import { insightsRoutes } from '@/interface-adapters/controllers/http/insights.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';

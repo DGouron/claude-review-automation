@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { Logger } from 'pino';
 import type { ReviewFileGateway } from '@/interface-adapters/gateways/reviewFile.gateway.js';
-import type { ReviewLogFileGateway } from '@/interface-adapters/gateways/reviewLogFile.gateway.js';
-import { cleanupExpiredReviews } from '@/usecases/cleanup/cleanupExpiredReviews.usecase.js';
+import type { ReviewLogFileGateway } from '@/modules/data-lifecycle/interface-adapters/gateways/reviewLogFile.gateway.js';
+import { cleanupExpiredReviews } from '@/modules/data-lifecycle/usecases/cleanup/cleanupExpiredReviews.usecase.js';
 import { getProjectRetentionDays } from '@/config/projectConfig.js';
 
 interface CleanupRoutesOptions {

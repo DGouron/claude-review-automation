@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { cleanupRoutes } from '@/interface-adapters/controllers/http/cleanup.routes.js';
+import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { InMemoryReviewFileGateway } from '@/tests/stubs/reviewFile.stub.js';
 import { InMemoryReviewLogFileGateway } from '@/tests/stubs/reviewLogFile.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';

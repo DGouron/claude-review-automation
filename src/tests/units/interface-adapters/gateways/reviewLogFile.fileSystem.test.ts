@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { FileSystemReviewLogFileGateway } from '@/interface-adapters/gateways/fileSystem/reviewLogFile.fileSystem.gateway.js';
+import { FileSystemReviewLogFileGateway } from '@/modules/data-lifecycle/interface-adapters/gateways/fileSystem/reviewLogFile.fileSystem.gateway.js';
 
 describe('FileSystemReviewLogFileGateway', () => {
   let tempDirectory: string;
