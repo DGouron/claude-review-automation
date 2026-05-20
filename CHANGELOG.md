@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.11.0...reviewflow-v3.12.0) (2026-05-20)
+
+
+### Added
+
+* **webhook:** implement spec-46 github followup review on push ([#165](https://github.com/DGouron/review-flow/issues/165)) ([379ec4a](https://github.com/DGouron/review-flow/commit/379ec4aa33560eb6cf2767e85386554575161ec0)), closes [#46](https://github.com/DGouron/review-flow/issues/46)
+
+
+### Fixed
+
+* [#156](https://github.com/DGouron/review-flow/issues/156) detect source-checkout installs to stop the false dashboard update flow ([#166](https://github.com/DGouron/review-flow/issues/166)) ([4c48038](https://github.com/DGouron/review-flow/commit/4c480383d33205d8e2f3b38e0066225aafd2cf62))
+
 ## [3.11.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.10.1...reviewflow-v3.11.0) (2026-05-20)
 
 
