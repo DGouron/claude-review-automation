@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createDependencies } from '../../../main/dependencies.js';
 import { createTestConfig } from '../../factories/config.factory.js';
-import { ReviewContextWatcherService } from '../../../services/reviewContextWatcher.service.js';
+import { ReviewContextWatcherService } from '@/modules/review-execution/services/reviewContextWatcher.service.js';
 import { ReviewContextProgressPresenter } from '@/modules/review-execution/interface-adapters/presenters/reviewContextProgress.presenter.js';
 
 describe('createDependencies', () => {

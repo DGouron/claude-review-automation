@@ -21,10 +21,10 @@ import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tra
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
-import { parseReviewOutput } from '@/services/statsService.js';
-import { parseThreadActions } from '@/services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
-import { executeActionsFromContext } from '@/services/contextActionsExecutor.js';
+import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
+import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
+import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';

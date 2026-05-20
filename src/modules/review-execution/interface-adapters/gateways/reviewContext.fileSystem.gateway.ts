@@ -8,8 +8,9 @@ import type {
   ReviewContext,
   ReviewContextProgress,
 } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
-import { buildAgentInstructions } from '@/services/agentInstructionsBuilder.js'
-import type { ReviewContextAction, ReviewContextResult } from '@/modules/review-execution/entities/reviewContext/reviewContextAction.schema.js'
+import { buildAgentInstructions } from '@/modules/review-execution/services/agentInstructionsBuilder.js'
+import type { ReviewContextAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
+import type { ReviewContextResult } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.schema.js'
 
 export class ReviewContextFileSystemGateway implements ReviewContextGateway {
   getFilePath(localPath: string, mergeRequestId: string): string {

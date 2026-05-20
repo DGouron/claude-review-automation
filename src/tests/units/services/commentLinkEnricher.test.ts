@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { enrichCommentWithLinks } from '@/services/commentLinkEnricher.js'
+import { enrichCommentWithLinks } from '@/modules/review-execution/services/commentLinkEnricher.js'
 
 const BASE_URL = 'https://gitlab.example.com'
 const PROJECT_PATH = 'my-org/my-project'

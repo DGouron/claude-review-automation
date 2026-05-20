@@ -5,7 +5,8 @@ import type {
   ReviewContext,
   ReviewContextProgress,
 } from './reviewContext.js'
-import type { ReviewContextAction, ReviewContextResult } from './reviewContextAction.schema.js'
+import type { ReviewContextAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
+import type { ReviewContextResult } from './reviewContextResult.schema.js'
 
 export interface UpdateResult {
   success: boolean

@@ -8,12 +8,12 @@ import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
 import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
-import { parseReviewOutput } from '@/services/statsService.js';
-import { parseThreadActions } from '@/services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '@/services/threadActionsExecutor.js';
+import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
+import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
+import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
-import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
-import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
+import type { GitHubThreadFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
+import type { GitLabThreadFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
@@ -21,9 +21,23 @@ import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/inter
 import { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
 
-interface MrTrackingAdvancedRoutesOptions {
+type Platform = 'gitlab' | 'github';
+
+export interface MrTrackingAdvancedRoutesOptions {
   getRepositories: () => RepositoryConfig[];
   reviewRequestTrackingGateway: ReviewRequestTrackingGateway;
+  reviewContextGateway: ReviewContextFileSystemGateway;
+  threadFetchGatewayFactory: (
+    platform: Platform,
+  ) => GitHubThreadFetchGateway | GitLabThreadFetchGateway;
+  diffMetadataFetchGatewayFactory: (
+    platform: Platform,
+  ) => GitHubDiffMetadataFetchGateway | GitLabDiffMetadataFetchGateway;
+  diffStatsFetchGatewayFactory: (
+    platform: Platform,
+  ) => GitHubDiffStatsFetchGateway | GitLabDiffStatsFetchGateway;
+  createSyncThreadsUseCase: (platform: Platform) => SyncThreadsUseCase;
+  recordReviewCompletion: RecordReviewCompletionUseCase;
   logger: Logger;
 }
 
@@ -44,7 +58,17 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
   fastify,
   opts
 ) => {
-  const { getRepositories, reviewRequestTrackingGateway, logger } = opts;
+  const {
+    getRepositories,
+    reviewRequestTrackingGateway,
+    reviewContextGateway: contextGateway,
+    threadFetchGatewayFactory,
+    diffMetadataFetchGatewayFactory,
+    diffStatsFetchGatewayFactory,
+    createSyncThreadsUseCase,
+    recordReviewCompletion,
+    logger,
+  } = opts;
 
   fastify.post('/api/mr-tracking/followup', async (request, reply) => {
     const body = request.body as { mrId?: string; projectPath?: string };
@@ -105,14 +129,9 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     }, async (job, signal) => {
       sendNotification('Review followup started', `MR !${job.mrNumber}`, logger);
 
-      // Create review context file with pre-fetched threads and diff metadata
-      const contextGateway = new ReviewContextFileSystemGateway();
-      const threadFetchGateway = job.platform === 'github'
-        ? new GitHubThreadFetchGateway(defaultGitHubExecutor)
-        : new GitLabThreadFetchGateway(defaultGitLabExecutor);
-      const diffMetadataFetchGateway = job.platform === 'github'
-        ? new GitHubDiffMetadataFetchGateway(defaultGitHubExecutor)
-        : new GitLabDiffMetadataFetchGateway(defaultGitLabExecutor);
+      // Use injected gateways to fetch threads + diff metadata.
+      const threadFetchGateway = threadFetchGatewayFactory(job.platform);
+      const diffMetadataFetchGateway = diffMetadataFetchGatewayFactory(job.platform);
 
       try {
         const threads = threadFetchGateway.fetchThreads(job.projectPath, job.mrNumber);
@@ -208,21 +227,20 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
         }
 
         // Sync threads to get real state after followup resolves threads
-        const syncUseCase = new SyncThreadsUseCase(reviewRequestTrackingGateway, threadFetchGateway);
+        const syncUseCase = createSyncThreadsUseCase(job.platform);
         const updatedMr = syncUseCase.execute({ projectPath: job.localPath, mrId });
 
         let diffStats = null;
         try {
-          const diffStatsFetchGateway = job.platform === 'github'
-            ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
-            : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor);
-          diffStats = diffStatsFetchGateway.fetchDiffStats(job.projectPath, job.mrNumber);
+          diffStats = diffStatsFetchGatewayFactory(job.platform).fetchDiffStats(
+            job.projectPath,
+            job.mrNumber,
+          );
         } catch {
           logger.warn({ mrNumber: job.mrNumber }, 'Failed to fetch diff stats for manual followup');
         }
 
-        const recordCompletion = new RecordReviewCompletionUseCase(reviewRequestTrackingGateway);
-        recordCompletion.execute({
+        recordReviewCompletion.execute({
           projectPath: job.localPath,
           mrId,
           reviewData: {
@@ -378,10 +396,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
           reply.code(404);
           return { success: false, error: 'MR/PR not found' };
         }
-        const syncThreadFetchGateway = mrData.platform === 'github'
-          ? new GitHubThreadFetchGateway(defaultGitHubExecutor)
-          : new GitLabThreadFetchGateway(defaultGitLabExecutor);
-        const syncUseCase = new SyncThreadsUseCase(reviewRequestTrackingGateway, syncThreadFetchGateway);
+        const syncUseCase = createSyncThreadsUseCase(mrData.platform);
         const mr = syncUseCase.execute({ projectPath: validation.path, mrId });
         if (mr) {
           logInfo('MR/PR synced', { mrId, openThreads: mr.openThreads, state: mr.state });
@@ -394,10 +409,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
       const activeMrs = reviewRequestTrackingGateway.getActiveMrs(validation.path);
       for (const activeMr of activeMrs) {
         try {
-          const syncThreadFetchGateway = activeMr.platform === 'github'
-            ? new GitHubThreadFetchGateway(defaultGitHubExecutor)
-            : new GitLabThreadFetchGateway(defaultGitLabExecutor);
-          const syncUseCase = new SyncThreadsUseCase(reviewRequestTrackingGateway, syncThreadFetchGateway);
+          const syncUseCase = createSyncThreadsUseCase(activeMr.platform);
           syncUseCase.execute({ projectPath: validation.path, mrId: activeMr.id });
         } catch {
           // Ignore individual MR sync failures

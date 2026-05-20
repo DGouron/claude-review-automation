@@ -6,7 +6,8 @@ import type {
   ReviewContext,
   ReviewContextProgress,
 } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
-import type { ReviewContextAction, ReviewContextResult } from '@/modules/review-execution/entities/reviewContext/reviewContextAction.schema.js'
+import type { ReviewContextAction } from '@/modules/review-execution/entities/reviewAction/reviewAction.js'
+import type { ReviewContextResult } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.schema.js'
 import { ReviewContextFactory } from '../factories/reviewContext.factory.js'
 
 export class StubReviewContextGateway implements ReviewContextGateway {
