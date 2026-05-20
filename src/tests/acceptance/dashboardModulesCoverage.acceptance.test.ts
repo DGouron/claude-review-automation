@@ -4,12 +4,12 @@ import { resolve } from 'node:path';
 
 const MODULES_DIR = resolve(
   process.cwd(),
-  'src/interface-adapters/views/dashboard/modules'
+  'src/dashboard/modules'
 );
 
 const TESTS_DIR = resolve(
   process.cwd(),
-  'src/tests/units/interface-adapters/views/dashboard/modules'
+  'src/tests/units/dashboard/modules'
 );
 
 function listJsModules(): string[] {

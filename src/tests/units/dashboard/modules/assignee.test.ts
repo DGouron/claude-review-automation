@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveReviewAssigneeDisplay } from '@/interface-adapters/views/dashboard/modules/assignee.js';
+import { resolveReviewAssigneeDisplay } from '@/dashboard/modules/assignee.js';
 
 describe('resolveReviewAssigneeDisplay', () => {
   it('should prioritize assignee from review payload', () => {

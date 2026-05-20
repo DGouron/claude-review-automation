@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderDeveloperSheetContent } from '@/interface-adapters/views/dashboard/modules/developerSheet.js';
+import { renderDeveloperSheetContent } from '@/dashboard/modules/developerSheet.js';
 
 function createTranslate() {
   return (key: string, params?: Record<string, string | number>) => {

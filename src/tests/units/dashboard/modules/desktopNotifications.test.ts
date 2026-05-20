@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDesktopNotificationPayload,
   shouldNotifyDesktop,
-} from '@/interface-adapters/views/dashboard/modules/desktopNotifications.js';
+} from '@/dashboard/modules/desktopNotifications.js';
 
 describe('shouldNotifyDesktop', () => {
   it('should notify when permission is granted and document is hidden', () => {

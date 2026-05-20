@@ -4,7 +4,7 @@ import {
   getSessionMetricsSnapshot,
   trackSessionAction,
   updatePriorityItemTracking,
-} from '@/interface-adapters/views/dashboard/modules/sessionMetrics.js';
+} from '@/dashboard/modules/sessionMetrics.js';
 
 describe('trackSessionAction', () => {
   it('should set first useful action delay once and increment action breakdown', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildInsightsReport } from '@/interface-adapters/views/dashboard/modules/insightsReport.js';
+import { buildInsightsReport } from '@/dashboard/modules/insightsReport.js';
 
 function createTranslate() {
   return (key: string, params?: Record<string, string | number>) => {

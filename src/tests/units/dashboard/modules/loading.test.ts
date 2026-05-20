@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getLoadingPresentation,
   getQuietRefreshSectionIdentifiers,
-} from '@/interface-adapters/views/dashboard/modules/loading.js';
+} from '@/dashboard/modules/loading.js';
 
 describe('getLoadingPresentation', () => {
   it('should show global loading for first status load', () => {
