@@ -1,6 +1,6 @@
 ---
 title: "SPEC-046: GitHub Followup Review on Push"
-status: draft
+status: implemented
 issue: "#46"
 labels: enhancement, P1-critical, webhook
 milestone: "Bug Fixes & Parity"
@@ -9,6 +9,48 @@ milestone: "Bug Fixes & Parity"
 
 
 # SPEC-046: GitHub Followup Review on Push
+
+## Status: implemented
+
+Delivered on 2026-05-20. See [docs/reports/46-github-followup-review-on-push.report.md](../reports/46-github-followup-review-on-push.report.md).
+
+## Implementation
+
+### Artefacts
+
+| Layer | Element | Path |
+|-------|---------|------|
+| Adapter / event filter | `filterGitHubPrUpdate()` | `src/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.ts` |
+| Adapter / controller | Followup branch in `handleGitHubWebhook` | `src/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.ts` |
+| Composition root | GitHub webhook wiring (4 use cases injected) | `src/main/routes.ts` |
+| Framework / Claude | Platform-aware `buildMcpSystemPrompt` (exported) | `src/frameworks/claude/claudeInvoker.ts` |
+
+### Reused (no new domain code)
+
+- Use cases: `RecordPushUseCase`, `TransitionStateUseCase`, `CheckFollowupNeededUseCase`, `SyncThreadsUseCase`
+- Gateways: `GitHubThreadFetchGateway`, `GitHubDiffMetadataFetchGateway`, `GitHubReviewActionCliGateway`
+- Helpers: `executeActionsFromContext` (platform-dispatching), `enforceBudget`, `enqueueReview`, `loadProjectConfig`, `getFollowupAgents`, `DEFAULT_FOLLOWUP_AGENTS`
+
+### Endpoint
+
+| Method | Route | Behavior |
+|--------|-------|----------|
+| POST | `/webhooks/github` | `pull_request` event with `action: "synchronize"` triggers the followup flow when the PR is tracked, open, non-draft, has open blocking threads (or pending warnings), and `autoFollowup !== false`. Responds `202 { status: "followup-queued", jobId, prNumber }`. |
+
+### Architectural decisions
+
+- **`findRepositoryByRemoteUrl(event.repository.clone_url)`** instead of `findRepositoryByProjectPath` — GitHub identifies its repo via `clone_url` on the event payload, not via `projectPath`.
+- **No `baseUrl` passed to `executeActionsFromContext`** for the GitHub followup branch — kept symmetric with the existing GitHub review branch. Porting `extractBaseUrl` to GitHub is out of scope.
+- **`buildMcpSystemPrompt` exported** — single-token change enabling unit testing of the prompt builder; no behavior impact on existing callers.
+- **Followup branch inserted inside `if (!filterResult.shouldProcess)`** — the synchronize action is initially rejected by the first filter, so the followup path lives in the "rejection" branch, mirroring the GitLab layout.
+
+### Tests
+
+- Acceptance: `src/tests/acceptance/46-github-followup-review-on-push.acceptance.test.ts` (8 scenarios, GREEN)
+- Unit — filter: `src/tests/units/interface-adapters/controllers/webhook/eventFilter.test.ts` (+4 tests)
+- Unit — prompt builder: `src/tests/units/frameworks/claude/claudeInvoker.test.ts` (6 tests, all new)
+- Unit — controller followup branch: `src/tests/units/interface-adapters/controllers/webhook/github.controller.test.ts` (+6 tests)
+- Full suite: **1507 / 1507 GREEN**, `yarn verify` OK
 
 ## User Story
 

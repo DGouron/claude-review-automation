@@ -105,4 +105,14 @@ export class GitHubEventFactory {
     event.label = { name: labelName }
     return event
   }
+
+  static createSynchronizePr(): GitHubPullRequestEvent {
+    return this.createPullRequestEvent({
+      action: 'synchronize',
+      pull_request: {
+        state: 'open',
+        draft: false,
+      },
+    })
+  }
 }

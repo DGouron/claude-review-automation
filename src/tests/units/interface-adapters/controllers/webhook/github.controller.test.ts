@@ -52,6 +52,13 @@ vi.mock('../../../../../main/websocket.js', () => ({
   stopWatchingReviewContext: vi.fn(),
 }));
 
+vi.mock('../../../../../config/projectConfig.js', () => ({
+  loadProjectConfig: vi.fn(() => null),
+  getProjectAgents: vi.fn(() => null),
+  getFollowupAgents: vi.fn(() => null),
+  getProjectLanguage: vi.fn(() => 'en'),
+}));
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
 import { GitHubEventFactory } from '../../../../factories/gitHubEvent.factory.js';
@@ -85,6 +92,10 @@ function createMockDeps(): GitHubWebhookDependencies {
     },
     trackAssignment: { execute: vi.fn() },
     recordCompletion: { execute: vi.fn() },
+    recordPush: { execute: vi.fn(() => null) },
+    transitionState: { execute: vi.fn() },
+    checkFollowupNeeded: { execute: vi.fn(() => false) },
+    syncThreads: { execute: vi.fn(() => null) },
     enforceBudget: {
       execute: vi.fn(async () => ({
         accepted: true,
@@ -464,6 +475,160 @@ describe('handleGitHubWebhook', () => {
       expect(acceptedDeps.enforceBudget.execute).toHaveBeenCalled();
       expect(enqueueReview).toHaveBeenCalled();
       expect(acceptedDeps.broadcastBudgetExceeded).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('followup branch on synchronize event', () => {
+    function buildFollowupDeps(): GitHubWebhookDependencies {
+      const deps = createMockDeps();
+      const trackedMr = TrackedMrFactory.create({
+        id: 'github-test-owner/test-repo-123',
+        mrNumber: 123,
+        platform: 'github',
+        project: 'test-owner/test-repo',
+        state: 'pending-fix',
+        openThreads: 3,
+        totalThreads: 3,
+        lastPushAt: '2026-05-20T12:00:00Z',
+        lastReviewAt: '2026-05-20T10:00:00Z',
+        autoFollowup: true,
+      });
+      (deps.recordPush.execute as ReturnType<typeof vi.fn>).mockReturnValue(trackedMr);
+      (deps.checkFollowupNeeded.execute as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      return deps;
+    }
+
+    it('records push, checks followup, and enqueues followup job on synchronize', async () => {
+      const deps = buildFollowupDeps();
+      const event = GitHubEventFactory.createSynchronizePr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(deps.recordPush.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectPath: '/home/user/projects/test-repo',
+          mrNumber: 123,
+          platform: 'github',
+        }),
+      );
+      expect(deps.checkFollowupNeeded.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectPath: '/home/user/projects/test-repo',
+          mrNumber: 123,
+          platform: 'github',
+        }),
+      );
+      expect(enqueueReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobType: 'followup',
+          platform: 'github',
+          mrNumber: 123,
+        }),
+        expect.any(Function),
+      );
+      expect(mockReply.status).toHaveBeenCalledWith(202);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'followup-queued', prNumber: 123 }),
+      );
+    });
+
+    it('does not enqueue when autoFollowup is disabled', async () => {
+      const deps = buildFollowupDeps();
+      const trackedMr = TrackedMrFactory.create({
+        id: 'github-test-owner/test-repo-123',
+        mrNumber: 123,
+        platform: 'github',
+        project: 'test-owner/test-repo',
+        state: 'pending-fix',
+        autoFollowup: false,
+      });
+      (deps.recordPush.execute as ReturnType<typeof vi.fn>).mockReturnValue(trackedMr);
+
+      const event = GitHubEventFactory.createSynchronizePr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Auto-followup disabled' }),
+      );
+    });
+
+    it('does not enqueue when checkFollowupNeeded returns false', async () => {
+      const deps = buildFollowupDeps();
+      (deps.checkFollowupNeeded.execute as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      const event = GitHubEventFactory.createSynchronizePr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+    });
+
+    it('does not enqueue when no MR is tracked (recordPush returns null)', async () => {
+      const deps = buildFollowupDeps();
+      (deps.recordPush.execute as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+      const event = GitHubEventFactory.createSynchronizePr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+    });
+
+    it('rejects followup when enforceBudget denies it', async () => {
+      const deps = buildFollowupDeps();
+      (deps.enforceBudget.execute as ReturnType<typeof vi.fn>).mockResolvedValue({
+        accepted: false,
+        status: {
+          limitUsd: 200,
+          consumedUsd: 200.1,
+          remainingUsd: 0,
+          percentUsed: 100.05,
+          exceeded: true,
+          periodStart: '2026-05-01T00:00:00.000Z',
+        },
+      });
+
+      const event = GitHubEventFactory.createSynchronizePr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(deps.broadcastBudgetExceeded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mrNumber: 123,
+          platform: 'github',
+          projectPath: 'test-owner/test-repo',
+        }),
+      );
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'rejected', reason: 'budget-exceeded' }),
+      );
+    });
+
+    it('does not enqueue followup on draft PR synchronize', async () => {
+      const deps = buildFollowupDeps();
+      const event = GitHubEventFactory.createPullRequestEvent({
+        action: 'synchronize',
+        pull_request: { state: 'open', draft: true },
+      });
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(deps.recordPush.execute).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(200);
     });
   });
 });
