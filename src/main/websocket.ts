@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
 import type { ReviewProgress, ProgressEvent } from '@/modules/review-execution/entities/progress/progress.type.js';
 import type { BackfillProgress } from '@/modules/statistics-insights/entities/backfill/backfillProgress.js';
+import type { BudgetStatusViewModel } from '@/modules/token-accounting/interface-adapters/presenters/budgetStatus.presenter.js';
 import type { Dependencies } from './dependencies.js';
 import { getJobsStatus, setProgressChangeCallback, setStateChangeCallback, updateJobProgress } from '../frameworks/queue/pQueueAdapter.js';
 import { onLog, type LogEntry } from '../frameworks/logging/logBuffer.js';
@@ -70,6 +71,48 @@ export function broadcastBackfillProgress(progress: BackfillProgress): void {
     timestamp: new Date().toISOString(),
   });
 
+  for (const client of wsClients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
+  }
+}
+
+export interface BudgetExceededPayload {
+  mrNumber: number;
+  platform: 'gitlab' | 'github';
+  projectPath: string;
+  limitUsd: number;
+  consumedUsd: number;
+}
+
+export function buildBudgetStatusMessage(viewModel: BudgetStatusViewModel): string {
+  return JSON.stringify({
+    type: 'budget-status',
+    data: viewModel,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function buildBudgetExceededMessage(payload: BudgetExceededPayload): string {
+  return JSON.stringify({
+    type: 'budget-exceeded',
+    data: payload,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function broadcastBudgetStatus(viewModel: BudgetStatusViewModel): void {
+  const message = buildBudgetStatusMessage(viewModel);
+  for (const client of wsClients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
+  }
+}
+
+export function broadcastBudgetExceeded(payload: BudgetExceededPayload): void {
+  const message = buildBudgetExceededMessage(payload);
   for (const client of wsClients) {
     if (client.readyState === 1) {
       client.send(message);

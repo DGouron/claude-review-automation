@@ -26,6 +26,10 @@ import { SelectModelForReviewUseCase } from '@/modules/review-execution/usecases
 import { ProjectConfigRoutingPolicyGateway } from '@/modules/review-execution/interface-adapters/gateways/projectConfig/routingPolicy.projectConfig.gateway.js';
 import { TrackTokenUsageUseCase } from '@/modules/token-accounting/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
 import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
+import { GetBudgetStatusUseCase } from '@/modules/token-accounting/usecases/getBudgetStatus/getBudgetStatus.usecase.js';
+import { FilesystemBudgetGateway } from '@/modules/token-accounting/interface-adapters/gateways/budget/budget.filesystem.gateway.js';
+import { BudgetStatusPresenter, type BudgetStatusViewModel } from '@/modules/token-accounting/interface-adapters/presenters/budgetStatus.presenter.js';
+import { broadcastBudgetAfterUsage } from '@/frameworks/claude/broadcastBudgetAfterUsage.js';
 import { StreamJsonParser } from '@/frameworks/claude/streamJsonParser.js';
 
 /**
@@ -41,14 +45,24 @@ export interface ClaudeInvokerDependencies {
   selectModelForReview: SelectModelForReviewUseCase;
   trackingGateway: FileSystemReviewRequestTrackingGateway;
   trackTokenUsage: TrackTokenUsageUseCase;
+  getBudgetStatus: GetBudgetStatusUseCase;
+  budgetStatusPresenter: BudgetStatusPresenter;
+  broadcastBudgetStatus: (viewModel: BudgetStatusViewModel) => void;
+  getEnabledLocalPaths?: () => string[];
 }
 
 /**
- * Default production wiring. Used when no deps are passed to invokeClaudeReview,
- * preserving backward compatibility with existing callers that don't yet
- * thread these dependencies through their own composition root.
+ * Default wiring used when invokeClaudeReview is called without explicit deps.
+ *
+ * Production (the HTTP daemon) MUST override `broadcastBudgetStatus` and
+ * `getEnabledLocalPaths` from the composition root in `main/routes.ts`,
+ * otherwise the live budget broadcast and the multi-localPath sum are lost.
+ * The no-op `broadcastBudgetStatus` here is intentional for tests and CLI
+ * one-shots where there is no WebSocket fanout to perform.
  */
 export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependencies {
+  const tokenUsageGateway = new FilesystemTokenUsageGateway();
+  const budgetGateway = new FilesystemBudgetGateway();
   return {
     diffStatsFetchFactory: platform =>
       platform === 'github'
@@ -57,7 +71,10 @@ export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependenc
     routingPolicyGateway: new ProjectConfigRoutingPolicyGateway(),
     selectModelForReview: new SelectModelForReviewUseCase(),
     trackingGateway: new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator()),
-    trackTokenUsage: new TrackTokenUsageUseCase(new FilesystemTokenUsageGateway()),
+    trackTokenUsage: new TrackTokenUsageUseCase(tokenUsageGateway),
+    getBudgetStatus: new GetBudgetStatusUseCase({ budgetGateway, tokenUsageGateway }),
+    budgetStatusPresenter: new BudgetStatusPresenter(),
+    broadcastBudgetStatus: () => {},
   };
 }
 
@@ -633,6 +650,17 @@ export async function invokeClaudeReview(
               usage: tokenUsage,
             });
             logger.info({ jobId: job.id, model, usage: tokenUsage }, 'Token usage recorded');
+
+            const broadcastLocalPaths = deps.getEnabledLocalPaths?.() ?? [job.localPath];
+            await broadcastBudgetAfterUsage(
+              {
+                getBudgetStatus: deps.getBudgetStatus,
+                broadcastBudgetStatus: deps.broadcastBudgetStatus,
+                presenter: deps.budgetStatusPresenter,
+              },
+              { localPaths: broadcastLocalPaths },
+              logger,
+            );
           } catch (trackError) {
             logger.warn({ jobId: job.id, error: trackError }, 'Failed to persist token usage');
           }

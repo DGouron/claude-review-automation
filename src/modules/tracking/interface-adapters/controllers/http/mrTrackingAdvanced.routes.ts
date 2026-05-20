@@ -5,6 +5,7 @@ import { enqueueReview, createJobId, updateJobProgress } from '@/frameworks/queu
 import { loadProjectConfig, getFollowupAgents } from '@/config/projectConfig.js';
 import { DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
+import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
 import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
@@ -20,6 +21,8 @@ import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/we
 import type { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 import type { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
+import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
+import type { BudgetExceededPayload } from '@/main/websocket.js';
 
 type Platform = 'gitlab' | 'github';
 
@@ -38,6 +41,9 @@ export interface MrTrackingAdvancedRoutesOptions {
   ) => GitHubDiffStatsFetchGateway | GitLabDiffStatsFetchGateway;
   createSyncThreadsUseCase: (platform: Platform) => SyncThreadsUseCase;
   recordReviewCompletion: RecordReviewCompletionUseCase;
+  enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
+  broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
+  claudeInvokerDeps?: ClaudeInvokerDependencies;
   logger: Logger;
 }
 
@@ -67,6 +73,9 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     diffStatsFetchGatewayFactory,
     createSyncThreadsUseCase,
     recordReviewCompletion,
+    enforceBudget,
+    broadcastBudgetExceeded,
+    claudeInvokerDeps,
     logger,
   } = opts;
 
@@ -114,6 +123,32 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     const mrUrl = platform === 'gitlab'
       ? `${repo.remoteUrl.replace(/\.git$/, '')}/-/merge_requests/${mrNumber}`
       : `${repo.remoteUrl.replace(/\.git$/, '')}/pull/${mrNumber}`;
+
+    const budgetDecision = await enforceBudget.execute({
+      localPaths: getRepositories()
+        .filter((repository) => repository.enabled)
+        .map((repository) => repository.localPath),
+    });
+    if (!budgetDecision.accepted) {
+      const platformLiteral: 'gitlab' | 'github' = platform === 'github' ? 'github' : 'gitlab';
+      logger.warn(
+        {
+          mrNumber,
+          limitUsd: budgetDecision.status.limitUsd,
+          consumedUsd: budgetDecision.status.consumedUsd,
+        },
+        'Budget exceeded, manual followup not enqueued'
+      );
+      broadcastBudgetExceeded({
+        mrNumber,
+        platform: platformLiteral,
+        projectPath: gitProjectPath,
+        limitUsd: budgetDecision.status.limitUsd,
+        consumedUsd: budgetDecision.status.consumedUsd,
+      });
+      reply.code(200);
+      return { status: 'rejected', reason: 'budget-exceeded' };
+    }
 
     const enqueued = await enqueueReview({
       id: jobId,
@@ -183,7 +218,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
           currentStep: runningAgent?.name ?? null,
           stepsCompleted: completedAgents,
         });
-      }, signal);
+      }, signal, claudeInvokerDeps);
 
       stopWatchingReviewContext(mrId);
 

@@ -129,6 +129,22 @@ function createStubContextGateway() {
   };
 }
 
+function createAcceptAllEnforceBudget() {
+  return {
+    execute: vi.fn(async () => ({
+      accepted: true,
+      status: {
+        limitUsd: 200,
+        consumedUsd: 0,
+        remainingUsd: 200,
+        percentUsed: 0,
+        exceeded: false,
+        periodStart: '2026-05-01T00:00:00.000Z',
+      },
+    })),
+  };
+}
+
 function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTrackingGateway>) {
   const threadFetchGateway = { fetchThreads: vi.fn(() => []) };
   return {
@@ -142,6 +158,9 @@ function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTracking
     transitionState: new TransitionStateUseCase(trackingGateway),
     checkFollowupNeeded: new CheckFollowupNeededUseCase(trackingGateway),
     syncThreads: new SyncThreadsUseCase(trackingGateway, threadFetchGateway),
+    enforceBudget: createAcceptAllEnforceBudget(),
+    broadcastBudgetExceeded: vi.fn(),
+    getRepositories: vi.fn(() => []),
   };
 }
 
@@ -390,6 +409,60 @@ describe('handleGitLabWebhook', () => {
         'test-org/test-project',
         42
       );
+    });
+  });
+
+  describe('budget cap gate', () => {
+    it('rejects a fresh review and broadcasts budget-exceeded when enforceBudget returns accepted=false', async () => {
+      mockGateway.getById.mockReturnValue(null);
+      const enforceBudget = {
+        execute: vi.fn(async () => ({
+          accepted: false,
+          status: {
+            limitUsd: 200,
+            consumedUsd: 200.1,
+            remainingUsd: 0,
+            percentUsed: 100.05,
+            exceeded: true,
+            periodStart: '2026-05-01T00:00:00.000Z',
+          },
+        })),
+      };
+      const broadcastBudgetExceeded = vi.fn();
+      const deps = { ...defaultDeps, enforceBudget, broadcastBudgetExceeded };
+
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enforceBudget.execute).toHaveBeenCalled();
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(broadcastBudgetExceeded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mrNumber: 42,
+          platform: 'gitlab',
+          projectPath: 'test-org/test-project',
+          limitUsd: 200,
+          consumedUsd: 200.1,
+        }),
+      );
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'rejected', reason: 'budget-exceeded' }),
+      );
+    });
+
+    it('enqueues a fresh review when enforceBudget returns accepted=true', async () => {
+      mockGateway.getById.mockReturnValue(null);
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(defaultDeps.enforceBudget.execute).toHaveBeenCalled();
+      expect(enqueueReview).toHaveBeenCalled();
+      expect(defaultDeps.broadcastBudgetExceeded).not.toHaveBeenCalled();
     });
   });
 });
