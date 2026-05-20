@@ -6,19 +6,19 @@ import { loadProjectConfig, getFollowupAgents } from '@/config/projectConfig.js'
 import { DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
-import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
-import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
+import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
-import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
+import type { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import type { GitHubThreadFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import type { GitLabThreadFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
-import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
-import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
+import type { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
+import type { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
-import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
-import { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
+import type { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
+import type { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
 
 type Platform = 'gitlab' | 'github';
