@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getAgentIcon, icon } from '@/interface-adapters/views/dashboard/modules/icons.js';
+import { getAgentIcon, icon } from '@/dashboard/modules/icons.js';
 
 describe('getAgentIcon', () => {
   it('should return clock icon for pending status', () => {

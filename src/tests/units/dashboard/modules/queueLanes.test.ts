@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildQueueLanesModel } from '@/interface-adapters/views/dashboard/modules/queueLanes.js';
+import { buildQueueLanesModel } from '@/dashboard/modules/queueLanes.js';
 
 describe('buildQueueLanesModel', () => {
   it('should split pending fix into now lane and needs-fix lane', () => {

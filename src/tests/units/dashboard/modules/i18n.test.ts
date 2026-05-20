@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getLanguage, setLanguage, t } from '@/interface-adapters/views/dashboard/modules/i18n.js';
+import { getLanguage, setLanguage, t } from '@/dashboard/modules/i18n.js';
 
 describe('i18n', () => {
   beforeEach(() => {

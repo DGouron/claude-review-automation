@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderTeamTab } from '@/interface-adapters/views/dashboard/modules/teamTab.js';
+import { renderTeamTab } from '@/dashboard/modules/teamTab.js';
 
 function createTranslate() {
   return (key: string, params?: Record<string, string | number>) => {

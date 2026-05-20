@@ -61,7 +61,7 @@ export async function registerRoutes(
   deps: Dependencies
 ): Promise<void> {
   await app.register(fastifyStatic, {
-    root: join(__dirname, '..', 'interface-adapters', 'views', 'dashboard'),
+    root: join(__dirname, '..', 'dashboard'),
     prefix: '/dashboard/',
   });
 

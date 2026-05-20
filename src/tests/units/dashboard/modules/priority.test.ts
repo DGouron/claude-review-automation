@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rankPendingFixForNowLane } from '@/interface-adapters/views/dashboard/modules/priority.js';
+import { rankPendingFixForNowLane } from '@/dashboard/modules/priority.js';
 
 describe('rankPendingFixForNowLane', () => {
   it('should rank items by urgency score', () => {

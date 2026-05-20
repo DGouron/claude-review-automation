@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from '@/interface-adapters/views/dashboard/modules/html.js';
+import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from '@/dashboard/modules/html.js';
 
 describe('escapeHtml', () => {
   it('should return empty string for null or undefined', () => {

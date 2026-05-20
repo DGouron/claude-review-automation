@@ -6,7 +6,7 @@ import {
   STORAGE_KEY_CURRENT,
   STORAGE_KEY_FOCUS_STRIP_MODE,
   QUALITY_TARGET_SCORE,
-} from '@/interface-adapters/views/dashboard/modules/constants.js';
+} from '@/dashboard/modules/constants.js';
 
 describe('constants', () => {
   it('should export reconnection settings', () => {

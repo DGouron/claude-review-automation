@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   collectReviewNotifications,
   createReviewNotificationState,
-} from '@/interface-adapters/views/dashboard/modules/notifications.js';
+} from '@/dashboard/modules/notifications.js';
 
 describe('collectReviewNotifications', () => {
   it('should stay silent on first initialization', () => {

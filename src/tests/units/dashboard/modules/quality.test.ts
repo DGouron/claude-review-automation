@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getQualityProgress, getQualityTrend } from '@/interface-adapters/views/dashboard/modules/quality.js';
+import { getQualityProgress, getQualityTrend } from '@/dashboard/modules/quality.js';
 
 describe('getQualityProgress', () => {
   it('should compute progress and target delta when score exists', () => {
