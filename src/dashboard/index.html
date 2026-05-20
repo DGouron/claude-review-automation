@@ -170,6 +170,15 @@
       </div>
     </div>
 
+    <div id="token-usage-section" class="section hidden">
+      <div class="section-header">
+        <i data-lucide="coins"></i> <span>Claude token usage</span>
+      </div>
+      <div id="token-usage-content" class="section-content">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+
     <div class="section" id="active-reviews-section">
       <div class="section-header">
         <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
@@ -284,6 +293,7 @@
     import { renderTeamTab, fetchAndRenderTeamTab } from './modules/teamTab.js';
     import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
     import { buildInsightsReport } from './modules/insightsReport.js';
+    import { fetchTokenUsageSummary, renderTokenUsageTile } from './modules/tokenUsage.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -1261,6 +1271,20 @@
       }
     }
 
+    async function refreshTokenUsageTile() {
+      if (!currentProjectPath) return;
+      const container = document.getElementById('token-usage-content');
+      if (!container) return;
+
+      try {
+        const viewModel = await fetchTokenUsageSummary(currentProjectPath);
+        container.innerHTML = renderTokenUsageTile(viewModel);
+      } catch (error) {
+        console.error('Error fetching token usage summary:', error);
+        container.innerHTML = `<div class="empty-state">Unable to load token usage.</div>`;
+      }
+    }
+
     async function generateAiInsights() {
       if (!currentProjectPath || aiGenerationInProgress) return;
       aiGenerationInProgress = true;
@@ -2139,9 +2163,11 @@
           fetchProjectStats();
           fetchMrTracking();
           fetchTeamInsights();
+          refreshTokenUsageTile();
 
           document.getElementById('stats-section').classList.remove('hidden');
           document.getElementById('team-section').classList.remove('hidden');
+          document.getElementById('token-usage-section').classList.remove('hidden');
 
           const platformIcon = activePlatform === 'gitlab' ? '<i data-lucide="gitlab"></i> GitLab' : '<i data-lucide="github"></i> GitHub';
           info.innerHTML = `

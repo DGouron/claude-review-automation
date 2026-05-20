@@ -33,6 +33,10 @@ import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/tra
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
+import { tokenUsageRoutes } from '@/modules/token-accounting/interface-adapters/controllers/http/tokenUsage.routes.js';
+import { SummarizeTokenUsageUseCase } from '@/modules/token-accounting/usecases/summarizeTokenUsage/summarizeTokenUsage.usecase.js';
+import { TokenUsageSummaryPresenter } from '@/modules/token-accounting/interface-adapters/presenters/tokenUsageSummary.presenter.js';
+import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
 import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js';
 import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js';
 import { NpmPackageVersionGateway } from '@/modules/cli-configuration/interface-adapters/gateways/packageVersion.npm.gateway.js';
@@ -93,6 +97,11 @@ export async function registerRoutes(
 
   await app.register(mrTrackingRoutes, {
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+  });
+
+  await app.register(tokenUsageRoutes, {
+    summarizeTokenUsage: new SummarizeTokenUsageUseCase(new FilesystemTokenUsageGateway()),
+    presenter: new TokenUsageSummaryPresenter(),
   });
 
   const threadFetchGatewayFactory = (platform: 'gitlab' | 'github') =>
