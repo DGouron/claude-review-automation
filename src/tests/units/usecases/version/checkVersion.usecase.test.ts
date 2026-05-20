@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js'
 import { StubPackageVersionGateway } from '@/tests/stubs/packageVersion.stub.js'
 import { StubVersionCache } from '@/tests/stubs/versionCache.stub.js'
+import { StubInstallTypeDetector } from '@/tests/stubs/installTypeDetector.stub.js'
 import { PackageVersionFactory } from '@/tests/factories/packageVersion.factory.js'
+
+const installTypeDetector = new StubInstallTypeDetector('global-npm')
 
 describe('checkVersion usecase', () => {
   it('should return cached result when cache is valid and not force refresh', async () => {
@@ -12,7 +15,7 @@ describe('checkVersion usecase', () => {
 
     const result = await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: false },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     expect(result).toEqual(cachedResult)
@@ -24,7 +27,7 @@ describe('checkVersion usecase', () => {
 
     const result = await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: false },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     expect(result.currentVersion).toBe('1.0.0')
@@ -42,7 +45,7 @@ describe('checkVersion usecase', () => {
 
     const result = await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: true },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     expect(result.latestVersion).toBe('3.0.0')
@@ -55,7 +58,7 @@ describe('checkVersion usecase', () => {
 
     const result = await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: false },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     expect(result.updateAvailable).toBe(true)
@@ -67,7 +70,7 @@ describe('checkVersion usecase', () => {
 
     const result = await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: false },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     expect(result.updateAvailable).toBe(false)
@@ -79,7 +82,7 @@ describe('checkVersion usecase', () => {
 
     const result = await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: false },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     expect(result.latestVersion).toBeNull()
@@ -92,7 +95,7 @@ describe('checkVersion usecase', () => {
 
     await checkVersion(
       { currentVersion: '1.0.0', forceRefresh: false },
-      { packageVersionGateway: gateway, cache },
+      { packageVersionGateway: gateway, cache, installTypeDetector },
     )
 
     const cached = cache.get()
@@ -100,5 +103,18 @@ describe('checkVersion usecase', () => {
     expect(cached?.currentVersion).toBe('1.0.0')
     expect(cached?.latestVersion).toBe('2.0.0')
     expect(cached?.updateAvailable).toBe(true)
+  })
+
+  it('should include installType detected at fetch time', async () => {
+    const cache = new StubVersionCache(null, true)
+    const gateway = new StubPackageVersionGateway('2.0.0')
+    const sourceCheckout = new StubInstallTypeDetector('source-checkout')
+
+    const result = await checkVersion(
+      { currentVersion: '1.0.0', forceRefresh: false },
+      { packageVersionGateway: gateway, cache, installTypeDetector: sourceCheckout },
+    )
+
+    expect(result.installType).toBe('source-checkout')
   })
 })

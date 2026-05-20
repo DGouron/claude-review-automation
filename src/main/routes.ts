@@ -54,6 +54,7 @@ import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/
 import { NpmPackageVersionGateway } from '@/modules/cli-configuration/interface-adapters/gateways/packageVersion.npm.gateway.js';
 import { VersionCacheMemoryGateway } from '@/modules/cli-configuration/interface-adapters/gateways/versionCache.memory.gateway.js';
 import { SelfUpdateCliGateway } from '@/modules/cli-configuration/interface-adapters/gateways/selfUpdate.cli.gateway.js';
+import { InstallTypeDetectorFsGateway } from '@/modules/cli-configuration/interface-adapters/gateways/installTypeDetector.fs.gateway.js';
 import { broadcastBackfillProgress } from '@/main/websocket.js';
 import { createClaudeInsightsInvoker } from '@/frameworks/claude/claudeInsightsInvoker.js';
 import { getDefaultLanguage } from '@/frameworks/settings/runtimeSettings.js';
@@ -71,6 +72,7 @@ const currentVersion = readVersion();
 const packageVersionGateway = new NpmPackageVersionGateway();
 const versionCache = new VersionCacheMemoryGateway();
 const selfUpdateCommand = new SelfUpdateCliGateway();
+const installTypeDetector = new InstallTypeDetectorFsGateway();
 
 export async function registerRoutes(
   app: FastifyInstance,
@@ -183,6 +185,7 @@ export async function registerRoutes(
     packageVersionGateway,
     versionCache,
     selfUpdateCommand,
+    installTypeDetector,
     serverPort: deps.config.server.port,
   });
 
@@ -275,6 +278,6 @@ export async function registerRoutes(
 
   checkVersion(
     { currentVersion, forceRefresh: false },
-    { packageVersionGateway, cache: versionCache },
+    { packageVersionGateway, cache: versionCache, installTypeDetector },
   ).catch(() => {});
 }

@@ -384,6 +384,8 @@ const translations = {
     'version.permissionDenied': 'Permission denied. Run this command manually:',
     'version.copyCommand': 'Copy command',
     'version.commandCopied': 'Command copied!',
+    'version.sourceCheckoutTooltip': 'Source-checkout install. Click to see the manual update command.',
+    'version.sourceCheckoutNotice': 'This daemon runs from a source checkout. Run this command manually to update:',
   },
   fr: {
     // Time
@@ -767,6 +769,8 @@ const translations = {
     'version.permissionDenied': 'Permission refusée. Exécutez cette commande manuellement :',
     'version.copyCommand': 'Copier la commande',
     'version.commandCopied': 'Commande copiée !',
+    'version.sourceCheckoutTooltip': "Installation depuis le code source. Cliquez pour voir la commande de mise à jour manuelle.",
+    'version.sourceCheckoutNotice': 'Ce daemon tourne depuis un checkout du code source. Exécutez cette commande manuellement pour mettre à jour :',
   },
 };
 
