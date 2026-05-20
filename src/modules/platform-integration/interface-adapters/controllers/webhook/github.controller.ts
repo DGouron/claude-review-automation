@@ -3,7 +3,7 @@ import type { Logger } from 'pino';
 import { verifyGitHubSignature, getGitHubEventType } from '@/security/verifier.js';
 import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { gitHubPullRequestEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
-import { findRepositoryByRemoteUrl } from '@/config/loader.js';
+import { findRepositoryByRemoteUrl, type RepositoryConfig } from '@/config/loader.js';
 import {
   enqueueReview,
   createJobId,
@@ -19,6 +19,7 @@ import { parseThreadActions } from '@/modules/review-execution/services/threadAc
 import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
+import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
@@ -38,6 +39,14 @@ export interface GitHubWebhookDependencies {
   recordCompletion: RecordReviewCompletionUseCase;
   enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
+  getRepositories: () => RepositoryConfig[];
+  claudeInvokerDeps?: ClaudeInvokerDependencies;
+}
+
+function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): string[] {
+  return getRepositories()
+    .filter((repository) => repository.enabled)
+    .map((repository) => repository.localPath);
 }
 
 export async function handleGitHubWebhook(
@@ -205,7 +214,7 @@ export async function handleGitHubWebhook(
   };
 
   const budgetDecision = await deps.enforceBudget.execute({
-    localPaths: [repoConfig.localPath],
+    localPaths: listEnabledLocalPaths(deps.getRepositories),
   });
   if (!budgetDecision.accepted) {
     logger.warn(
@@ -290,7 +299,7 @@ export async function handleGitHubWebhook(
         currentStep: runningAgent?.name ?? null,
         stepsCompleted: completedAgents,
       });
-    }, signal);
+    }, signal, deps.claudeInvokerDeps);
 
     // Stop watching context file (auto-stops on completion, but explicit stop for error cases)
     stopWatchingReviewContext(mergeRequestId);

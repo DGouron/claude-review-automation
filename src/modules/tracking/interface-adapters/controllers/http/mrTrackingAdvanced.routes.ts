@@ -5,6 +5,7 @@ import { enqueueReview, createJobId, updateJobProgress } from '@/frameworks/queu
 import { loadProjectConfig, getFollowupAgents } from '@/config/projectConfig.js';
 import { DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
+import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
 import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
@@ -42,6 +43,7 @@ export interface MrTrackingAdvancedRoutesOptions {
   recordReviewCompletion: RecordReviewCompletionUseCase;
   enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
+  claudeInvokerDeps?: ClaudeInvokerDependencies;
   logger: Logger;
 }
 
@@ -73,6 +75,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     recordReviewCompletion,
     enforceBudget,
     broadcastBudgetExceeded,
+    claudeInvokerDeps,
     logger,
   } = opts;
 
@@ -122,7 +125,9 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
       : `${repo.remoteUrl.replace(/\.git$/, '')}/pull/${mrNumber}`;
 
     const budgetDecision = await enforceBudget.execute({
-      localPaths: [repo.localPath],
+      localPaths: getRepositories()
+        .filter((repository) => repository.enabled)
+        .map((repository) => repository.localPath),
     });
     if (!budgetDecision.accepted) {
       const platformLiteral: 'gitlab' | 'github' = platform === 'github' ? 'github' : 'gitlab';
@@ -213,7 +218,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
           currentStep: runningAgent?.name ?? null,
           stepsCompleted: completedAgents,
         });
-      }, signal);
+      }, signal, claudeInvokerDeps);
 
       stopWatchingReviewContext(mrId);
 

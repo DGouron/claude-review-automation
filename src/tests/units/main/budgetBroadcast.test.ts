@@ -14,9 +14,9 @@ vi.mock('../../../frameworks/logging/logBuffer.js', () => ({
 import {
   buildBudgetStatusMessage,
   buildBudgetExceededMessage,
-} from '../../../main/websocket.js';
+  type BudgetExceededPayload,
+} from '@/main/websocket.js';
 import type { BudgetStatusViewModel } from '@/modules/token-accounting/interface-adapters/presenters/budgetStatus.presenter.js';
-import type { BudgetExceededPayload } from '../../../main/websocket.js';
 
 describe('buildBudgetStatusMessage', () => {
   it('produces a JSON string with type=budget-status, the view model, and a timestamp', () => {

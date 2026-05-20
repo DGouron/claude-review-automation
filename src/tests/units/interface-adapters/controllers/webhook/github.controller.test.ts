@@ -99,6 +99,7 @@ function createMockDeps(): GitHubWebhookDependencies {
       })),
     },
     broadcastBudgetExceeded: vi.fn(),
+    getRepositories: vi.fn(() => []),
   } as unknown as GitHubWebhookDependencies;
 }
 

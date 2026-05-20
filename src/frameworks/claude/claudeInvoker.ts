@@ -48,12 +48,17 @@ export interface ClaudeInvokerDependencies {
   getBudgetStatus: GetBudgetStatusUseCase;
   budgetStatusPresenter: BudgetStatusPresenter;
   broadcastBudgetStatus: (viewModel: BudgetStatusViewModel) => void;
+  getEnabledLocalPaths?: () => string[];
 }
 
 /**
- * Default production wiring. Used when no deps are passed to invokeClaudeReview,
- * preserving backward compatibility with existing callers that don't yet
- * thread these dependencies through their own composition root.
+ * Default wiring used when invokeClaudeReview is called without explicit deps.
+ *
+ * Production (the HTTP daemon) MUST override `broadcastBudgetStatus` and
+ * `getEnabledLocalPaths` from the composition root in `main/routes.ts`,
+ * otherwise the live budget broadcast and the multi-localPath sum are lost.
+ * The no-op `broadcastBudgetStatus` here is intentional for tests and CLI
+ * one-shots where there is no WebSocket fanout to perform.
  */
 export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependencies {
   const tokenUsageGateway = new FilesystemTokenUsageGateway();
@@ -646,13 +651,14 @@ export async function invokeClaudeReview(
             });
             logger.info({ jobId: job.id, model, usage: tokenUsage }, 'Token usage recorded');
 
+            const broadcastLocalPaths = deps.getEnabledLocalPaths?.() ?? [job.localPath];
             await broadcastBudgetAfterUsage(
               {
                 getBudgetStatus: deps.getBudgetStatus,
                 broadcastBudgetStatus: deps.broadcastBudgetStatus,
                 presenter: deps.budgetStatusPresenter,
               },
-              { localPaths: [job.localPath] },
+              { localPaths: broadcastLocalPaths },
               logger,
             );
           } catch (trackError) {

@@ -4032,3 +4032,78 @@ input:focus-visible,
   padding: 0.5rem 0;
   color: var(--nsc-text-muted);
 }
+
+.budget-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--nsc-bg-surface);
+  border-radius: 6px;
+}
+.budget-tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+.budget-tile-title { font-weight: 600; color: var(--nsc-text-primary); }
+.budget-tile-badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.budget-tile-badge--exceeded {
+  background: rgba(220, 38, 38, 0.18);
+  color: #dc2626;
+}
+.budget-tile-figures {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.budget-tile-consumed { font-size: 1.4rem; font-weight: 700; color: var(--nsc-text-primary); }
+.budget-tile-separator,
+.budget-tile-limit { color: var(--nsc-text-muted); }
+.budget-tile-percent { margin-left: auto; color: var(--nsc-action); font-weight: 600; }
+.budget-gauge {
+  width: 100%;
+  height: 8px;
+  background: var(--nsc-bg-base);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.budget-gauge-fill {
+  height: 100%;
+  background: var(--nsc-action);
+  transition: width 0.25s ease-out;
+}
+.budget-gauge-fill--exceeded { background: #dc2626; }
+.budget-tile-remaining { font-size: 0.8rem; color: var(--nsc-text-muted); }
+
+.budget-slider-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--nsc-bg-surface);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+.budget-slider-row input[type="range"] { width: 100%; }
+.budget-slider-row button {
+  padding: 0.35rem 0.8rem;
+  background: var(--nsc-action);
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.budget-slider-row button:hover { filter: brightness(1.08); }
+.budget-slider-status { font-size: 0.8rem; min-width: 7rem; }
+.budget-slider-status--ok { color: #16a34a; }
+.budget-slider-status--error { color: #dc2626; }

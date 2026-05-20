@@ -160,6 +160,7 @@ function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTracking
     syncThreads: new SyncThreadsUseCase(trackingGateway, threadFetchGateway),
     enforceBudget: createAcceptAllEnforceBudget(),
     broadcastBudgetExceeded: vi.fn(),
+    getRepositories: vi.fn(() => []),
   };
 }
 

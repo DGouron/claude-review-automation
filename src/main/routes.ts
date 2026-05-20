@@ -44,7 +44,11 @@ import { UpdateBudgetUseCase } from '@/modules/token-accounting/usecases/updateB
 import { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
 import { BudgetStatusPresenter } from '@/modules/token-accounting/interface-adapters/presenters/budgetStatus.presenter.js';
 import { BUDGET_DEFAULT_USD } from '@/modules/token-accounting/entities/budget/budgetConfig.schema.js';
-import { broadcastBudgetExceeded } from '@/main/websocket.js';
+import { broadcastBudgetExceeded, broadcastBudgetStatus } from '@/main/websocket.js';
+import {
+  createDefaultClaudeInvokerDependencies,
+  type ClaudeInvokerDependencies,
+} from '@/frameworks/claude/claudeInvoker.js';
 import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js';
 import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js';
 import { NpmPackageVersionGateway } from '@/modules/cli-configuration/interface-adapters/gateways/packageVersion.npm.gateway.js';
@@ -130,6 +134,15 @@ export async function registerRoutes(
     getRepositories: () => deps.config.repositories,
   });
 
+  const claudeInvokerDeps: ClaudeInvokerDependencies = {
+    ...createDefaultClaudeInvokerDependencies(),
+    getBudgetStatus,
+    budgetStatusPresenter,
+    broadcastBudgetStatus,
+    getEnabledLocalPaths: () =>
+      deps.config.repositories.filter((repository) => repository.enabled).map((repository) => repository.localPath),
+  };
+
   const threadFetchGatewayFactory = (platform: 'gitlab' | 'github') =>
     platform === 'github'
       ? new GitHubThreadFetchGateway(defaultGitHubExecutor)
@@ -152,6 +165,7 @@ export async function registerRoutes(
     recordReviewCompletion: new RecordReviewCompletionUseCase(deps.reviewRequestTrackingGateway),
     enforceBudget,
     broadcastBudgetExceeded,
+    claudeInvokerDeps,
     logger: deps.logger,
   });
 
@@ -205,6 +219,8 @@ export async function registerRoutes(
       syncThreads: new SyncThreadsUseCase(trackingGw, threadFetchGw),
       enforceBudget,
       broadcastBudgetExceeded,
+      getRepositories: () => deps.config.repositories,
+      claudeInvokerDeps,
     });
   });
 
@@ -220,6 +236,8 @@ export async function registerRoutes(
       recordCompletion: new RecordReviewCompletionUseCase(trackingGw),
       enforceBudget,
       broadcastBudgetExceeded,
+      getRepositories: () => deps.config.repositories,
+      claudeInvokerDeps,
     });
   });
 

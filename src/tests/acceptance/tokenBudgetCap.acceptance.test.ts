@@ -18,7 +18,8 @@ interface TestContext {
   now: Date;
 }
 
-const LOCAL_PATH = '/tmp/acceptance-project';
+const LOCAL_PATH_A = '/tmp/acceptance-project-a';
+const LOCAL_PATH_B = '/tmp/acceptance-project-b';
 const PROJECT_PATH = 'group/project';
 const PLATFORM = 'gitlab' as const;
 
@@ -40,7 +41,8 @@ async function buildContext(now: Date): Promise<TestContext> {
     budgetGateway,
     presenter,
     getRepositories: () => [
-      { name: 'repo', platform: PLATFORM, remoteUrl: '', localPath: LOCAL_PATH, skill: 'review', enabled: true },
+      { name: 'repo-a', platform: PLATFORM, remoteUrl: '', localPath: LOCAL_PATH_A, skill: 'review', enabled: true },
+      { name: 'repo-b', platform: PLATFORM, remoteUrl: '', localPath: LOCAL_PATH_B, skill: 'review', enabled: true },
     ],
     now: () => now,
   });
@@ -104,37 +106,40 @@ describe('Acceptance — Spec #163: Token Budget Cap with Live Indicator', () =>
     });
   });
 
-  describe('Scenario 6: Block a fresh review when over budget', () => {
+  describe('Scenario 6: Block a fresh review when the GLOBAL sum across repos exceeds the cap', () => {
     let context: TestContext;
 
     beforeEach(async () => {
       context = await buildContext(new Date('2026-05-20T12:00:00Z'));
       await context.budgetGateway.save({ limitUsd: 200 });
-      context.tokenUsageGateway.setRecords([
+      // Each repo individually is under the cap, but their SUM ($130 + $90 = $220) is over.
+      // This is the meaningful R2 ("global cap") integration assertion.
+      context.tokenUsageGateway.setRecordsForPath(LOCAL_PATH_A, [
         TokenUsageRecordFactory.create({
           recordedAt: '2026-05-10T00:00:00Z',
-          localPath: LOCAL_PATH,
-          usage: {
-            inputTokens: 0,
-            outputTokens: 0,
-            cacheCreationInputTokens: 0,
-            cacheReadInputTokens: 0,
-            costUsd: 200.1,
-          },
+          localPath: LOCAL_PATH_A,
+          usage: { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, costUsd: 130 },
+        }),
+      ]);
+      context.tokenUsageGateway.setRecordsForPath(LOCAL_PATH_B, [
+        TokenUsageRecordFactory.create({
+          recordedAt: '2026-05-12T00:00:00Z',
+          localPath: LOCAL_PATH_B,
+          usage: { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, costUsd: 90 },
         }),
       ]);
     });
 
-    it('returns accepted=false and exposes the consumption that triggered the rejection', async () => {
+    it('returns accepted=false when the GLOBAL multi-repo sum crosses the cap', async () => {
       const decision = await context.enforceBudget.execute({
-        localPaths: [LOCAL_PATH],
+        localPaths: [LOCAL_PATH_A, LOCAL_PATH_B],
         now: context.now,
       });
 
       expect(decision.accepted).toBe(false);
       expect(decision.status.exceeded).toBe(true);
       expect(decision.status.limitUsd).toBe(200);
-      expect(decision.status.consumedUsd).toBeCloseTo(200.1, 2);
+      expect(decision.status.consumedUsd).toBeCloseTo(220, 2);
 
       const viewModel = context.presenter.present(decision.status);
       expect(viewModel.exceeded).toBe(true);
@@ -143,36 +148,38 @@ describe('Acceptance — Spec #163: Token Budget Cap with Live Indicator', () =>
     });
   });
 
-  describe('Scenario 8: Allow when within budget', () => {
+  describe('Scenario 8: Allow when the GLOBAL multi-repo sum stays under the cap', () => {
     let context: TestContext;
 
     beforeEach(async () => {
       context = await buildContext(new Date('2026-05-20T12:00:00Z'));
       await context.budgetGateway.save({ limitUsd: 200 });
-      context.tokenUsageGateway.setRecords([
+      // Two repos summing to $189.99 — under the $200 cap.
+      context.tokenUsageGateway.setRecordsForPath(LOCAL_PATH_A, [
         TokenUsageRecordFactory.create({
           recordedAt: '2026-05-10T00:00:00Z',
-          localPath: LOCAL_PATH,
-          usage: {
-            inputTokens: 0,
-            outputTokens: 0,
-            cacheCreationInputTokens: 0,
-            cacheReadInputTokens: 0,
-            costUsd: 199.99,
-          },
+          localPath: LOCAL_PATH_A,
+          usage: { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, costUsd: 100 },
+        }),
+      ]);
+      context.tokenUsageGateway.setRecordsForPath(LOCAL_PATH_B, [
+        TokenUsageRecordFactory.create({
+          recordedAt: '2026-05-12T00:00:00Z',
+          localPath: LOCAL_PATH_B,
+          usage: { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, costUsd: 89.99 },
         }),
       ]);
     });
 
-    it('returns accepted=true when consumption is under the limit', async () => {
+    it('returns accepted=true when the multi-repo sum stays under the limit', async () => {
       const decision = await context.enforceBudget.execute({
-        localPaths: [LOCAL_PATH],
+        localPaths: [LOCAL_PATH_A, LOCAL_PATH_B],
         now: context.now,
       });
 
       expect(decision.accepted).toBe(true);
       expect(decision.status.exceeded).toBe(false);
-      expect(decision.status.consumedUsd).toBeCloseTo(199.99, 2);
+      expect(decision.status.consumedUsd).toBeCloseTo(189.99, 2);
 
       await context.app.close();
     });
@@ -186,10 +193,10 @@ describe('Acceptance — Spec #163: Token Budget Cap with Live Indicator', () =>
     beforeEach(async () => {
       context = await buildContext(new Date('2026-06-01T00:00:00Z'));
       await context.budgetGateway.save({ limitUsd: 200 });
-      context.tokenUsageGateway.setRecords([
+      context.tokenUsageGateway.setRecordsForPath(LOCAL_PATH_A, [
         TokenUsageRecordFactory.create({
           recordedAt: '2026-05-31T23:00:00Z',
-          localPath: LOCAL_PATH,
+          localPath: LOCAL_PATH_A,
           usage: {
             inputTokens: 0,
             outputTokens: 0,
@@ -203,7 +210,7 @@ describe('Acceptance — Spec #163: Token Budget Cap with Live Indicator', () =>
 
     it('ignores prior-month consumption and accepts new reviews in June', async () => {
       const decision = await context.enforceBudget.execute({
-        localPaths: [LOCAL_PATH],
+        localPaths: [LOCAL_PATH_A, LOCAL_PATH_B],
         now: context.now,
       });
 

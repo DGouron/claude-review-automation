@@ -3,7 +3,7 @@ import type { Logger } from 'pino';
 import { verifyGitLabSignature, getGitLabEventType } from '@/security/verifier.js';
 import { gitLabMergeRequestEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
 import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
-import { findRepositoryByProjectPath } from '@/config/loader.js';
+import { findRepositoryByProjectPath, type RepositoryConfig } from '@/config/loader.js';
 import {
   enqueueReview,
   createJobId,
@@ -12,6 +12,7 @@ import {
   type ReviewJob,
 } from '@/frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
+import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
 import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
@@ -64,6 +65,14 @@ export interface GitLabWebhookDependencies {
   syncThreads: SyncThreadsUseCase;
   enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
+  getRepositories: () => RepositoryConfig[];
+  claudeInvokerDeps?: ClaudeInvokerDependencies;
+}
+
+function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): string[] {
+  return getRepositories()
+    .filter((repository) => repository.enabled)
+    .map((repository) => repository.localPath);
 }
 
 export async function handleGitLabWebhook(
@@ -251,7 +260,7 @@ export async function handleGitLabWebhook(
           };
 
           const followupBudgetDecision = await deps.enforceBudget.execute({
-            localPaths: [updateRepoConfig.localPath],
+            localPaths: listEnabledLocalPaths(deps.getRepositories),
           });
           if (!followupBudgetDecision.accepted) {
             logger.warn(
@@ -332,7 +341,7 @@ export async function handleGitLabWebhook(
                 currentStep: runningAgent?.name ?? null,
                 stepsCompleted: completedAgents,
               });
-            }, signal);
+            }, signal, deps.claudeInvokerDeps);
 
             stopWatchingReviewContext(mergeRequestId);
 
@@ -505,7 +514,7 @@ export async function handleGitLabWebhook(
   };
 
   const budgetDecision = await deps.enforceBudget.execute({
-    localPaths: [repoConfig.localPath],
+    localPaths: listEnabledLocalPaths(deps.getRepositories),
   });
   if (!budgetDecision.accepted) {
     logger.warn(
@@ -592,7 +601,7 @@ export async function handleGitLabWebhook(
         currentStep: runningAgent?.name ?? null,
         stepsCompleted: completedAgents,
       });
-    }, signal);
+    }, signal, deps.claudeInvokerDeps);
 
     // Stop watching context file (auto-stops on completion, but explicit stop for error cases)
     stopWatchingReviewContext(mergeRequestId);

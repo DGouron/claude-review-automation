@@ -179,6 +179,23 @@
       </div>
     </div>
 
+    <div id="budget-section" class="section">
+      <div class="section-header">
+        <i data-lucide="wallet"></i> <span>Monthly Claude budget</span>
+      </div>
+      <div class="section-content">
+        <div id="budget-tile">
+          <div class="empty-state">Loading…</div>
+        </div>
+        <div class="budget-slider-row">
+          <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
+          <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
+          <button id="budget-slider-submit" type="button">Apply</button>
+          <span id="budget-slider-status" class="budget-slider-status"></span>
+        </div>
+      </div>
+    </div>
+
     <div class="section" id="active-reviews-section">
       <div class="section-header">
         <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
@@ -294,7 +311,14 @@
     import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
     import { buildInsightsReport } from './modules/insightsReport.js';
     import { fetchTokenUsageSummary, renderTokenUsageTile } from './modules/tokenUsage.js';
-    import { parseBudgetStatusMessage, parseBudgetExceededMessage, renderBudgetTile } from './modules/budgetSettings.js';
+    import {
+      parseBudgetStatusMessage,
+      parseBudgetExceededMessage,
+      renderBudgetTile,
+      fetchBudget,
+      fetchBudgetStatus,
+      submitBudget,
+    } from './modules/budgetSettings.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -1284,6 +1308,58 @@
         console.error('Error fetching token usage summary:', error);
         container.innerHTML = `<div class="empty-state">Unable to load token usage.</div>`;
       }
+    }
+
+    async function refreshBudgetTile() {
+      const tile = document.getElementById('budget-tile');
+      if (!tile) return;
+      try {
+        const viewModel = await fetchBudgetStatus();
+        tile.innerHTML = renderBudgetTile(viewModel);
+      } catch (error) {
+        console.error('Error fetching budget status:', error);
+        tile.innerHTML = `<div class="empty-state">Unable to load budget status.</div>`;
+      }
+    }
+
+    async function initBudgetSlider() {
+      const slider = document.getElementById('budget-slider');
+      const valueLabel = document.getElementById('budget-slider-value');
+      const submitButton = document.getElementById('budget-slider-submit');
+      const statusLabel = document.getElementById('budget-slider-status');
+      if (!slider || !valueLabel || !submitButton || !statusLabel) return;
+
+      try {
+        const config = await fetchBudget();
+        slider.value = String(config.limitUsd);
+        valueLabel.textContent = `$${config.limitUsd}`;
+      } catch (error) {
+        console.error('Error fetching budget:', error);
+      }
+
+      slider.addEventListener('input', () => {
+        valueLabel.textContent = `$${slider.value}`;
+      });
+
+      submitButton.addEventListener('click', async () => {
+        statusLabel.textContent = '';
+        const limitUsd = Number(slider.value);
+        try {
+          const result = await submitBudget(limitUsd);
+          if (result.success) {
+            statusLabel.textContent = 'Saved';
+            statusLabel.className = 'budget-slider-status budget-slider-status--ok';
+            await refreshBudgetTile();
+          } else {
+            statusLabel.textContent = result.error || 'Failed';
+            statusLabel.className = 'budget-slider-status budget-slider-status--error';
+          }
+        } catch (error) {
+          console.error('Error submitting budget:', error);
+          statusLabel.textContent = 'Network error';
+          statusLabel.className = 'budget-slider-status budget-slider-status--error';
+        }
+      });
     }
 
     async function generateAiInsights() {
@@ -2698,6 +2774,8 @@
     loadModelSetting();
     loadLanguageSetting();
     initProjectLoader();
+    refreshBudgetTile();
+    initBudgetSlider();
 
     // Initialize Lucide icons
     refreshIcons();
