@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.10.1...reviewflow-v3.11.0) (2026-05-20)
+
+
+### Added
+
+* **token-accounting:** monthly Claude budget cap with live indicator ([#164](https://github.com/DGouron/review-flow/issues/164)) ([5b87047](https://github.com/DGouron/review-flow/commit/5b87047c463b4c8d0351508fcac0d5bf7cb8eea9))
+
+
+### Changed
+
+* v4 Phase 2 Batch A — DDD hot spots + Shiplens tooling + Token Usage feature ([#162](https://github.com/DGouron/review-flow/issues/162)) ([e0d4100](https://github.com/DGouron/review-flow/commit/e0d4100ebfeea88e7c22ed2955b0837fd503145d))
+
 ## [3.10.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.10.0...reviewflow-v3.10.1) (2026-05-19)
 
 
