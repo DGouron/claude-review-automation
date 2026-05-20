@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
 import { verifyGitHubSignature, getGitHubEventType } from '@/security/verifier.js';
-import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
+import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose, filterGitHubPrUpdate } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { gitHubPullRequestEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
 import { findRepositoryByRemoteUrl, type RepositoryConfig } from '@/config/loader.js';
 import {
@@ -14,6 +14,10 @@ import {
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
 import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
+import type { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPush.usecase.js';
+import type { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
+import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
+import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
@@ -21,8 +25,8 @@ import { executeActionsFromContext } from '@/modules/review-execution/services/c
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
-import { getProjectAgents, getProjectLanguage } from '@/config/projectConfig.js';
-import { DEFAULT_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
+import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
+import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/entities/diffMetadata/diffMetadata.gateway.js';
@@ -37,6 +41,10 @@ export interface GitHubWebhookDependencies {
   diffStatsFetchGateway: DiffStatsFetchGateway;
   trackAssignment: TrackAssignmentUseCase;
   recordCompletion: RecordReviewCompletionUseCase;
+  recordPush: RecordPushUseCase;
+  transitionState: TransitionStateUseCase;
+  checkFollowupNeeded: CheckFollowupNeededUseCase;
+  syncThreads: SyncThreadsUseCase;
   enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
   getRepositories: () => RepositoryConfig[];
@@ -56,7 +64,7 @@ export async function handleGitHubWebhook(
   trackingGateway: ReviewRequestTrackingGateway,
   deps: GitHubWebhookDependencies
 ): Promise<void> {
-  const { trackAssignment, recordCompletion } = deps;
+  const { trackAssignment, recordCompletion, recordPush, checkFollowupNeeded, syncThreads } = deps;
   // 1. Verify signature
   const verification = verifyGitHubSignature(request);
   if (!verification.valid) {
@@ -148,6 +156,250 @@ export async function handleGitHubWebhook(
   );
 
   if (!filterResult.shouldProcess) {
+    const updateResult = filterGitHubPrUpdate(event);
+    logger.debug(
+      { updateResult, action: event.action },
+      'Checking for followup review'
+    );
+
+    if (updateResult.shouldProcess && updateResult.isFollowup) {
+      const updateRepoConfig = findRepositoryByRemoteUrl(event.repository.clone_url);
+      if (updateRepoConfig) {
+        const mr = recordPush.execute({
+          projectPath: updateRepoConfig.localPath,
+          mrNumber: updateResult.mergeRequestNumber,
+          platform: 'github',
+        });
+        logger.info(
+          {
+            prNumber: updateResult.mergeRequestNumber,
+            mrFound: !!mr,
+            mrState: mr?.state,
+            lastPushAt: mr?.lastPushAt,
+            lastReviewAt: mr?.lastReviewAt,
+          },
+          'Push event recorded'
+        );
+
+        const needsFollowup = mr && checkFollowupNeeded.execute({
+          projectPath: updateRepoConfig.localPath,
+          mrNumber: updateResult.mergeRequestNumber,
+          platform: 'github',
+        });
+        logger.info({ needsFollowup, mrState: mr?.state }, 'Followup check result');
+
+        if (needsFollowup) {
+          if (mr.autoFollowup === false) {
+            logger.info(
+              { prNumber: updateResult.mergeRequestNumber, project: updateResult.projectPath },
+              'Auto-followup disabled for this PR, skipping'
+            );
+            reply.status(200).send({ status: 'ignored', reason: 'Auto-followup disabled' });
+            return;
+          }
+
+          logger.info(
+            { prNumber: updateResult.mergeRequestNumber, project: updateResult.projectPath },
+            'Auto-triggering followup review after push'
+          );
+
+          const projectConfig = loadProjectConfig(updateRepoConfig.localPath);
+          const skill = projectConfig?.reviewFollowupSkill || 'review-followup';
+
+          const followupJobId = createJobId('github-followup', updateResult.projectPath, updateResult.mergeRequestNumber);
+          const followupJob: ReviewJob = {
+            id: followupJobId,
+            platform: 'github',
+            projectPath: updateResult.projectPath,
+            localPath: updateRepoConfig.localPath,
+            mrNumber: updateResult.mergeRequestNumber,
+            skill,
+            mrUrl: updateResult.mergeRequestUrl,
+            sourceBranch: updateResult.sourceBranch,
+            targetBranch: updateResult.targetBranch,
+            jobType: 'followup',
+          };
+
+          const followupBudgetDecision = await deps.enforceBudget.execute({
+            localPaths: listEnabledLocalPaths(deps.getRepositories),
+          });
+          if (!followupBudgetDecision.accepted) {
+            logger.warn(
+              {
+                prNumber: followupJob.mrNumber,
+                limitUsd: followupBudgetDecision.status.limitUsd,
+                consumedUsd: followupBudgetDecision.status.consumedUsd,
+              },
+              'Budget exceeded, followup not enqueued'
+            );
+            deps.broadcastBudgetExceeded({
+              mrNumber: followupJob.mrNumber,
+              platform: 'github',
+              projectPath: followupJob.projectPath,
+              limitUsd: followupBudgetDecision.status.limitUsd,
+              consumedUsd: followupBudgetDecision.status.consumedUsd,
+            });
+            reply.status(200).send({ status: 'rejected', reason: 'budget-exceeded' });
+            return;
+          }
+
+          await enqueueReview(followupJob, async (j, signal) => {
+            sendNotification('Review followup démarrée', `PR #${j.mrNumber} - ${j.projectPath}`, logger);
+
+            const mergeRequestId = `github-${j.projectPath}-${j.mrNumber}`;
+            const contextGateway = deps.reviewContextGateway;
+            const threadFetchGw = deps.threadFetchGateway;
+            const diffMetadataFetchGw = deps.diffMetadataFetchGateway;
+
+            try {
+              const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
+              let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
+              try {
+                diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
+              } catch (error) {
+                logger.warn(
+                  { prNumber: j.mrNumber, error: error instanceof Error ? error.message : String(error) },
+                  'Failed to fetch diff metadata for followup, inline comments will be skipped'
+                );
+              }
+              const followupAgentsList = getFollowupAgents(j.localPath) ?? DEFAULT_FOLLOWUP_AGENTS;
+              contextGateway.create({
+                localPath: j.localPath,
+                mergeRequestId,
+                platform: 'github',
+                projectPath: j.projectPath,
+                mergeRequestNumber: j.mrNumber,
+                threads,
+                agents: followupAgentsList,
+                diffMetadata,
+              });
+              logger.info(
+                { prNumber: j.mrNumber, threadsCount: threads.length, hasDiffMetadata: !!diffMetadata },
+                'Review context file created with threads for followup'
+              );
+
+              startWatchingReviewContext(j.id, j.localPath, mergeRequestId);
+              logger.info({ prNumber: j.mrNumber }, 'Started watching review context for live progress');
+            } catch (error) {
+              logger.warn(
+                { prNumber: j.mrNumber, error: error instanceof Error ? error.message : String(error) },
+                'Failed to create review context file for followup, continuing without it'
+              );
+            }
+
+            const result = await invokeClaudeReview(j, logger, (progress, progressEvent) => {
+              updateJobProgress(j.id, progress, progressEvent);
+
+              const runningAgent = progress.agents.find(a => a.status === 'running');
+              const completedAgents = progress.agents
+                .filter(a => a.status === 'completed')
+                .map(a => a.name);
+
+              contextGateway.updateProgress(j.localPath, mergeRequestId, {
+                phase: progress.currentPhase,
+                currentStep: runningAgent?.name ?? null,
+                stepsCompleted: completedAgents,
+              });
+            }, signal, deps.claudeInvokerDeps);
+
+            stopWatchingReviewContext(mergeRequestId);
+
+            if (result.success) {
+              const parsed = parseReviewOutput(result.stdout);
+
+              let threadResolveCount = 0;
+
+              const reviewContext = contextGateway.read(j.localPath, mergeRequestId);
+              if (reviewContext && reviewContext.actions.length > 0) {
+                threadResolveCount = reviewContext.actions.filter(a => a.type === 'THREAD_RESOLVE').length;
+                const contextActionResult = await executeActionsFromContext(
+                  reviewContext,
+                  j.localPath,
+                  logger,
+                  defaultCommandExecutor,
+                );
+                logger.info(
+                  { ...contextActionResult, threadResolveCount, prNumber: j.mrNumber },
+                  'Actions executed from context file for followup'
+                );
+              } else {
+                const threadActions = parseThreadActions(result.stdout);
+                if (threadActions.length > 0) {
+                  threadResolveCount = threadActions.filter(a => a.type === 'THREAD_RESOLVE').length;
+                  const actionResult = await executeThreadActions(
+                    threadActions,
+                    {
+                      platform: 'github',
+                      projectPath: j.projectPath,
+                      mrNumber: j.mrNumber,
+                      localPath: j.localPath,
+                    },
+                    logger,
+                    defaultCommandExecutor
+                  );
+                  logger.info(
+                    { ...actionResult, threadResolveCount, prNumber: j.mrNumber },
+                    'Thread actions executed from stdout markers for followup (fallback)'
+                  );
+                }
+              }
+
+              const mrId = `github-${j.projectPath}-${j.mrNumber}`;
+              const updatedMr = syncThreads.execute({ projectPath: j.localPath, mrId });
+
+              let followupDiffStats = null;
+              try {
+                followupDiffStats = deps.diffStatsFetchGateway.fetchDiffStats(j.projectPath, j.mrNumber);
+              } catch {
+                logger.warn({ prNumber: j.mrNumber }, 'Failed to fetch diff stats for followup');
+              }
+
+              recordCompletion.execute({
+                projectPath: j.localPath,
+                mrId,
+                reviewData: {
+                  type: 'followup',
+                  durationMs: result.durationMs,
+                  score: parsed.score,
+                  blocking: parsed.blocking,
+                  warnings: parsed.warnings,
+                  suggestions: parsed.suggestions,
+                  threadsOpened: 0,
+                  threadsClosed: threadResolveCount,
+                  diffStats: followupDiffStats,
+                },
+              });
+              logger.info(
+                {
+                  prNumber: j.mrNumber,
+                  score: parsed.score,
+                  blocking: parsed.blocking,
+                  warnings: parsed.warnings,
+                  suggestions: parsed.suggestions,
+                  durationMs: result.durationMs,
+                  openThreads: updatedMr?.openThreads,
+                  state: updatedMr?.state,
+                },
+                'Followup stats recorded and threads synced'
+              );
+
+              sendNotification('Review followup terminée', `PR #${j.mrNumber} - ${j.projectPath}`, logger);
+            } else if (!result.cancelled) {
+              sendNotification('Review followup échouée', `PR #${j.mrNumber} - Code ${result.exitCode}`, logger);
+              throw new Error(`Followup review failed with exit code ${result.exitCode}`);
+            }
+          });
+
+          reply.status(202).send({
+            status: 'followup-queued',
+            jobId: followupJobId,
+            prNumber: updateResult.mergeRequestNumber,
+          });
+          return;
+        }
+      }
+    }
+
     reply.status(200).send({ status: 'ignored', reason: filterResult.reason });
     return;
   }

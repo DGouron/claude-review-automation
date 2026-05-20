@@ -214,7 +214,11 @@ export type ProgressCallback = (progress: ReviewProgress, event?: ProgressEvent)
  * Build MCP system prompt for progress tracking
  * This instruction is AUTHORITATIVE and forces Claude to use MCP tools
  */
-function buildMcpSystemPrompt(job: ReviewJob): string {
+export function buildMcpSystemPrompt(job: ReviewJob): string {
+  const isGitHub = job.platform === 'github';
+  const diffSourceCommand = isGitHub ? `gh pr diff ${job.mrNumber}` : `glab mr diff ${job.mrNumber}`;
+  const metadataSourceCommand = isGitHub ? `gh pr view ${job.mrNumber}` : `glab mr view ${job.mrNumber}`;
+
   return `
 # AUTOMATED REVIEW MODE - EXECUTE IMMEDIATELY
 
@@ -251,8 +255,8 @@ These rules are about WRITING production code. You are in **READ-ONLY review mod
 The local repository at \`${job.localPath}\` may be checked out on a DIFFERENT branch than MR !${job.mrNumber}.
 Multiple reviews can run concurrently on the same repo. The local state is UNRELIABLE.
 
-**SOURCE OF TRUTH for the MR diff**: \`glab mr diff ${job.mrNumber}\` — use this, NEVER \`git diff\`.
-**SOURCE OF TRUTH for MR metadata**: \`glab mr view ${job.mrNumber}\` — use this for branch names, title, description.
+**SOURCE OF TRUTH for the MR diff**: \`${diffSourceCommand}\` — use this, NEVER \`git diff\`.
+**SOURCE OF TRUTH for MR metadata**: \`${metadataSourceCommand}\` — use this for branch names, title, description.
 **SOURCE OF TRUTH for threads**: \`get_threads({ jobId: "${job.id}" })\` — MCP tool.
 
 **FORBIDDEN — these reflect LOCAL state, not the MR:**

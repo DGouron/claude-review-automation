@@ -21,6 +21,7 @@ import {
   filterGitHubEvent,
   filterGitHubLabelEvent,
   filterGitHubPrClose,
+  filterGitHubPrUpdate,
   REVIEW_TRIGGER_LABEL,
 } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js'
 
@@ -482,6 +483,65 @@ describe('filterGitHubLabelEvent', () => {
 
       expect(result.shouldProcess).toBe(false)
       expect(result.reason).toContain('closed')
+    })
+  })
+})
+
+describe('filterGitHubPrUpdate', () => {
+  describe('when PR receives synchronize action on open non-draft PR', () => {
+    it('should process synchronize events as followup', () => {
+      const event = GitHubEventFactory.createPullRequestEvent({
+        action: 'synchronize',
+        pull_request: { state: 'open', draft: false },
+      })
+
+      const result = filterGitHubPrUpdate(event)
+
+      expect(result.shouldProcess).toBe(true)
+      if (result.shouldProcess) {
+        expect(result.isFollowup).toBe(true)
+        expect(result.mergeRequestNumber).toBe(123)
+        expect(result.projectPath).toBe('test-owner/test-repo')
+      }
+    })
+  })
+
+  describe('when PR state is closed', () => {
+    it('should not process synchronize events on closed PRs', () => {
+      const event = GitHubEventFactory.createPullRequestEvent({
+        action: 'synchronize',
+        pull_request: { state: 'closed', draft: false },
+      })
+
+      const result = filterGitHubPrUpdate(event)
+
+      expect(result.shouldProcess).toBe(false)
+      expect(result.reason).toContain('not open')
+    })
+  })
+
+  describe('when PR is a draft', () => {
+    it('should not process synchronize events on draft PRs', () => {
+      const event = GitHubEventFactory.createPullRequestEvent({
+        action: 'synchronize',
+        pull_request: { state: 'open', draft: true },
+      })
+
+      const result = filterGitHubPrUpdate(event)
+
+      expect(result.shouldProcess).toBe(false)
+      expect(result.reason).toContain('draft')
+    })
+  })
+
+  describe('when action is not synchronize', () => {
+    it('should not process opened action', () => {
+      const event = GitHubEventFactory.createPullRequestEvent({ action: 'opened' })
+
+      const result = filterGitHubPrUpdate(event)
+
+      expect(result.shouldProcess).toBe(false)
+      expect(result.reason).toContain('not synchronize')
     })
   })
 })

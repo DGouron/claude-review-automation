@@ -290,6 +290,37 @@ export function filterGitHubPrClose(event: GitHubPullRequestEvent): FilterResult
 }
 
 /**
+ * Check if a GitHub PR was updated by a push (synchronize) that might need a followup review
+ * Mirrors filterGitLabMrUpdate for parity between platforms
+ */
+export function filterGitHubPrUpdate(event: GitHubPullRequestEvent): FilterResult {
+  if (event.action !== 'synchronize') {
+    return { shouldProcess: false, reason: `Action is ${event.action}, not synchronize` };
+  }
+
+  const pr = event.pull_request;
+
+  if (pr.state !== 'open') {
+    return { shouldProcess: false, reason: `PR state is ${pr.state}, not open` };
+  }
+
+  if (pr.draft) {
+    return { shouldProcess: false, reason: 'PR is a draft' };
+  }
+
+  return {
+    shouldProcess: true,
+    reason: 'PR was updated (potential new commits)',
+    mergeRequestNumber: pr.number,
+    projectPath: event.repository.full_name,
+    mergeRequestUrl: pr.html_url,
+    sourceBranch: pr.head.ref,
+    targetBranch: pr.base.ref,
+    isFollowup: true,
+  };
+}
+
+/**
  * Filter GitHub PR label events
  * Returns true if the "needs-review" label was added
  */
