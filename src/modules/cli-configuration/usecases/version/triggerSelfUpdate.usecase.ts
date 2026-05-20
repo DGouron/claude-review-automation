@@ -1,14 +1,23 @@
 import type { SelfUpdateResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
 import type { SelfUpdateCommandPort } from '@/modules/cli-configuration/entities/packageVersion/selfUpdateCommand.gateway.js'
+import type { InstallTypeDetector } from '@/modules/cli-configuration/entities/packageVersion/installTypeDetector.gateway.js'
+
+export const SOURCE_CHECKOUT_MANUAL_COMMAND =
+  'git pull && yarn build && systemctl --user restart reviewflow-app'
 
 export interface TriggerSelfUpdateDependencies {
   selfUpdateCommand: SelfUpdateCommandPort
+  installTypeDetector: InstallTypeDetector
 }
 
 export async function triggerSelfUpdate(
   dependencies: TriggerSelfUpdateDependencies,
 ): Promise<SelfUpdateResult> {
-  const { selfUpdateCommand } = dependencies
+  const { selfUpdateCommand, installTypeDetector } = dependencies
+
+  if (installTypeDetector.detect() === 'source-checkout') {
+    return { status: 'source-checkout', manualCommand: SOURCE_CHECKOUT_MANUAL_COMMAND }
+  }
 
   const updateResult = await selfUpdateCommand.runGlobalUpdate()
 

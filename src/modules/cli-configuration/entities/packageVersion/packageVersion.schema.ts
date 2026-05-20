@@ -11,4 +11,5 @@ export const versionCheckResultSchema = z.object({
   latestVersion: z.string().nullable(),
   updateAvailable: z.boolean(),
   checkedAt: z.string(),
+  installType: z.enum(['global-npm', 'source-checkout']),
 })

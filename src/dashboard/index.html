@@ -2598,7 +2598,7 @@
         const versionUpdateArea = document.getElementById('version-update-area');
         if (versionUpdateArea) {
           versionUpdateArea.innerHTML = renderVersionUpdateArea(
-            { currentVersion: data.currentVersion || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            { currentVersion: data.currentVersion || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null, installType: data.installType || 'global-npm' },
             t
           );
           if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2639,6 +2639,9 @@
         } else if (data.status === 'permission-denied') {
           setVersionCheckState('idle', t);
           showManualUpdateCommand(data.command);
+        } else if (data.status === 'source-checkout') {
+          setVersionCheckState('idle', t);
+          showManualUpdateCommand(data.manualCommand);
         } else {
           showToast(data.error || t('version.updateFailed'), 'error');
           setVersionCheckState('idle', t);
@@ -2647,6 +2650,21 @@
         console.error('Error triggering update:', error);
         showToast(t('version.updateFailed'), 'error');
         setVersionCheckState('idle', t);
+      }
+    }
+
+    async function showSourceCheckoutUpdate() {
+      try {
+        const response = await fetch(`${API_URL}/api/version/update`, { method: 'POST' });
+        const data = await response.json();
+        if (data.status === 'source-checkout') {
+          showManualUpdateCommand(data.manualCommand);
+        } else {
+          showToast(t('version.updateFailed'), 'error');
+        }
+      } catch (error) {
+        console.error('Error fetching manual update command:', error);
+        showToast(t('version.updateFailed'), 'error');
       }
     }
 
@@ -2719,6 +2737,7 @@
     // Expose functions to HTML onclick handlers
     window.checkForUpdates = checkForUpdates;
     window.triggerVersionUpdate = triggerVersionUpdate;
+    window.showSourceCheckoutUpdate = showSourceCheckoutUpdate;
     window.copyUpdateCommand = copyUpdateCommand;
     window.toggleCollapsibleList = toggleCollapsibleList;
     window.checkClaudeStatus = checkClaudeStatus;

@@ -1,10 +1,12 @@
 import type { VersionCheckResult } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.js'
 import type { PackageVersionGateway } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.gateway.js'
 import type { VersionCachePort } from '@/modules/cli-configuration/entities/packageVersion/versionCache.gateway.js'
+import type { InstallTypeDetector } from '@/modules/cli-configuration/entities/packageVersion/installTypeDetector.gateway.js'
 
 export interface CheckVersionDependencies {
   packageVersionGateway: PackageVersionGateway
   cache: VersionCachePort
+  installTypeDetector: InstallTypeDetector
 }
 
 export interface CheckVersionInput {
@@ -16,7 +18,7 @@ export async function checkVersion(
   input: CheckVersionInput,
   dependencies: CheckVersionDependencies,
 ): Promise<VersionCheckResult> {
-  const { cache } = dependencies
+  const { cache, installTypeDetector } = dependencies
 
   if (!input.forceRefresh && !cache.isExpired()) {
     const cached = cache.get()
@@ -33,6 +35,7 @@ export async function checkVersion(
     latestVersion,
     updateAvailable,
     checkedAt: new Date().toISOString(),
+    installType: installTypeDetector.detect(),
   }
 
   cache.set(result)

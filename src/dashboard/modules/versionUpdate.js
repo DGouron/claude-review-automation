@@ -1,7 +1,7 @@
 import { escapeHtml } from './html.js';
 
 /**
- * @param {{ currentVersion: string, updateAvailable: boolean, latestVersion: string | null }} versionData
+ * @param {{ currentVersion: string, updateAvailable: boolean, latestVersion: string | null, installType: 'global-npm' | 'source-checkout' }} versionData
  * @param {(key: string, params?: Record<string, string | number>) => string} translate
  * @returns {string}
  */
@@ -17,6 +17,15 @@ export function renderVersionUpdateArea(versionData, translate) {
   }
 
   const label = translate('version.updateAvailable', { version: versionData.latestVersion });
+
+  if (versionData.installType === 'source-checkout') {
+    const tooltip = translate('version.sourceCheckoutTooltip');
+    const sourceCheckoutButton = `<button id="version-source-checkout-btn" class="btn btn-update" title="${escapeHtml(tooltip)}" onclick="showSourceCheckoutUpdate()">
+    <i data-lucide="info"></i> <span>${escapeHtml(label)}</span>
+  </button>`;
+    return `${versionLabel}${sourceCheckoutButton}${checkButton}`;
+  }
+
   const updateButton = `<button id="version-update-btn" class="btn btn-update" onclick="triggerVersionUpdate()">
     <i data-lucide="download"></i> <span>${escapeHtml(label)}</span>
   </button>`;

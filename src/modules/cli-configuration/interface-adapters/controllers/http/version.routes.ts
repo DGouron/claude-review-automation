@@ -3,6 +3,7 @@ import type { VersionCheckResult, SelfUpdateResult } from '@/modules/cli-configu
 import type { PackageVersionGateway } from '@/modules/cli-configuration/entities/packageVersion/packageVersion.gateway.js'
 import type { VersionCachePort } from '@/modules/cli-configuration/entities/packageVersion/versionCache.gateway.js'
 import type { SelfUpdateCommandPort } from '@/modules/cli-configuration/entities/packageVersion/selfUpdateCommand.gateway.js'
+import type { InstallTypeDetector } from '@/modules/cli-configuration/entities/packageVersion/installTypeDetector.gateway.js'
 import type { CheckVersionInput, CheckVersionDependencies } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js'
 import type { TriggerSelfUpdateDependencies } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js'
 
@@ -13,6 +14,7 @@ interface VersionRoutesOptions {
   packageVersionGateway: PackageVersionGateway
   versionCache: VersionCachePort
   selfUpdateCommand: SelfUpdateCommandPort
+  installTypeDetector: InstallTypeDetector
   serverPort: number
 }
 
@@ -20,12 +22,19 @@ export const versionRoutes: FastifyPluginAsync<VersionRoutesOptions> = async (fa
   fastify.get('/api/version/check', async () => {
     return options.checkVersion(
       { currentVersion: options.currentVersion, forceRefresh: true },
-      { packageVersionGateway: options.packageVersionGateway, cache: options.versionCache },
+      {
+        packageVersionGateway: options.packageVersionGateway,
+        cache: options.versionCache,
+        installTypeDetector: options.installTypeDetector,
+      },
     )
   })
 
   fastify.post('/api/version/update', async (_request, reply) => {
-    const result = await options.triggerSelfUpdate({ selfUpdateCommand: options.selfUpdateCommand })
+    const result = await options.triggerSelfUpdate({
+      selfUpdateCommand: options.selfUpdateCommand,
+      installTypeDetector: options.installTypeDetector,
+    })
 
     if (result.status === 'failed') {
       reply.code(500)

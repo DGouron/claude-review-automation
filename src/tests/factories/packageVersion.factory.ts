@@ -8,6 +8,7 @@ export class PackageVersionFactory {
       latestVersion: '2.0.0',
       updateAvailable: true,
       checkedAt: '2026-03-14T10:00:00Z',
+      installType: 'global-npm',
       ...overrides,
     }
   }

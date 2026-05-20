@@ -53,6 +53,7 @@ describe('versionCheckResultSchema', () => {
       latestVersion: '2.0.0',
       updateAvailable: true,
       checkedAt: '2026-03-14T10:00:00Z',
+      installType: 'global-npm',
     }
 
     const result = versionCheckResultSchema.safeParse(checkResult)
@@ -66,6 +67,7 @@ describe('versionCheckResultSchema', () => {
       latestVersion: null,
       updateAvailable: false,
       checkedAt: '2026-03-14T10:00:00Z',
+      installType: 'source-checkout',
     }
 
     const result = versionCheckResultSchema.safeParse(checkResult)
@@ -147,12 +149,14 @@ describe('VersionCheckResult type', () => {
       latestVersion: '2.0.0',
       updateAvailable: true,
       checkedAt: '2026-03-14T10:00:00Z',
+      installType: 'global-npm',
     }
 
     expect(result.currentVersion).toBe('1.0.0')
     expect(result.latestVersion).toBe('2.0.0')
     expect(result.updateAvailable).toBe(true)
     expect(result.checkedAt).toBe('2026-03-14T10:00:00Z')
+    expect(result.installType).toBe('global-npm')
   })
 
   it('should allow null latestVersion', () => {
@@ -161,9 +165,11 @@ describe('VersionCheckResult type', () => {
       latestVersion: null,
       updateAvailable: false,
       checkedAt: '2026-03-14T10:00:00Z',
+      installType: 'source-checkout',
     }
 
     expect(result.latestVersion).toBeNull()
+    expect(result.installType).toBe('source-checkout')
   })
 })
 
