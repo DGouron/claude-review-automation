@@ -3971,3 +3971,64 @@ input:focus-visible,
   width: 15px;
   height: 15px;
 }
+
+/* Token usage tile — Spec #126 */
+.token-usage-tile {
+  background: var(--nsc-bg-elevated);
+  border: 1px solid var(--nsc-border-soft);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+.token-usage-tile--empty {
+  text-align: center;
+  color: var(--nsc-text-secondary);
+}
+.token-usage-header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nsc-text-secondary);
+  margin-bottom: 0.5rem;
+}
+.token-usage-total {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.token-usage-cost {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--nsc-success);
+}
+.token-usage-meta {
+  font-size: 0.875rem;
+  color: var(--nsc-text-secondary);
+}
+.token-usage-models {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.token-usage-model-row {
+  display: grid;
+  grid-template-columns: 2fr auto auto auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.4rem 0.6rem;
+  background: var(--nsc-bg-surface);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+.token-usage-model-name {
+  color: var(--nsc-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.token-usage-model-count { color: var(--nsc-text-muted); }
+.token-usage-model-cost { color: var(--nsc-text-primary); font-weight: 600; }
+.token-usage-model-share { color: var(--nsc-action); font-variant-numeric: tabular-nums; }
+.token-usage-empty {
+  padding: 0.5rem 0;
+  color: var(--nsc-text-muted);
+}
