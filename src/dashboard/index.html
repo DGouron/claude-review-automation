@@ -1,0 +1,2708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviewflow Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo"><i data-lucide="bot"></i></div>
+      <h1>Reviewflow</h1>
+      <div class="header-actions">
+        <div class="version-update-wrapper">
+          <div id="version-update-area" class="version-update-area"></div>
+          <div id="version-manual-update-container"></div>
+        </div>
+        <button id="check-claude-btn" class="btn btn-primary" onclick="checkClaudeStatus()">
+          <i data-lucide="search"></i> <span id="i18n-check-claude"></span>
+        </button>
+        <button id="toggle-logs-btn" class="btn btn-secondary" onclick="toggleLogs()">
+          <i data-lucide="scroll-text"></i> <span id="i18n-logs-btn"></span>
+        </button>
+        <div id="server-status" class="status-indicator connecting">
+          <span class="status-dot"></span>
+          <span id="i18n-server-status"></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="cards">
+      <div class="card card-priority">
+        <div class="card-label" id="i18n-card-running"></div>
+        <div id="running-count" class="card-value running">-</div>
+      </div>
+      <div class="card card-priority">
+        <div class="card-label" id="i18n-card-queued"></div>
+        <div id="queued-count" class="card-value queued">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label" id="i18n-card-completed"></div>
+        <div id="completed-count" class="card-value">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label" id="i18n-card-claude-cli"></div>
+        <div id="claude-status" class="card-claude checking">
+          <span class="status" id="i18n-claude-checking"></span>
+          <span class="version"></span>
+        </div>
+      </div>
+      <div class="card" id="git-cli-card">
+        <div class="card-label" id="git-cli-label"></div>
+        <div id="git-cli-status" class="card-claude checking">
+          <span class="status" id="i18n-git-load-project"></span>
+          <span class="version"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label" id="i18n-card-model"></div>
+        <div class="card-model">
+          <select id="model-select" class="model-select" onchange="changeModel(this.value)">
+            <option value="opus" id="i18n-model-opus"></option>
+            <option value="sonnet" id="i18n-model-sonnet"></option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label" id="i18n-card-language"></div>
+        <div class="card-model">
+          <select id="language-select" class="model-select" onchange="changeLanguage(this.value)">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="focus-strip">
+      <div class="focus-chip focus-now">
+        <div class="focus-copy">
+          <span class="focus-label" id="i18n-strip-now"></span>
+          <span class="focus-meta" id="i18n-strip-now-meta"></span>
+        </div>
+        <span class="focus-value" id="focus-now-count">-</span>
+      </div>
+      <div class="focus-chip focus-next">
+        <div class="focus-copy">
+          <span class="focus-label" id="i18n-strip-next"></span>
+          <span class="focus-meta" id="i18n-strip-next-meta"></span>
+        </div>
+        <span class="focus-value" id="focus-next-count">-</span>
+      </div>
+      <div class="focus-chip focus-blocked">
+        <div class="focus-copy">
+          <span class="focus-label" id="i18n-strip-blocked"></span>
+          <span class="focus-meta" id="i18n-strip-blocked-meta"></span>
+        </div>
+        <span class="focus-value" id="focus-blocked-count">-</span>
+      </div>
+      <button id="focus-strip-toggle" class="focus-toggle-btn" onclick="toggleFocusStripMode()"></button>
+    </div>
+
+    <div id="data-loading-state" class="data-loading hidden" role="status" aria-live="polite">
+      <i data-lucide="loader-circle"></i>
+      <span id="i18n-loading-data"></span>
+    </div>
+
+    <div class="project-loader">
+      <select id="project-select" class="project-input" style="min-width: 350px;" onchange="onProjectSelect(this.value)">
+        <option value="" id="i18n-project-placeholder"></option>
+      </select>
+      <input type="text" id="project-path-input" class="project-input" style="min-width: 250px;"
+             value="">
+      <button class="btn btn-primary" onclick="loadProjectConfig()">
+        <i data-lucide="folder-open"></i> <span id="i18n-project-load"></span>
+      </button>
+      <button id="remove-project-btn" class="btn btn-secondary" onclick="removeCurrentProject()">
+        <i data-lucide="trash-2"></i>
+      </button>
+      <span id="config-status" class="config-status hidden"></span>
+    </div>
+    <div id="config-info" class="config-info hidden"></div>
+
+    <div id="claude-login-section" class="login-instructions hidden">
+      <strong><i data-lucide="alert-triangle"></i> <span id="i18n-claude-login-title"></span></strong>
+      <p style="margin-top: 0.5rem;" id="i18n-claude-login-instruction"></p>
+      <p style="margin-top: 0.5rem;"><code>claude login</code></p>
+      <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #a1a1aa;" id="i18n-claude-login-reload"></p>
+    </div>
+
+    <div id="git-login-section" class="login-instructions hidden">
+      <strong id="git-login-title"><i data-lucide="alert-triangle"></i> <span id="i18n-git-login-title"></span></strong>
+      <div style="margin-top: 0.75rem;" id="git-login-instructions"></div>
+    </div>
+
+    <div id="logs-section" class="section hidden">
+      <div class="section-header">
+        <i data-lucide="scroll-text"></i> <span id="i18n-section-logs"></span>
+        <span id="error-count" class="badge-count hidden"></span>
+      </div>
+      <div id="logs-content" class="section-content logs">
+        <div class="empty-state" id="i18n-empty-logs"></div>
+      </div>
+    </div>
+
+    <div id="stats-section" class="section hidden">
+      <div class="section-header clickable" onclick="toggleStats()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="bar-chart-3"></i> <span id="i18n-section-stats"></span>
+        <span id="stats-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+        <button id="recalculate-btn" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); recalculateStats()" style="margin-left: auto; font-size: 0.75rem; padding: 2px 8px;">
+          <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+          <span id="recalculate-label"></span>
+        </button>
+        <span id="backfill-progress" class="badge-count hidden" style="margin-left: 4px;"></span>
+      </div>
+      <div id="project-stats" class="section-content stats-grid hidden">
+        <div class="empty-state" id="i18n-empty-stats"></div>
+      </div>
+    </div>
+
+    <div id="team-section" class="section hidden">
+      <div class="section-header clickable" onclick="toggleTeamSection()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="users"></i> <span id="i18n-section-team"></span>
+        <span id="team-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+      </div>
+      <div id="team-tab-content" class="section-content hidden">
+        <div class="empty-state" id="i18n-empty-team"></div>
+      </div>
+    </div>
+
+    <div id="token-usage-section" class="section hidden">
+      <div class="section-header">
+        <i data-lucide="coins"></i> <span>Claude token usage</span>
+      </div>
+      <div id="token-usage-content" class="section-content">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+
+    <div class="section" id="active-reviews-section">
+      <div class="section-header">
+        <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
+        <span id="active-reviews-count" class="badge-count hidden">0</span>
+      </div>
+      <div id="active-reviews" class="section-content">
+        <div class="empty-state" id="i18n-empty-active-reviews"></div>
+      </div>
+    </div>
+
+    <div class="section hidden" id="active-followups-section">
+      <div class="section-header clickable" onclick="toggleSection('active-followups-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="refresh-cw"></i> <span id="i18n-section-active-followups"></span>
+        <span id="active-followups-count" class="badge-count hidden">0</span>
+        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+      </div>
+      <div id="active-followups" class="section-content">
+        <div class="empty-state" id="i18n-empty-active-followups"></div>
+      </div>
+    </div>
+
+    <div class="section hidden" id="pending-fix-section">
+      <div class="section-header">
+        <i data-lucide="wrench"></i> <span id="i18n-section-pending-fix"></span>
+        <span id="pending-fix-count" class="badge-count hidden">0</span>
+        <button id="sync-threads-btn" class="btn-icon btn-sync" onclick="syncGitLabThreads()">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+      </div>
+      <div id="pending-fix-reviews" class="section-content">
+        <div class="empty-state" id="i18n-empty-pending-fix"></div>
+      </div>
+    </div>
+
+    <div class="section hidden" id="pending-approval-section">
+      <div class="section-header clickable" onclick="toggleSection('pending-approval-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="circle-check"></i> <span id="i18n-section-pending-approval"></span>
+        <span id="pending-approval-count" class="badge-count hidden">0</span>
+        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+      </div>
+      <div id="pending-approval-reviews" class="section-content">
+        <div class="empty-state" id="i18n-empty-pending-approval"></div>
+      </div>
+    </div>
+
+    <div class="section" id="completed-reviews-section">
+      <div class="section-header clickable" onclick="toggleSection('completed-reviews-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="file-check"></i> <span id="i18n-section-completed-reviews"></span>
+        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+      </div>
+      <div id="recent-reviews" class="section-content">
+        <div class="empty-state" id="i18n-empty-loading"></div>
+      </div>
+    </div>
+
+    <div class="section" id="cleanup-section">
+      <div class="section-header">
+        <i data-lucide="trash-2"></i> <span>Nettoyage</span>
+      </div>
+      <div class="section-content" id="cleanup-content"></div>
+    </div>
+
+    <div class="refresh-info">
+      <span id="connection-mode"></span> • <span id="i18n-connection-fallback"></span>
+      <span class="refresh-separator"> • </span>
+      <span id="session-metrics"></span>
+    </div>
+  </div>
+
+  <div id="cancel-modal" class="modal-overlay hidden" onclick="closeCancelModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-title" id="cancel-modal-title"></div>
+      <div class="modal-message" id="i18n-modal-message"></div>
+      <div class="modal-actions">
+        <button class="btn-modal-back" onclick="closeCancelModal()" id="i18n-modal-back"></button>
+        <button class="btn-modal-confirm" id="cancel-modal-confirm" onclick="confirmCancelReview()"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <div id="mr-sheet-overlay" class="sheet-overlay" onclick="closeMrSheet()"></div>
+  <div id="mr-sheet" class="sheet-panel">
+    <div id="mr-sheet-content" class="sheet-content"></div>
+  </div>
+
+  <div id="dev-sheet-overlay" class="sheet-overlay" onclick="closeDevSheet()"></div>
+  <div id="dev-sheet" class="sheet-panel">
+    <div id="dev-sheet-content" class="sheet-content"></div>
+  </div>
+
+  <script type="module">
+    import { t, setLanguage, getLanguage } from './modules/i18n.js';
+    import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
+    import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from './modules/html.js';
+    import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
+    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_PROJECTS, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
+    import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
+    import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
+    import { collectReviewNotifications, createReviewNotificationState } from './modules/notifications.js';
+    import { resolveReviewAssigneeDisplay } from './modules/assignee.js';
+    import { buildQueueLanesModel } from './modules/queueLanes.js';
+    import { rankPendingFixForNowLane } from './modules/priority.js';
+    import { getQualityProgress, getQualityTrend } from './modules/quality.js';
+    import { createSessionMetricsState, trackSessionAction, updatePriorityItemTracking, getSessionMetricsSnapshot } from './modules/sessionMetrics.js';
+    import { renderCleanupSection, handleCleanupClick } from './modules/cleanup.js';
+    import { renderVersionUpdateArea, setVersionCheckState } from './modules/versionUpdate.js';
+    import { renderCollapsibleList, toggleCollapsibleList } from './modules/collapsibleList.js';
+    import { renderMrSheetContent, drawScoreTimeline, drawIssuesBreakdown } from './modules/mrSheet.js';
+    import { drawScoreTrendChart, drawReviewActivityChart, drawScoreDistributionChart, animateCounter } from './modules/statsCharts.js';
+    import { renderTeamTab, fetchAndRenderTeamTab } from './modules/teamTab.js';
+    import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
+    import { buildInsightsReport } from './modules/insightsReport.js';
+    import { fetchTokenUsageSummary, renderTokenUsageTile } from './modules/tokenUsage.js';
+
+    const API_URL = window.location.origin;
+    const WS_URL = `ws://${window.location.host}/ws`;
+
+    let ws = null;
+    let wsConnected = false;
+    let reconnectAttempts = 0;
+    let logsVisible = false;
+
+    let currentData = { activeReviews: [], recentReviews: [], logs: [], reviewFiles: [], pendingFix: [], pendingApproval: [] };
+    const mrDataStore = new Map();
+    let loadedReviews = {};
+    let statsCollapsed = true;
+    let currentStatsReviews = [];
+    let currentDevFilter = 'all';
+    let focusStripCompact = false;
+    let teamCollapsed = true;
+    let currentInsightsData = null;
+    const loadingState = { status: 0, reviewFiles: 0, stats: 0, mrTracking: 0 };
+    let hasLoadedStatusOnce = false;
+    const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section'];
+    const sectionExpandedState = Object.fromEntries(secondarySections.map((sectionIdentifier) => [sectionIdentifier, false]));
+    const quietRefreshSections = [
+      'active-reviews-section',
+      'active-followups-section',
+      'completed-reviews-section',
+      'pending-fix-section',
+    ];
+    const loadingLabelBySource = {
+      status: 'loading.status',
+      reviewFiles: 'loading.reviewFiles',
+      stats: 'loading.stats',
+      mrTracking: 'loading.mrTracking',
+    };
+    let loadingShowTimeout = null;
+    let loadingHideTimeout = null;
+    let loadingVisibleSince = null;
+    const loadingDelayMs = 260;
+    const loadingMinimumVisibleMs = 420;
+
+    let sessionMetrics = createSessionMetricsState(Date.now());
+    let reviewNotificationState = createReviewNotificationState();
+
+    function applyFocusStripMode() {
+      const strip = document.querySelector('.focus-strip');
+      if (strip) {
+        strip.classList.toggle('compact', focusStripCompact);
+      }
+      document.body.classList.toggle('compact-density', focusStripCompact);
+      const toggleBtn = document.getElementById('focus-strip-toggle');
+      if (toggleBtn) {
+        toggleBtn.textContent = focusStripCompact ? t('strip.modeDetailed') : t('strip.modeCompact');
+        toggleBtn.setAttribute('aria-pressed', focusStripCompact ? 'true' : 'false');
+      }
+    }
+
+    function loadFocusStripMode() {
+      const mode = localStorage.getItem(STORAGE_KEY_FOCUS_STRIP_MODE);
+      focusStripCompact = mode === 'compact';
+      applyFocusStripMode();
+    }
+
+    function toggleFocusStripMode() {
+      focusStripCompact = !focusStripCompact;
+      localStorage.setItem(STORAGE_KEY_FOCUS_STRIP_MODE, focusStripCompact ? 'compact' : 'detailed');
+      applyFocusStripMode();
+    }
+
+    function applySectionExpansion(sectionIdentifier) {
+      const section = document.getElementById(sectionIdentifier);
+      if (!section) return;
+      const content = section.querySelector('.section-content');
+      const toggle = section.querySelector('.section-toggle');
+      if (!content) return;
+
+      const expanded = sectionExpandedState[sectionIdentifier] === true;
+      content.classList.toggle('hidden', !expanded);
+      section.classList.toggle('section-collapsed', !expanded);
+      if (toggle) {
+        toggle.classList.toggle('collapsed', !expanded);
+      }
+    }
+
+    function toggleSection(sectionIdentifier) {
+      if (!(sectionIdentifier in sectionExpandedState)) return;
+      sectionExpandedState[sectionIdentifier] = !sectionExpandedState[sectionIdentifier];
+      applySectionExpansion(sectionIdentifier);
+      refreshIcons();
+    }
+
+    function setLoadingFlag(source, isLoading) {
+      if (!(source in loadingState)) return;
+      const nextValue = isLoading
+        ? loadingState[source] + 1
+        : Math.max(0, loadingState[source] - 1);
+      loadingState[source] = nextValue;
+      updateLoadingStateUI();
+    }
+
+    function applyQuietRefreshSectionIndicators(sectionIdentifiers) {
+      quietRefreshSections.forEach((sectionIdentifier) => {
+        const section = document.getElementById(sectionIdentifier);
+        if (!section) return;
+        section.classList.toggle('is-refreshing', sectionIdentifiers.includes(sectionIdentifier));
+      });
+    }
+
+    function getLoadingMessageKey() {
+      const activeSource = Object.entries(loadingState).find(([, value]) => value > 0)?.[0];
+      return activeSource ? loadingLabelBySource[activeSource] : 'loading.data';
+    }
+
+    function updateLoadingStateUI() {
+      const isLoading = Object.values(loadingState).some((value) => value > 0);
+      const loadingPresentation = getLoadingPresentation(loadingState, { hasLoadedStatusOnce });
+      const loadingElement = document.getElementById('data-loading-state');
+      if (!loadingElement) return;
+
+      const loadingLabel = document.getElementById('i18n-loading-data');
+      if (loadingLabel) {
+        loadingLabel.textContent = t(getLoadingMessageKey());
+      }
+
+      if (isLoading) {
+        document.body.classList.toggle('is-quiet-refresh', loadingPresentation.isQuietRefresh);
+        const quietSectionIdentifiers = getQuietRefreshSectionIdentifiers(loadingState, { hasLoadedStatusOnce });
+        applyQuietRefreshSectionIndicators(quietSectionIdentifiers);
+        if (!loadingPresentation.showGlobalLoading) {
+          if (loadingShowTimeout) {
+            clearTimeout(loadingShowTimeout);
+            loadingShowTimeout = null;
+          }
+          if (loadingHideTimeout) {
+            clearTimeout(loadingHideTimeout);
+            loadingHideTimeout = null;
+          }
+          loadingVisibleSince = null;
+          loadingElement.classList.add('hidden');
+          document.body.classList.remove('is-loading-data');
+          return;
+        }
+
+        if (loadingHideTimeout) {
+          clearTimeout(loadingHideTimeout);
+          loadingHideTimeout = null;
+        }
+        if (!loadingVisibleSince && !loadingShowTimeout) {
+          loadingShowTimeout = setTimeout(() => {
+            loadingElement.classList.remove('hidden');
+            document.body.classList.add('is-loading-data');
+            loadingVisibleSince = Date.now();
+            loadingShowTimeout = null;
+            refreshIcons();
+          }, loadingDelayMs);
+        }
+      } else {
+        document.body.classList.remove('is-quiet-refresh');
+        applyQuietRefreshSectionIndicators([]);
+        if (loadingShowTimeout) {
+          clearTimeout(loadingShowTimeout);
+          loadingShowTimeout = null;
+        }
+        if (!loadingVisibleSince) {
+          loadingElement.classList.add('hidden');
+          document.body.classList.remove('is-loading-data');
+          return;
+        }
+        const elapsed = Date.now() - loadingVisibleSince;
+        const remaining = Math.max(0, loadingMinimumVisibleMs - elapsed);
+        loadingHideTimeout = setTimeout(() => {
+          loadingElement.classList.add('hidden');
+          document.body.classList.remove('is-loading-data');
+          loadingVisibleSince = null;
+          loadingHideTimeout = null;
+          updateUI();
+        }, remaining);
+      }
+    }
+
+    function formatSessionDuration(milliseconds) {
+      const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+
+    function formatActionBreakdown(actionBreakdown) {
+      return `${t('metrics.action.followup')} ${actionBreakdown.followup}, ${t('metrics.action.open')} ${actionBreakdown.open}, ${t('metrics.action.approve')} ${actionBreakdown.approve}, ${t('metrics.action.cancelReview')} ${actionBreakdown.cancelReview}, ${t('metrics.action.syncThreads')} ${actionBreakdown.syncThreads}`;
+    }
+
+    function updateSessionMetricsUI() {
+      const metricsElement = document.getElementById('session-metrics');
+      if (!metricsElement) return;
+
+      const metricsSnapshot = getSessionMetricsSnapshot(sessionMetrics);
+      const firstActionLabel = metricsSnapshot.firstUsefulActionDelayMs === null
+        ? t('metrics.pending')
+        : formatSessionDuration(metricsSnapshot.firstUsefulActionDelayMs);
+      const priorityResolutionLabel = metricsSnapshot.averagePriorityResolutionMs === null
+        ? t('metrics.pending')
+        : formatSessionDuration(metricsSnapshot.averagePriorityResolutionMs);
+      const actionBreakdownLabel = formatActionBreakdown(metricsSnapshot.actionBreakdown);
+      metricsElement.textContent = `${t('metrics.session')}: ${t('metrics.firstAction')} ${firstActionLabel} • ${metricsSnapshot.actionCount} ${t('metrics.actions')} • ${t('metrics.priorityResolution')} ${priorityResolutionLabel} • ${t('metrics.breakdown')} ${actionBreakdownLabel}`;
+    }
+
+    function trackUsefulAction(actionType = 'other') {
+      sessionMetrics = trackSessionAction(sessionMetrics, actionType, Date.now());
+      updateSessionMetricsUI();
+    }
+
+    function onUsefulLinkAction() {
+      trackUsefulAction('open');
+      return true;
+    }
+
+    function activateOnKeydown(event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.currentTarget.click();
+    }
+
+    function safeDecodeURIComponent(value) {
+      try {
+        return decodeURIComponent(String(value ?? ''));
+      } catch {
+        return String(value ?? '');
+      }
+    }
+
+    function getNotificationMrNumber(review) {
+      return typeof review.mrNumber === 'number' ? String(review.mrNumber) : '?';
+    }
+
+    function mapNotificationToToast(notification) {
+      const mrNumber = getNotificationMrNumber(notification.review);
+      switch (notification.kind) {
+        case 'reviewStarted':
+          return { message: t('notify.reviewStarted', { mrNumber }), type: 'info' };
+        case 'followupStarted':
+          return { message: t('notify.followupStarted', { mrNumber }), type: 'info' };
+        case 'reviewCompleted':
+          return { message: t('notify.reviewCompleted', { mrNumber }), type: 'success' };
+        case 'followupCompleted':
+          return { message: t('notify.followupCompleted', { mrNumber }), type: 'success' };
+        case 'reviewFailed':
+          return { message: t('notify.reviewFailed', { mrNumber }), type: 'error' };
+        default:
+          return null;
+      }
+    }
+
+    function maybeShowDesktopNotification(notification) {
+      if (typeof Notification === 'undefined') return;
+
+      const shouldNotify = shouldNotifyDesktop({
+        permission: Notification.permission,
+        isDocumentHidden: document.visibilityState !== 'visible',
+      });
+      if (!shouldNotify) return;
+
+      const desktopPayload = getDesktopNotificationPayload(notification, t);
+      if (!desktopPayload) return;
+      new Notification(desktopPayload.title, {
+        body: desktopPayload.body,
+        tag: desktopPayload.tag,
+      });
+    }
+
+    function dispatchReviewNotifications(activeReviews, recentReviews) {
+      const result = collectReviewNotifications(reviewNotificationState, activeReviews, recentReviews);
+      reviewNotificationState = result.nextState;
+      result.notifications.forEach((notification) => {
+        const toastPayload = mapNotificationToToast(notification);
+        if (!toastPayload) return;
+        showToast(toastPayload.message, toastPayload.type);
+        maybeShowDesktopNotification(notification);
+      });
+    }
+
+    function renderAgentTimeline(progress) {
+      if (!progress?.agents?.length) return '';
+      const allowedAgentStatuses = new Set(['running', 'completed', 'failed', 'pending', 'queued']);
+      const agentsHtml = progress.agents.map(agent => `
+        <div class="agent-box ${allowedAgentStatuses.has(agent.status) ? agent.status : 'queued'}" title="${escapeHtml(agent.displayName)}: ${escapeHtml(agent.status)}">
+          <span class="agent-icon">${getAgentIcon(agent.status)}</span>
+          <span class="agent-name">${escapeHtml(agent.displayName)}</span>
+        </div>
+      `).join('');
+      return `<div class="agent-timeline">${agentsHtml}</div>`;
+    }
+
+    function renderProgressBar(progress) {
+      if (!progress) return '';
+      const overallProgress = typeof progress.overallProgress === 'number'
+        ? Math.max(0, Math.min(100, progress.overallProgress))
+        : 0;
+      return `
+        <div class="progress-container">
+          <div class="progress-bar-wrapper">
+            <div class="progress-bar">
+              <div class="progress-bar-fill" style="width: ${overallProgress}%"></div>
+            </div>
+            <span class="progress-percent">${overallProgress}%</span>
+          </div>
+          <div class="progress-phase">${formatPhase(progress.currentPhase)}</div>
+        </div>
+      `;
+    }
+
+    function getReviewStatusPresentation(status) {
+      const statusMap = {
+        running: { icon: 'activity', label: t('review.status.running') },
+        queued: { icon: 'clock-3', label: t('review.status.queued') },
+        completed: { icon: 'check-circle-2', label: t('review.status.completed') },
+        failed: { icon: 'triangle-alert', label: t('review.status.failed') },
+      };
+      return statusMap[status] || { icon: 'circle-help', label: status };
+    }
+
+    function renderReview(review, isActive) {
+      const statusClass = typeof review.status === 'string' ? review.status : 'queued';
+      const safeStatusClass = ['running', 'queued', 'completed', 'failed'].includes(statusClass) ? statusClass : 'queued';
+      const statusPresentation = getReviewStatusPresentation(statusClass);
+      const mrNumber = review.mrNumber;
+      const project = typeof review.project === 'string' ? review.project.split('/').pop() : '';
+      const reviewId = typeof review.id === 'string' ? review.id : '';
+      const reviewIsGitHub = reviewId.startsWith('github');
+      const mrPrefix = reviewIsGitHub ? '#' : '!';
+      const mrLabel = getMrLabel(reviewIsGitHub ? 'github' : 'gitlab');
+      const safeMrUrl = sanitizeHttpUrl(typeof review.mrUrl === 'string' ? review.mrUrl : null);
+
+      const progressHtml = isActive && review.progress ? `
+        ${renderAgentTimeline(review.progress)}
+        ${renderProgressBar(review.progress)}
+      ` : '';
+
+      const trackedMergeRequests = [...currentData.pendingFix, ...currentData.pendingApproval];
+      const assignerDisplay = resolveReviewAssigneeDisplay(review, trackedMergeRequests);
+      const assignerInitial = assignerDisplay.charAt(0).toUpperCase();
+      const safeReviewAccordionId = reviewId.replace(/[^a-zA-Z0-9-]/g, '-');
+      const safeJobType = review.jobType === 'followup' ? 'followup' : 'review';
+
+      const descriptionHtml = isActive && review.description ? `
+        <div class="review-description-accordion">
+          <div class="review-description-toggle" onclick="toggleReviewDescription('${safeReviewAccordionId}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="chevron-right"></i> ${t('review.description')}
+          </div>
+          <div class="review-description-content" id="review-desc-${safeReviewAccordionId}">
+            <div class="review-description-text">${escapeHtml(review.description)}</div>
+          </div>
+        </div>
+      ` : '';
+
+      const displayTitle = review.title || project;
+
+      return `
+        <div class="review-item" data-job-id="${escapeHtml(reviewId)}">
+          <div class="review-header">
+            <div class="review-status ${safeStatusClass}" title="${escapeHtml(statusPresentation.label)}"></div>
+            <div class="review-info">
+              <div class="review-title">
+                <a href="${safeMrUrl}" target="_blank" rel="noopener noreferrer">${mrPrefix}${mrNumber}</a> - ${escapeHtml(displayTitle)}
+              </div>
+              <div class="review-meta">
+                <span class="badge ${safeStatusClass}"><i data-lucide="${statusPresentation.icon}"></i> ${escapeHtml(statusPresentation.label)}</span>
+                ${isActive ? `<i data-lucide="clock"></i> ${formatDuration(review.startedAt)}` : ''}
+              </div>
+              ${review.error ? `<div class="error-message">${escapeHtml(review.error)}</div>` : ''}
+            </div>
+            ${isActive ? `<button class="btn-cancel-review" onclick="event.stopPropagation(); showCancelModal('${encodeURIComponent(reviewId)}', ${mrNumber}, '${safeJobType}')" title="${t('button.cancel')}"><i data-lucide="x"></i> ${t('button.cancel')}</button>` : ''}
+            <div class="review-assigner">
+              <div class="review-assigner-info">
+                <span class="review-assigner-name">${escapeHtml(assignerDisplay)}</span>
+                <span class="review-assigner-time">${isActive ? formatTime(review.startedAt) : formatTime(review.completedAt)}</span>
+              </div>
+              <div class="review-avatar" title="${escapeHtml(assignerDisplay)}">${escapeHtml(assignerInitial)}</div>
+            </div>
+          </div>
+          ${descriptionHtml}
+          ${progressHtml}
+        </div>
+      `;
+    }
+
+    function toggleReviewDescription(reviewId) {
+      const safeId = reviewId.replace(/[^a-zA-Z0-9-]/g, '-');
+      const content = document.getElementById(`review-desc-${safeId}`);
+      const toggle = content?.previousElementSibling;
+      if (!content || !toggle) return;
+
+      const isOpen = content.classList.contains('open');
+      if (isOpen) {
+        content.classList.remove('open');
+        toggle.classList.remove('open');
+      } else {
+        content.classList.add('open');
+        toggle.classList.add('open');
+        refreshIcons();
+      }
+    }
+
+    function renderLog(log) {
+      const dataStr = log.data ? escapeHtml(JSON.stringify(log.data, null, 2)) : '';
+      const logLevel = typeof log.level === 'string' ? log.level : 'info';
+      const safeLogLevelClass = logLevel.replace(/[^a-zA-Z0-9-]/g, '-');
+      return `
+        <div class="log-entry">
+          <span class="log-time">${formatLogTime(log.timestamp)}</span>
+          <span class="log-level ${safeLogLevelClass}">${escapeHtml(logLevel.toUpperCase())}</span>
+          <div class="log-message">
+            ${escapeHtml(String(log.message ?? ''))}
+            ${dataStr ? `<div class="log-data">${dataStr}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function updateUI() {
+      const reviews = currentData.activeReviews.filter(r => r.jobType !== 'followup');
+      const followups = currentData.activeReviews.filter(r => r.jobType === 'followup');
+
+      const running = currentData.activeReviews.filter(r => r.status === 'running').length;
+      const queued = currentData.activeReviews.filter(r => r.status === 'queued').length;
+      const blocked = currentData.pendingFix.length;
+      const nowCount = running + blocked;
+      const nextCount = queued + currentData.pendingApproval.length;
+      document.getElementById('running-count').textContent = running;
+      document.getElementById('queued-count').textContent = queued;
+      document.getElementById('completed-count').textContent = currentData.reviewFiles.length;
+      document.getElementById('focus-now-count').textContent = String(nowCount);
+      document.getElementById('focus-next-count').textContent = String(nextCount);
+      document.getElementById('focus-blocked-count').textContent = String(blocked);
+
+      const activeReviewsSection = document.getElementById('active-reviews-section');
+      const activeReviewsEl = document.getElementById('active-reviews');
+      const activeReviewsCount = document.getElementById('active-reviews-count');
+
+      activeReviewsSection.classList.remove('hidden');
+      if (reviews.length === 0) {
+        const showInitialLoadingState = !hasLoadedStatusOnce && loadingState.status > 0;
+        activeReviewsEl.innerHTML = `<div class="empty-state">${showInitialLoadingState ? t('loading.section') : t('empty.activeReviews')}</div>`;
+        activeReviewsCount.classList.add('hidden');
+      } else {
+        activeReviewsEl.innerHTML = reviews.map(r => renderReview(r, true)).join('');
+        activeReviewsCount.textContent = reviews.length;
+        activeReviewsCount.classList.remove('hidden');
+      }
+
+      const activeFollowupsSection = document.getElementById('active-followups-section');
+      const activeFollowupsEl = document.getElementById('active-followups');
+      const activeFollowupsCount = document.getElementById('active-followups-count');
+
+      if (followups.length === 0) {
+        activeFollowupsSection.classList.add('hidden');
+      } else {
+        activeFollowupsSection.classList.remove('hidden');
+        activeFollowupsEl.innerHTML = followups.map(r => renderReview(r, true)).join('');
+        activeFollowupsCount.textContent = followups.length;
+        activeFollowupsCount.classList.remove('hidden');
+        applySectionExpansion('active-followups-section');
+      }
+
+      refreshIcons();
+    }
+
+    function updateLogs() {
+      const sheetLogsEl = document.querySelector('.sheet-logs-content');
+      if (sheetLogsEl && logsVisible) {
+        if (currentData.logs.length === 0) {
+          sheetLogsEl.innerHTML = `<div class="empty-state">${t('empty.logs')}</div>`;
+        } else {
+          sheetLogsEl.innerHTML = currentData.logs.slice().reverse().map(renderLog).join('');
+        }
+      }
+    }
+
+    function updateConnectionStatus(status, textKey, textFallback) {
+      const statusEl = document.getElementById('server-status');
+      statusEl.className = `status-indicator ${status}`;
+      const displayText = textKey ? t(textKey) : textFallback;
+      statusEl.innerHTML = `<span class="status-dot"></span><span>${escapeHtml(String(displayText ?? ''))}</span>`;
+
+      const modeEl = document.getElementById('connection-mode');
+      modeEl.textContent = status === 'online' && wsConnected
+        ? t('connection.websocket')
+        : status === 'online' ? t('connection.polling') : t('connection.disconnected');
+    }
+
+    function renderReviewFile(review) {
+      const typeIcon = review.type === 'review' ? 'file-text' : review.type === 'followup' ? 'refresh-cw' : 'file';
+      const typeLabel = review.type === 'review' ? t('review.type.review') : review.type === 'followup' ? t('review.type.followup') : review.type;
+      const sizeKb = (review.size / 1024).toFixed(1);
+      const mrLabel = getMrLabel();
+      const encodedFilename = encodeURIComponent(String(review.filename ?? ''));
+      const filenameDomId = encodedFilename.replace(/[^a-zA-Z0-9-]/g, '-');
+
+      return `
+        <div class="review-accordion" data-filename="${encodedFilename}">
+          <div class="review-accordion-header">
+            <div class="review-accordion-toggle" onclick="toggleReviewAccordion('${encodedFilename}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)"><i data-lucide="chevron-right"></i></div>
+            <div class="review-status completed" onclick="toggleReviewAccordion('${encodedFilename}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)"></div>
+            <div class="review-info" onclick="toggleReviewAccordion('${encodedFilename}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)" style="cursor: pointer;">
+              <div class="review-title">${mrLabel} ${review.mrNumber}${review.title ? ` - ${escapeHtml(String(review.title))}` : ''}</div>
+              <div class="review-meta">
+                <span class="badge completed"><i data-lucide="${typeIcon}"></i> ${typeLabel}</span>
+                <span style="margin-left: 0.5rem; color: #71717a;">${sizeKb} KB</span>
+              </div>
+            </div>
+            <div class="review-time" onclick="toggleReviewAccordion('${encodedFilename}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)" style="cursor: pointer;">${escapeHtml(String(review.date ?? ''))}</div>
+            <button class="btn-delete" onclick="deleteReviewFile('${encodedFilename}')" title="${t('button.delete')}"><i data-lucide="trash-2"></i></button>
+          </div>
+          <div class="review-accordion-content">
+            <div class="markdown-content" id="review-content-${filenameDomId}">
+              <div class="empty-state">${t('status.loading')}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function toggleReviewAccordion(encodedFilename) {
+      const filename = safeDecodeURIComponent(encodedFilename);
+      const accordion = document.querySelector(`.review-accordion[data-filename="${encodedFilename}"]`);
+      const isOpen = accordion.classList.contains('open');
+
+      document.querySelectorAll('.review-accordion.open').forEach(el => {
+        if (el !== accordion) el.classList.remove('open');
+      });
+
+      if (isOpen) {
+        accordion.classList.remove('open');
+        return;
+      }
+
+      accordion.classList.add('open');
+      const contentId = `review-content-${encodedFilename.replace(/[^a-zA-Z0-9-]/g, '-')}`;
+      const contentEl = document.getElementById(contentId);
+
+      if (!loadedReviews[filename]) {
+        try {
+          const response = await fetch(`${API_URL}/api/reviews/${filename}`);
+          const data = await response.json();
+          loadedReviews[filename] = data.content;
+        } catch (error) {
+          contentEl.innerHTML = `<div class="empty-state">${t('error.loading')}</div>`;
+          return;
+        }
+      }
+
+      contentEl.innerHTML = markdownToHtml(loadedReviews[filename]);
+    }
+
+    async function fetchReviewFiles() {
+      setLoadingFlag('reviewFiles', true);
+      try {
+        const url = currentProjectPath
+          ? `${API_URL}/api/reviews?path=${encodeURIComponent(currentProjectPath)}`
+          : `${API_URL}/api/reviews`;
+        const response = await fetch(url);
+        const data = await response.json();
+        currentData.reviewFiles = data.reviews || [];
+        updateReviewFilesUI();
+      } catch (error) {
+        console.error('Error fetching review files:', error);
+      } finally {
+        setLoadingFlag('reviewFiles', false);
+      }
+    }
+
+    async function fetchProjectStats() {
+      const statsEl = document.getElementById('project-stats');
+      setLoadingFlag('stats', true);
+
+      if (!currentProjectPath) {
+        statsEl.innerHTML = `<div class="empty-state">${t('empty.statsNoProject')}</div>`;
+        setLoadingFlag('stats', false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/stats?path=${encodeURIComponent(currentProjectPath)}`);
+        const data = await response.json();
+
+        if (data.summary) {
+          const s = data.summary;
+          const reviews = data.stats?.reviews || [];
+          const trendIcon = (trend) => trend === 'up'
+            ? '<span class="stat-trend up"><i data-lucide="trending-up"></i></span>'
+            : trend === 'down'
+              ? '<span class="stat-trend down"><i data-lucide="trending-down"></i></span>'
+              : '<span class="stat-trend flat"><i data-lucide="minus"></i></span>';
+
+          const numericScore = parseFloat(s.averageScore);
+          const isScoreNumeric = !isNaN(numericScore);
+
+          statsEl.innerHTML = `
+            <div class="stat-card metric-reviews">
+              <div class="stat-value"><span class="stat-main" data-target="${s.totalReviews}">0</span></div>
+              <div class="stat-label"><i data-lucide="file-search"></i> ${t('stats.reviews')}</div>
+            </div>
+            <div class="stat-card metric-score">
+              <div class="stat-value"><span class="stat-main" ${isScoreNumeric ? `data-target="${numericScore}" data-suffix="/10"` : ''}>${isScoreNumeric ? '0' : s.averageScore}</span>${!isScoreNumeric ? '<span class="stat-denominator">/10</span>' : ''}${trendIcon(s.trend.score)}</div>
+              <div class="stat-label"><i data-lucide="star"></i> ${t('stats.averageScore')}</div>
+            </div>
+            <div class="stat-card metric-time">
+              <div class="stat-value"><span class="stat-main">${s.totalTime}</span></div>
+              <div class="stat-label"><i data-lucide="timer"></i> ${t('stats.totalTime')}</div>
+            </div>
+            <div class="stat-card metric-average-time">
+              <div class="stat-value"><span class="stat-main">${s.averageTime}</span></div>
+              <div class="stat-label"><i data-lucide="clock"></i> ${t('stats.averageTime')}</div>
+            </div>
+            <div class="stat-card warning metric-blocking">
+              <div class="stat-value"><span class="stat-main" data-target="${s.totalBlocking}">0</span>${trendIcon(s.trend.blocking)}</div>
+              <div class="stat-label"><i data-lucide="octagon-alert"></i> ${t('stats.blocking')}</div>
+            </div>
+            <div class="stat-card metric-warnings">
+              <div class="stat-value"><span class="stat-main" data-target="${s.totalWarnings}">0</span></div>
+              <div class="stat-label"><i data-lucide="alert-triangle"></i> ${t('stats.warnings')}</div>
+            </div>
+            <div class="stats-charts-row">
+              <div class="stats-chart-card">
+                <div class="stats-chart-title"><i data-lucide="trending-up"></i> ${t('stats.scoreTrend')}</div>
+                <div class="dev-filter" id="dev-filter-container">
+                  <button class="dev-filter-btn ${currentDevFilter === 'all' ? 'active' : ''}" data-dev="all" onclick="filterScoreTrend('all')">${t('stats.allDevs')}</button>
+                  ${[...new Set(reviews.map(r => r.assignedBy).filter(Boolean))].map(dev =>
+                    '<button class="dev-filter-btn ' + (currentDevFilter === dev ? 'active' : '') + '" data-dev="' + dev + '" onclick="filterScoreTrend(\'' + dev + '\')">' + dev + '</button>'
+                  ).join('')}
+                </div>
+                <canvas id="stats-score-trend" class="stats-canvas"></canvas>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title"><i data-lucide="bar-chart-3"></i> ${t('stats.reviewActivity')}</div>
+                <canvas id="stats-activity" class="stats-canvas"></canvas>
+              </div>
+            </div>
+            <div class="stats-charts-row">
+              <div class="stats-chart-card full-width">
+                <div class="stats-chart-title"><i data-lucide="pie-chart"></i> ${t('stats.scoreDistribution')}</div>
+                <canvas id="stats-distribution" class="stats-canvas-wide"></canvas>
+              </div>
+            </div>
+          `;
+          refreshIcons();
+
+          statsEl.querySelectorAll('.stat-main[data-target]').forEach(element => {
+            const target = parseFloat(element.dataset.target);
+            if (!isNaN(target)) {
+              animateCounter(element, target, 800, element.dataset.suffix || '');
+            }
+          });
+
+          currentStatsReviews = reviews;
+
+          requestAnimationFrame(() => {
+            if (reviews.length) {
+              const trendReviews = currentDevFilter === 'all'
+                ? reviews
+                : reviews.filter(r => r.assignedBy === currentDevFilter);
+              drawScoreTrendChart('stats-score-trend', trendReviews);
+              drawReviewActivityChart('stats-activity', reviews);
+              drawScoreDistributionChart('stats-distribution', reviews);
+            }
+          });
+        } else {
+          statsEl.innerHTML = `<div class="empty-state">${t('empty.statsNoData')}</div>`;
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        statsEl.innerHTML = `<div class="empty-state">${t('error.loadingStats')}</div>`;
+      } finally {
+        setLoadingFlag('stats', false);
+      }
+    }
+
+    function updateReviewFilesUI() {
+      const recentEl = document.getElementById('recent-reviews');
+      const completedSection = document.getElementById('completed-reviews-section');
+
+      if (currentData.reviewFiles.length === 0) {
+        completedSection?.classList.remove('hidden');
+        recentEl.innerHTML = `<div class="empty-state">${loadingState.reviewFiles ? t('loading.section') : t('empty.reviewFiles')}</div>`;
+        applySectionExpansion('completed-reviews-section');
+        return;
+      }
+
+      completedSection?.classList.remove('hidden');
+      recentEl.innerHTML = renderCollapsibleList(
+        currentData.reviewFiles.map(renderReviewFile),
+        'completed-reviews', t
+      );
+      applySectionExpansion('completed-reviews-section');
+      refreshIcons();
+    }
+
+    async function deleteReviewFile(encodedFilename) {
+      const filename = safeDecodeURIComponent(encodedFilename);
+      if (!confirm(t('confirm.deleteReview', { filename }))) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/reviews/${filename}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          delete loadedReviews[filename];
+          currentData.reviewFiles = currentData.reviewFiles.filter(r => r.filename !== filename);
+          updateReviewFilesUI();
+          updateUI();
+        } else {
+          alert(t('error.deleteReview') + ': ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error deleting review:', error);
+        alert(t('error.deleteReview'));
+      }
+    }
+
+    async function checkClaudeStatus() {
+      const claudeEl = document.getElementById('claude-status');
+      const loginSection = document.getElementById('claude-login-section');
+
+      claudeEl.className = 'card-claude checking';
+      claudeEl.innerHTML = `<span class="status">${t('status.checking')}</span>`;
+
+      try {
+        const response = await fetch(`${API_URL}/api/claude/status`);
+        const data = await response.json();
+
+        if (data.available) {
+          claudeEl.className = 'card-claude available';
+          claudeEl.innerHTML = `
+            <span class="status"><i data-lucide="check-circle"></i> ${t('status.operational')}</span>
+            <span class="version">${escapeHtml(String(data.version ?? ''))}</span>
+          `;
+          loginSection.classList.add('hidden');
+          refreshIcons();
+        } else {
+          claudeEl.className = 'card-claude unavailable';
+          claudeEl.innerHTML = `
+            <span class="status"><i data-lucide="x-circle"></i> ${escapeHtml(String(data.message ?? ''))}</span>
+          `;
+          refreshIcons();
+          if (data.message.includes('authentifié') || data.message.includes('login') || data.message.includes('authenticated')) {
+            loginSection.classList.remove('hidden');
+          }
+        }
+      } catch (error) {
+        claudeEl.className = 'card-claude unavailable';
+        claudeEl.innerHTML = `<span class="status"><i data-lucide="x-circle"></i> ${t('error.checkStatus')}</span>`;
+        refreshIcons();
+      }
+    }
+
+    let activePlatform = null;
+
+    function updateGitCliUI() {
+      const labelEl = document.getElementById('git-cli-label');
+      const statusEl = document.getElementById('git-cli-status');
+      const loginSection = document.getElementById('git-login-section');
+
+      if (!activePlatform) {
+        labelEl.textContent = t('card.gitCli');
+        statusEl.className = 'card-claude checking';
+        statusEl.innerHTML = `<span class="status">${t('status.loadProject')}</span>`;
+        loginSection.classList.add('hidden');
+        return;
+      }
+
+      const isGitlab = activePlatform === 'gitlab';
+      labelEl.textContent = isGitlab ? t('card.gitlabCli') : t('card.githubCli');
+
+      const titleEl = document.getElementById('git-login-title');
+      const instructionsEl = document.getElementById('git-login-instructions');
+
+      if (isGitlab) {
+        titleEl.innerHTML = `<i data-lucide="alert-triangle"></i> ${t('login.gitlab.title')}`;
+        instructionsEl.innerHTML = `
+          <p><strong>${t('setup.installAndAuth', { cli: 'glab' })}</strong></p>
+          <p style="margin: 0.5rem 0;"><code>sudo apt install glab</code></p>
+          <p style="margin: 0.5rem 0;"><code>glab auth login</code></p>
+          <p style="margin-top: 1rem;"><strong>${t('setup.configureWebhook', { platform: 'GitLab' })}</strong></p>
+          <p style="margin: 0.5rem 0; font-size: 0.8rem;">${t('setup.webhookPath')}</p>
+          <p style="margin: 0.25rem 0; font-size: 0.8rem;">URL: <code>http://&lt;your-server&gt;:3847/webhooks/gitlab</code></p>
+          <p style="margin: 0.25rem 0; font-size: 0.8rem;">${t('setup.gitlab.trigger')}</p>
+          <p style="margin-top: 0.75rem; font-size: 0.75rem; color: #a1a1aa;">${t('setup.reload')}</p>
+        `;
+      } else {
+        titleEl.innerHTML = `<i data-lucide="alert-triangle"></i> ${t('login.github.title')}`;
+        instructionsEl.innerHTML = `
+          <p><strong>${t('setup.installAndAuth', { cli: 'gh' })}</strong></p>
+          <p style="margin: 0.5rem 0;"><code>sudo apt install gh</code></p>
+          <p style="margin: 0.5rem 0;"><code>gh auth login</code></p>
+          <p style="margin-top: 1rem;"><strong>${t('setup.configureWebhook', { platform: 'GitHub' })}</strong></p>
+          <p style="margin: 0.5rem 0; font-size: 0.8rem;">${t('setup.webhookPath')}</p>
+          <p style="margin: 0.25rem 0; font-size: 0.8rem;">Payload URL: <code>http://&lt;your-server&gt;:3847/webhooks/github</code></p>
+          <p style="margin: 0.25rem 0; font-size: 0.8rem;">${t('setup.github.contentType')}</p>
+          <p style="margin: 0.25rem 0; font-size: 0.8rem;">${t('setup.github.events')}</p>
+          <p style="margin-top: 0.75rem; font-size: 0.75rem; color: #a1a1aa;">${t('setup.reload')}</p>
+        `;
+      }
+
+      refreshIcons();
+      checkGitCliStatus();
+    }
+
+    async function checkGitCliStatus() {
+      if (!activePlatform) return;
+
+      const statusEl = document.getElementById('git-cli-status');
+      const loginSection = document.getElementById('git-login-section');
+      const isGitlab = activePlatform === 'gitlab';
+      const endpoint = isGitlab ? '/api/gitlab/status' : '/api/github/status';
+
+      statusEl.className = 'card-claude checking';
+      statusEl.innerHTML = `<span class="status">${t('status.checking')}</span>`;
+
+      try {
+        const response = await fetch(`${API_URL}${endpoint}`);
+        const data = await response.json();
+
+        if (data.available && data.authenticated) {
+          statusEl.className = 'card-claude available';
+          statusEl.innerHTML = `
+            <span class="status"><i data-lucide="check-circle"></i> ${t('status.operational')}</span>
+            <span class="version">@${escapeHtml(String(data.username ?? ''))}</span>
+          `;
+          loginSection.classList.add('hidden');
+          refreshIcons();
+        } else if (data.available && !data.authenticated) {
+          statusEl.className = 'card-claude unavailable';
+          statusEl.innerHTML = `<span class="status"><i data-lucide="x-circle"></i> ${escapeHtml(String(data.message ?? ''))}</span>`;
+          loginSection.classList.remove('hidden');
+          refreshIcons();
+        } else {
+          statusEl.className = 'card-claude unavailable';
+          statusEl.innerHTML = `<span class="status"><i data-lucide="x-circle"></i> ${escapeHtml(String(data.message ?? ''))}</span>`;
+          loginSection.classList.remove('hidden');
+          refreshIcons();
+        }
+      } catch (error) {
+        statusEl.className = 'card-claude unavailable';
+        statusEl.innerHTML = `<span class="status"><i data-lucide="x-circle"></i> ${t('error.checkStatus')}</span>`;
+        refreshIcons();
+      }
+    }
+
+    function toggleLogs() {
+      const sheetPanel = document.getElementById('mr-sheet');
+      const isOpen = sheetPanel.classList.contains('open') && logsVisible;
+
+      if (isOpen) {
+        closeMrSheet();
+        logsVisible = false;
+        return;
+      }
+
+      logsVisible = true;
+      const openLogsSheet = () => {
+        const contentEl = document.getElementById('mr-sheet-content');
+        contentEl.innerHTML = renderLogsSheetContent();
+        document.getElementById('mr-sheet-overlay').classList.add('open');
+        sheetPanel.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        refreshIcons();
+      };
+      fetchLogs().then(openLogsSheet).catch(openLogsSheet);
+    }
+
+    function renderLogsSheetContent() {
+      const errorCount = currentData.logs.filter(l => l.level === 'error' || l.level === 'warn').length;
+      const errorBadge = errorCount > 0
+        ? ` <span class="section-header badge-count">${t('logs.errorCount', { count: errorCount })}</span>`
+        : '';
+
+      const logsHtml = currentData.logs.length === 0
+        ? `<div class="empty-state">${t('empty.logs')}</div>`
+        : currentData.logs.slice().reverse().map(renderLog).join('');
+
+      return `
+        <button class="sheet-close" onclick="closeMrSheet()"><i data-lucide="x"></i></button>
+        <div class="sheet-mr-header">
+          <div>
+            <div class="sheet-mr-title"><i data-lucide="scroll-text"></i> ${t('section.logs')}${errorBadge}</div>
+          </div>
+        </div>
+        <div class="sheet-logs-body">
+          <div class="sheet-logs-content section-content logs">${logsHtml}</div>
+        </div>
+        <div class="sheet-logs-footer">
+          <button class="btn btn-secondary sheet-clear-btn" onclick="clearLogs()">
+            <i data-lucide="trash-2"></i> ${t('logs.clear')}
+          </button>
+        </div>
+      `;
+    }
+
+    function clearLogs() {
+      currentData.logs = [];
+      updateLogs();
+    }
+
+    function toggleStats() {
+      statsCollapsed = !statsCollapsed;
+      const content = document.getElementById('project-stats');
+      const toggle = document.getElementById('stats-toggle');
+
+      if (statsCollapsed) {
+        content.classList.add('hidden');
+        toggle.classList.add('collapsed');
+      } else {
+        content.classList.remove('hidden');
+        toggle.classList.remove('collapsed');
+      }
+    }
+
+    function toggleTeamSection() {
+      teamCollapsed = !teamCollapsed;
+      const content = document.getElementById('team-tab-content');
+      const toggle = document.getElementById('team-toggle');
+
+      if (teamCollapsed) {
+        content.classList.add('hidden');
+        toggle.classList.add('collapsed');
+      } else {
+        content.classList.remove('hidden');
+        toggle.classList.remove('collapsed');
+      }
+    }
+
+    let teamAnalysisCollapsed = false;
+
+    function toggleTeamAnalysis() {
+      teamAnalysisCollapsed = !teamAnalysisCollapsed;
+      const body = document.getElementById('team-analysis-body');
+      const toggle = document.getElementById('team-analysis-toggle');
+      if (body) {
+        body.classList.toggle('hidden', teamAnalysisCollapsed);
+      }
+      if (toggle) {
+        toggle.classList.toggle('collapsed', teamAnalysisCollapsed);
+      }
+      refreshIcons();
+    }
+
+    let aiGenerationInProgress = false;
+
+    async function fetchTeamInsights() {
+      if (!currentProjectPath) return;
+      if (aiGenerationInProgress) return;
+      const container = document.getElementById('team-tab-content');
+      if (!container) return;
+
+      container.innerHTML = `<div class="empty-state team-loading">${icon('loader-circle', 'spinning')} ${t('team.loading')}</div>`;
+      refreshIcons();
+
+      try {
+        const response = await fetch(`${API_URL}/api/insights?path=${encodeURIComponent(currentProjectPath)}`);
+        const data = await response.json();
+        currentInsightsData = data;
+
+        container.innerHTML = renderTeamTab(data, t);
+        refreshIcons();
+
+        setTimeout(() => {
+          container.querySelectorAll('.stat-bar-fill[data-target-width]').forEach((bar) => {
+            bar.style.width = bar.dataset.targetWidth;
+          });
+        }, 50);
+      } catch (error) {
+        console.error('Error fetching team insights:', error);
+        container.innerHTML = `<div class="empty-state">${t('team.noData')}</div>`;
+      }
+    }
+
+    async function refreshTokenUsageTile() {
+      if (!currentProjectPath) return;
+      const container = document.getElementById('token-usage-content');
+      if (!container) return;
+
+      try {
+        const viewModel = await fetchTokenUsageSummary(currentProjectPath);
+        container.innerHTML = renderTokenUsageTile(viewModel);
+      } catch (error) {
+        console.error('Error fetching token usage summary:', error);
+        container.innerHTML = `<div class="empty-state">Unable to load token usage.</div>`;
+      }
+    }
+
+    async function generateAiInsights() {
+      if (!currentProjectPath || aiGenerationInProgress) return;
+      aiGenerationInProgress = true;
+      const button = document.querySelector('.ai-generate-btn');
+      if (button) {
+        button.disabled = true;
+        button.classList.add('loading');
+        button.innerHTML = `${icon('loader-circle', 'spinning')} ${t('ai.generating')}`;
+        refreshIcons();
+      }
+      try {
+        const response = await fetch(`${API_URL}/api/insights/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentProjectPath, language: getLanguage() }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || t('ai.error'));
+        }
+        aiGenerationInProgress = false;
+        await fetchTeamInsights();
+      } catch (error) {
+        aiGenerationInProgress = false;
+        console.error('Error generating AI insights:', error);
+        showToast(error.message || t('ai.error'), 'error');
+        if (button) {
+          button.disabled = false;
+          button.classList.remove('loading');
+          button.innerHTML = `${icon('sparkles')} ${t('ai.generate')}`;
+          refreshIcons();
+        }
+      }
+    }
+
+    function openDevSheet(encodedName) {
+      const developerName = decodeURIComponent(encodedName);
+      if (!currentInsightsData || !currentInsightsData.developers) return;
+      const developer = currentInsightsData.developers.find(
+        (dev) => dev.developerName === developerName
+      );
+      if (!developer) return;
+
+      const aiDevelopers = currentInsightsData.aiInsights?.developers || [];
+      const aiDeveloper = aiDevelopers.find(
+        (aiDev) => aiDev.developerName === developerName
+      ) || null;
+
+      const contentEl = document.getElementById('dev-sheet-content');
+      contentEl.innerHTML = renderDeveloperSheetContent(developer, t, aiDeveloper);
+
+      document.getElementById('dev-sheet-overlay').classList.add('open');
+      document.getElementById('dev-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      refreshIcons();
+
+      requestAnimationFrame(() => {
+        drawRadarChart('dev-radar-canvas', developer.categoryLevels, t);
+        const developerReviews = currentStatsReviews.filter(
+          (review) => review.assignedBy === developerName
+        );
+        drawScoreTrendChart('dev-score-trend-canvas', developerReviews);
+        contentEl.querySelectorAll('.stat-bar-fill[data-target-width]').forEach((bar) => {
+          setTimeout(() => { bar.style.width = bar.dataset.targetWidth; }, 50);
+        });
+      });
+    }
+
+    function closeDevSheet() {
+      document.getElementById('dev-sheet-overlay').classList.remove('open');
+      document.getElementById('dev-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function exportInsightsPdf() {
+      if (!currentInsightsData || currentInsightsData.isEmpty) return;
+
+      const reportHtml = buildInsightsReport(currentInsightsData, t);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const document_ = iframe.contentDocument || iframe.contentWindow.document;
+      document_.open();
+      document_.write(reportHtml);
+      document_.close();
+
+      iframe.contentWindow.addEventListener('afterprint', () => {
+        if (iframe.parentNode) document.body.removeChild(iframe);
+      });
+
+      setTimeout(() => {
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          if (iframe.parentNode) document.body.removeChild(iframe);
+        }, 60000);
+      }, 250);
+    }
+
+    async function recalculateStats() {
+      if (!currentProjectPath) return;
+      const button = document.getElementById('recalculate-btn');
+      const progressBadge = document.getElementById('backfill-progress');
+      if (button) button.disabled = true;
+
+      try {
+        const response = await fetch(`${API_URL}/api/stats/recalculate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentProjectPath, backfill: true }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Recalculation failed');
+        }
+
+        if (progressBadge) {
+          progressBadge.textContent = '...';
+          progressBadge.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Error recalculating stats:', error);
+        if (button) button.disabled = false;
+        if (progressBadge) progressBadge.classList.add('hidden');
+      }
+    }
+    window.recalculateStats = recalculateStats;
+
+    function filterScoreTrend(selectedDev) {
+      currentDevFilter = selectedDev;
+      document.querySelectorAll('.dev-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.dev === selectedDev);
+      });
+
+      const filtered = selectedDev === 'all'
+        ? currentStatsReviews
+        : currentStatsReviews.filter(r => r.assignedBy === selectedDev);
+
+      drawScoreTrendChart('stats-score-trend', filtered);
+    }
+    window.filterScoreTrend = filterScoreTrend;
+
+    function renderMrItem(mr, type) {
+      const mrPrefix = mr.platform === 'github' ? '#' : '!';
+      const encodedMrId = encodeURIComponent(String(mr.id ?? ''));
+      const threadInfo = type === 'pending-fix'
+        ? `<span class="mr-threads has-open"><i data-lucide="message-circle"></i> ${t('mr.threads.openAction', { count: mr.openThreads })}</span>`
+        : (type === 'pending-approval' && mr.totalWarnings > 0)
+          ? `<span class="mr-threads has-warnings"><i data-lucide="alert-triangle"></i> ${t('mr.threads.warningAction', { count: mr.totalWarnings })}</span>`
+          : `<span class="mr-threads all-resolved"><i data-lucide="check-circle"></i> ${t('mr.threads.resolvedAction')}</span>`;
+
+      const openBtn = `<a href="${sanitizeHttpUrl(mr.url)}" target="_blank" rel="noopener noreferrer" class="btn-action open" onclick="return onUsefulLinkAction()"><i data-lucide="external-link"></i> ${t('button.open')}</a>`;
+      const autoFollowupChecked = mr.autoFollowup !== false ? 'checked' : '';
+      const showFollowupActions = type === 'pending-fix' ||
+        (type === 'pending-approval' && mr.totalWarnings > 0);
+
+      const actions = showFollowupActions
+        ? `<label class="auto-followup-toggle" onclick="event.stopPropagation()" title="${t('button.autoFollowup')}">
+             <input type="checkbox" ${autoFollowupChecked} onchange="toggleAutoFollowup('${encodedMrId}', this.checked)">
+             ${t('button.autoFollowup')}
+           </label>
+           <button class="btn-action" onclick="triggerFollowup('${encodedMrId}')"><i data-lucide="refresh-cw"></i> ${t('button.followup')}</button>${openBtn}`
+        : openBtn;
+
+      const statsBadges = [];
+      if (mr.totalBlocking > 0) statsBadges.push(`<span class="stat-badge blocking"><i data-lucide="octagon-alert"></i> ${mr.totalBlocking}</span>`);
+      if (mr.totalWarnings > 0) statsBadges.push(`<span class="stat-badge warning"><i data-lucide="alert-triangle"></i> ${mr.totalWarnings}</span>`);
+      if (mr.totalFollowups > 0) statsBadges.push(`<span class="stat-badge followup"><i data-lucide="refresh-cw"></i> ${mr.totalFollowups}</span>`);
+      if (mr.latestScore !== null) statsBadges.push(`<span class="stat-badge score"><i data-lucide="star"></i> ${mr.latestScore.toFixed(1)}/10</span>`);
+
+      const durationFormatted = mr.totalDurationMs ? formatDuration(null, null, mr.totalDurationMs) : '';
+
+      const assignerUsername = mr.assignment?.username || 'unknown';
+      const assignerDisplay = mr.assignment?.displayName || assignerUsername;
+      const assignerInitial = assignerDisplay.charAt(0).toUpperCase();
+      const assignedAt = mr.assignment?.assignedAt ? formatTime(mr.assignment.assignedAt) : '';
+
+      const accordionId = mr.id.replace(/[^a-zA-Z0-9-]/g, '-');
+
+      return `
+        <div class="mr-item-accordion" data-mr-id="${mr.id}">
+          <div class="mr-item-header" onclick="openMrSheet('${encodedMrId}')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <div class="review-status ${type === 'pending-fix' ? 'running' : (type === 'pending-approval' && mr.totalWarnings > 0) ? 'warnings' : 'completed'}"></div>
+            <div class="mr-info">
+              <div class="mr-title">
+                <a href="${sanitizeHttpUrl(mr.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${mrPrefix}${mr.mrNumber}</a> - ${escapeHtml(String(mr.title ?? ''))}
+              </div>
+              <div class="mr-meta">
+                ${threadInfo}
+                ${statsBadges.join('')}
+                <span><i data-lucide="clock"></i> ${durationFormatted || '-'}</span>
+              </div>
+            </div>
+            <div class="mr-assigner">
+              <div class="mr-assigner-info">
+                <span class="mr-assigner-name">${escapeHtml(assignerDisplay)}</span>
+                <span class="mr-assigner-time">${assignedAt}</span>
+              </div>
+              <div class="mr-avatar" title="${escapeHtml(assignerDisplay)}">${escapeHtml(assignerInitial)}</div>
+            </div>
+            <div class="mr-toggle"><i data-lucide="chevron-down"></i></div>
+          </div>
+          <div class="mr-item-content" id="mr-content-${accordionId}">
+            <div class="mr-details">
+              <div class="mr-detail-row">
+                <span class="mr-detail-label"><i data-lucide="git-branch"></i> ${t('mr.detail.source')}</span>
+                <span class="mr-detail-value">${escapeHtml(String(mr.sourceBranch ?? ''))}</span>
+              </div>
+              <div class="mr-detail-row">
+                <span class="mr-detail-label"><i data-lucide="git-merge"></i> ${t('mr.detail.target')}</span>
+                <span class="mr-detail-value">${escapeHtml(String(mr.targetBranch ?? ''))}</span>
+              </div>
+              <div class="mr-detail-row">
+                <span class="mr-detail-label"><i data-lucide="calendar"></i> ${t('mr.detail.created')}</span>
+                <span class="mr-detail-value">${formatTime(mr.createdAt)}</span>
+              </div>
+              ${mr.lastReviewAt ? `
+              <div class="mr-detail-row">
+                <span class="mr-detail-label"><i data-lucide="file-search"></i> ${t('mr.detail.lastReview')}</span>
+                <span class="mr-detail-value">${formatTime(mr.lastReviewAt)}</span>
+              </div>
+              ` : ''}
+              ${mr.reviews?.length ? `
+              <div class="mr-reviews-history">
+                <div class="mr-detail-label"><i data-lucide="history"></i> ${t('mr.detail.history', { count: mr.reviews.length })}</div>
+                <div class="mr-reviews-list">
+                  ${mr.reviews.slice(-5).reverse().map(r => `
+                    <div class="mr-review-event ${r.type}">
+                      <span class="review-event-type">${r.type === 'review' ? t('review.type.review') : t('review.type.followup')}</span>
+                      <span class="review-event-time">${formatTime(r.timestamp)}</span>
+                      ${r.score !== null ? `<span class="review-event-score">${r.score}/10</span>` : ''}
+                      ${r.blocking > 0 ? `<span class="review-event-blocking">${t('mr.review.blocking', { count: r.blocking })}</span>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              ` : ''}
+            </div>
+            <div class="mr-item-actions" onclick="event.stopPropagation()">
+              ${actions}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderNowLane(mr) {
+      const mrPrefix = mr.platform === 'github' ? '#' : '!';
+      const assigneeUsername = mr.assignment?.username || 'unknown';
+      const assigneeDisplay = mr.assignment?.displayName || assigneeUsername;
+      const ownerLabel = t('lane.owner', { owner: assigneeDisplay });
+      const qualityScore = typeof mr.latestScore === 'number' ? mr.latestScore : null;
+      const qualityProgress = getQualityProgress(qualityScore, QUALITY_TARGET_SCORE);
+      const qualityTarget = qualityProgress.qualityTarget;
+      const qualityDelta = qualityProgress.targetDelta;
+      const qualityState = qualityScore === null
+        ? 'unknown'
+        : qualityScore >= QUALITY_TARGET_SCORE
+          ? 'excellent'
+          : qualityScore >= 6
+            ? 'warning'
+            : 'critical';
+      const qualityLabel = qualityScore === null
+        ? t('quality.notAvailable')
+        : qualityScore >= 10
+          ? t('quality.perfect')
+          : qualityScore >= QUALITY_TARGET_SCORE
+            ? t('quality.onTarget')
+            : qualityScore >= 6
+              ? t('quality.belowTarget')
+              : t('quality.lovableQuality');
+      const deltaLabel = qualityProgress.targetDeltaLabel;
+      const qualityTrend = getQualityTrend(mr);
+      const qualityTrendLabel = qualityTrend.direction === 'up'
+        ? t('quality.trendUp', { delta: qualityTrend.label })
+        : qualityTrend.direction === 'down'
+          ? t('quality.trendDown', { delta: qualityTrend.label })
+          : qualityTrend.direction === 'flat'
+            ? t('quality.trendFlat')
+            : t('quality.trendUnknown');
+      const qualityTrendIcon = qualityTrend.direction === 'up'
+        ? 'trending-up'
+        : qualityTrend.direction === 'down'
+          ? 'trending-down'
+          : qualityTrend.direction === 'flat'
+            ? 'minus'
+            : 'circle-help';
+
+      return `
+        <div class="now-lane">
+          <div class="now-lane-copy">
+            <span class="now-lane-kicker">${t('lane.nowKicker')}</span>
+            <div class="now-lane-title">${mrPrefix}${mr.mrNumber} - ${escapeHtml(String(mr.title ?? ''))}</div>
+            <div class="now-lane-meta">${t('lane.nowMeta', { count: mr.openThreads })}</div>
+            <div class="now-lane-owner">${escapeHtml(ownerLabel)}</div>
+          </div>
+          <div class="now-lane-quality ${qualityState}">
+            <span class="quality-kicker">${t('quality.kicker')}</span>
+            <div class="quality-main">
+              <span class="quality-score">${qualityScore !== null ? qualityScore.toFixed(1) : '-'}</span>
+              <span class="quality-over">/10</span>
+            </div>
+            <div class="quality-target">${t('quality.target', { target: qualityTarget })} ${deltaLabel ? `(${deltaLabel})` : ''}</div>
+            <div class="quality-progress">
+              <div class="quality-progress-track">
+                <div class="quality-progress-fill ${qualityState}" style="width: ${qualityProgress.clampedProgressPercent}%"></div>
+              </div>
+              <span class="quality-progress-value">${qualityProgress.progressPercent !== null ? `${qualityProgress.clampedProgressPercent.toFixed(0)}%` : '-'}</span>
+            </div>
+            <div class="quality-label">${qualityLabel}</div>
+            <div class="quality-trend ${qualityTrend.direction}">
+              <i data-lucide="${qualityTrendIcon}"></i>
+              <span>${qualityTrendLabel}</span>
+            </div>
+            <div class="now-lane-actions">
+              <button class="btn-action" onclick="triggerFollowup('${encodeURIComponent(String(mr.id ?? ''))}')"><i data-lucide="refresh-cw"></i> ${t('button.followup')}</button>
+              <a href="${sanitizeHttpUrl(mr.url)}" target="_blank" rel="noopener noreferrer" class="btn-action open" onclick="return onUsefulLinkAction()"><i data-lucide="external-link"></i> ${t('button.open')}</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderQueueLanes(queueLanesModel) {
+      const nowLaneContent = queueLanesModel.nowLaneItem
+        ? renderNowLane(queueLanesModel.nowLaneItem)
+        : `<div class="empty-state">${t('queueLane.emptyNow')}</div>`;
+      const needsFixContent = queueLanesModel.needsFixItems.length > 0
+        ? renderCollapsibleList(
+            queueLanesModel.needsFixItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-fix')),
+            'needs-fix', t
+          )
+        : `<div class="empty-state">${t('queueLane.emptyNeedsFix')}</div>`;
+      const readyToApproveContent = queueLanesModel.readyToApproveItems.length > 0
+        ? renderCollapsibleList(
+            queueLanesModel.readyToApproveItems.map((mergeRequest) => renderMrItem(mergeRequest, 'pending-approval')),
+            'ready-to-approve', t
+          )
+        : `<div class="empty-state">${t('queueLane.emptyReadyToApprove')}</div>`;
+
+      return `
+        <div class="queue-lanes-grid">
+          <div class="queue-lane">
+            <div class="queue-lane-header">
+              <span class="queue-lane-title">${t('queueLane.now')}</span>
+              <span class="queue-lane-count">${queueLanesModel.nowLaneCount}</span>
+            </div>
+            <div class="queue-lane-body">${nowLaneContent}</div>
+          </div>
+          <div class="queue-lane">
+            <div class="queue-lane-header">
+              <span class="queue-lane-title">${t('queueLane.needsFix')}</span>
+              <span class="queue-lane-count">${queueLanesModel.needsFixCount}</span>
+            </div>
+            <div class="queue-lane-body">${needsFixContent}</div>
+          </div>
+          <div class="queue-lane">
+            <div class="queue-lane-header">
+              <span class="queue-lane-title">${t('queueLane.readyToApprove')}</span>
+              <span class="queue-lane-count">${queueLanesModel.readyToApproveCount}</span>
+            </div>
+            <div class="queue-lane-body">${readyToApproveContent}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleMrAccordion(accordionId) {
+      const content = document.getElementById(`mr-content-${accordionId}`);
+      const accordion = content?.closest('.mr-item-accordion');
+      if (!content || !accordion) return;
+
+      const isOpen = accordion.classList.contains('open');
+
+      document.querySelectorAll('.mr-item-accordion.open').forEach(el => {
+        if (el !== accordion) {
+          el.classList.remove('open');
+        }
+      });
+
+      if (isOpen) {
+        accordion.classList.remove('open');
+      } else {
+        accordion.classList.add('open');
+        refreshIcons();
+      }
+    }
+
+    function updateMrTrackingUI() {
+      const pendingFixSection = document.getElementById('pending-fix-section');
+      const pendingFixEl = document.getElementById('pending-fix-reviews');
+      const pendingApprovalSection = document.getElementById('pending-approval-section');
+      const pendingFixCount = document.getElementById('pending-fix-count');
+      const pendingApprovalCount = document.getElementById('pending-approval-count');
+
+      pendingFixSection.classList.remove('hidden');
+      const rankedPendingFix = rankPendingFixForNowLane(currentData.pendingFix);
+      const queueLanesModel = buildQueueLanesModel(rankedPendingFix, currentData.pendingApproval);
+
+      mrDataStore.clear();
+      if (queueLanesModel.nowLaneItem) mrDataStore.set(queueLanesModel.nowLaneItem.id, { ...queueLanesModel.nowLaneItem, _sheetType: 'pending-fix' });
+      queueLanesModel.needsFixItems.forEach(mr => mrDataStore.set(mr.id, { ...mr, _sheetType: 'pending-fix' }));
+      queueLanesModel.readyToApproveItems.forEach(mr => mrDataStore.set(mr.id, { ...mr, _sheetType: 'pending-approval' }));
+      sessionMetrics = updatePriorityItemTracking(sessionMetrics, {
+        nowLaneItemId: queueLanesModel.nowLaneItem?.id ?? null,
+        pendingFixIds: rankedPendingFix.map((mergeRequest) => String(mergeRequest.id)),
+        nowMs: Date.now(),
+      });
+      updateSessionMetricsUI();
+      if (queueLanesModel.nowLaneCount + queueLanesModel.needsFixCount + queueLanesModel.readyToApproveCount === 0) {
+        pendingFixEl.innerHTML = `<div class="empty-state">${loadingState.mrTracking ? t('loading.section') : t('empty.pendingFix')}</div>`;
+      } else {
+        pendingFixEl.innerHTML = renderQueueLanes(queueLanesModel);
+      }
+      pendingFixCount.textContent = String(queueLanesModel.nowLaneCount + queueLanesModel.needsFixCount + queueLanesModel.readyToApproveCount);
+      pendingFixCount.classList.remove('hidden');
+
+      pendingApprovalSection.classList.add('hidden');
+      pendingApprovalCount.classList.add('hidden');
+
+      refreshIcons();
+    }
+
+    async function fetchMrTracking() {
+      setLoadingFlag('mrTracking', true);
+      if (!currentProjectPath) {
+        currentData.pendingFix = [];
+        currentData.pendingApproval = [];
+        document.getElementById('pending-fix-section').classList.add('hidden');
+        document.getElementById('pending-approval-section').classList.add('hidden');
+        setLoadingFlag('mrTracking', false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/mr-tracking?path=${encodeURIComponent(currentProjectPath)}`);
+        const data = await response.json();
+        if (data.success) {
+          currentData.pendingFix = data.pendingFix || [];
+          currentData.pendingApproval = data.pendingApproval || [];
+        }
+        updateMrTrackingUI();
+      } catch (error) {
+        console.error('Error fetching MR tracking:', error);
+      } finally {
+        setLoadingFlag('mrTracking', false);
+      }
+    }
+
+    async function triggerFollowup(encodedMrId) {
+      const mrId = safeDecodeURIComponent(encodedMrId);
+      trackUsefulAction('followup');
+      try {
+        const response = await fetch(`${API_URL}/api/mr-tracking/followup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mrId, projectPath: currentProjectPath })
+        });
+        const data = await response.json();
+        if (data.success) {
+          console.log('Followup triggered for MR:', mrId);
+          showToast(t('notify.followupRequested', { mrNumber: String(data.mrNumber ?? '?') }), 'info');
+        } else {
+          alert(t('error.triggerFollowup') + ': ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error triggering followup:', error);
+        alert(t('error.triggerFollowup'));
+      }
+    }
+
+    async function toggleAutoFollowup(encodedMrId, enabled) {
+      const mrId = safeDecodeURIComponent(encodedMrId);
+      try {
+        const response = await fetch(`${API_URL}/api/mr-tracking/auto-followup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mrId, projectPath: currentProjectPath, enabled })
+        });
+        const data = await response.json();
+        if (!data.success) {
+          alert(t('error.toggleAutoFollowup') + ': ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error toggling auto-followup:', error);
+        alert(t('error.toggleAutoFollowup'));
+      }
+    }
+
+    async function approveMr(encodedMrId) {
+      const mrId = safeDecodeURIComponent(encodedMrId);
+      if (!confirm(t('confirm.approveMr', { label: getMrLabel() }))) return;
+      trackUsefulAction('approve');
+
+      try {
+        const response = await fetch(`${API_URL}/api/mr-tracking/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mrId, projectPath: currentProjectPath })
+        });
+        const data = await response.json();
+        if (data.success) {
+          currentData.pendingApproval = currentData.pendingApproval.filter(mr => mr.id !== mrId);
+          updateMrTrackingUI();
+        } else {
+          alert(t('error.approveMr') + ': ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error approving MR:', error);
+        alert(t('error.approveMr'));
+      }
+    }
+
+    async function syncGitLabThreads() {
+      if (!currentProjectPath) {
+        alert(t('error.projectNotLoaded'));
+        return;
+      }
+      trackUsefulAction('syncThreads');
+
+      const btn = document.getElementById('sync-threads-btn');
+      const iconEl = btn.querySelector('i');
+
+      btn.disabled = true;
+      iconEl.classList.add('spinning');
+
+      try {
+        const response = await fetch(`${API_URL}/api/mr-tracking/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectPath: currentProjectPath })
+        });
+        const data = await response.json();
+        if (data.success) {
+          await fetchMrTracking();
+          console.log('Threads synchronized successfully');
+        } else {
+          alert(t('error.syncThreads') + ': ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error syncing threads:', error);
+        alert(t('error.syncThreads'));
+      } finally {
+        btn.disabled = false;
+        iconEl.classList.remove('spinning');
+      }
+    }
+
+    async function fetchLogs() {
+      try {
+        const response = await fetch(`${API_URL}/api/logs`);
+        const data = await response.json();
+        currentData.logs = data.logs || [];
+        updateLogs();
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      }
+    }
+
+    function handleProgressUpdate(message) {
+      const { jobId, progress } = message;
+      const review = currentData.activeReviews.find(r => r.id === jobId);
+      if (review) {
+        review.progress = progress;
+        updateUI();
+      }
+    }
+
+    function handleLogMessage(log) {
+      currentData.logs.push(log);
+      if (currentData.logs.length > 200) currentData.logs.shift();
+      if (logsVisible) updateLogs();
+    }
+
+    function connectWebSocket() {
+      if (ws?.readyState === WebSocket.OPEN) return;
+
+      updateConnectionStatus('connecting', 'status.connecting');
+
+      try {
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
+          wsConnected = true;
+          reconnectAttempts = 0;
+          updateConnectionStatus('online', 'connection.online');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            switch (message.type) {
+              case 'init':
+              case 'state':
+                console.log(`[WS] ${message.type}: ${message.activeReviews?.length || 0} active reviews`, message.activeReviews);
+                currentData.activeReviews = message.activeReviews || [];
+                currentData.recentReviews = message.recentReviews || [];
+                dispatchReviewNotifications(currentData.activeReviews, currentData.recentReviews);
+                updateUI();
+                if (message.type === 'state') {
+                  fetchMrTracking();
+                }
+                break;
+              case 'progress':
+                handleProgressUpdate(message);
+                break;
+              case 'log':
+                handleLogMessage(message.log);
+                break;
+              case 'backfill-progress': {
+                const progressBadge = document.getElementById('backfill-progress');
+                if (progressBadge) {
+                  progressBadge.textContent = t('stats.backfillProgress', { completed: message.data.completed, total: message.data.total });
+                  progressBadge.classList.remove('hidden');
+                }
+                break;
+              }
+              case 'backfill-complete': {
+                const completeBadge = document.getElementById('backfill-progress');
+                const recalcButton = document.getElementById('recalculate-btn');
+                if (completeBadge) {
+                  completeBadge.textContent = t('stats.backfillComplete');
+                  setTimeout(() => completeBadge.classList.add('hidden'), 3000);
+                }
+                if (recalcButton) recalcButton.disabled = false;
+                fetchProjectStats();
+                fetchTeamInsights();
+                break;
+              }
+              case 'pong':
+                break;
+            }
+          } catch (e) {
+            console.error('WebSocket message error:', e);
+          }
+        };
+
+        ws.onclose = () => {
+          wsConnected = false;
+          ws = null;
+          updateConnectionStatus('offline', 'connection.offline');
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            setTimeout(connectWebSocket, RECONNECT_DELAY);
+          }
+        };
+
+        ws.onerror = (error) => console.error('WebSocket error:', error);
+
+      } catch (error) {
+        console.error('WebSocket creation failed:', error);
+        wsConnected = false;
+      }
+    }
+
+    setInterval(() => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+
+    async function fetchStatus() {
+      setLoadingFlag('status', true);
+      try {
+        const response = await fetch(`${API_URL}/api/status`);
+        const data = await response.json();
+        currentData.activeReviews = data.jobs?.active || [];
+        currentData.recentReviews = data.jobs?.recent || [];
+        dispatchReviewNotifications(currentData.activeReviews, currentData.recentReviews);
+        const versionUpdateArea = document.getElementById('version-update-area');
+        if (versionUpdateArea) {
+          versionUpdateArea.innerHTML = renderVersionUpdateArea(
+            { currentVersion: data.version || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            t
+          );
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        if (!wsConnected) updateConnectionStatus('online', 'connection.onlinePolling');
+        updateUI();
+      } catch (error) {
+        if (!wsConnected) {
+          updateConnectionStatus('offline', 'connection.offline');
+          document.getElementById('running-count').textContent = '-';
+          document.getElementById('queued-count').textContent = '-';
+          document.getElementById('completed-count').textContent = '-';
+          document.getElementById('active-reviews').innerHTML = `<div class="empty-state">${t('empty.serverNotAccessible')}</div>`;
+          document.getElementById('recent-reviews').innerHTML = `<div class="empty-state">${t('empty.serverNotAccessible')}</div>`;
+        }
+      } finally {
+        hasLoadedStatusOnce = true;
+        setLoadingFlag('status', false);
+      }
+    }
+
+    async function loadModelSetting() {
+      try {
+        const response = await fetch(`${API_URL}/api/settings/model`);
+        const data = await response.json();
+        const select = document.getElementById('model-select');
+        if (select && data.model) {
+          select.value = data.model;
+        }
+      } catch (error) {
+        console.error('Error loading model setting:', error);
+      }
+    }
+
+    async function changeModel(model) {
+      try {
+        const response = await fetch(`${API_URL}/api/settings/model`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model })
+        });
+        const data = await response.json();
+        if (data.success) {
+          console.log('Model changed to:', model);
+        }
+      } catch (error) {
+        console.error('Error changing model:', error);
+      }
+    }
+
+    async function loadLanguageSetting() {
+      try {
+        const response = await fetch(`${API_URL}/api/settings`);
+        const data = await response.json();
+        const select = document.getElementById('language-select');
+        if (select && data.language) {
+          select.value = data.language;
+          setLanguage(data.language);
+          document.documentElement.lang = data.language;
+          renderStaticLabels();
+        }
+      } catch (error) {
+        console.error('Error loading language setting:', error);
+      }
+    }
+
+    async function changeLanguage(language) {
+      setLanguage(language);
+      document.documentElement.lang = language;
+      renderStaticLabels();
+      // Re-render all dynamic content
+      updateUI();
+      updateLogs();
+      updateReviewFilesUI();
+      updateMrTrackingUI();
+      updateGitCliUI();
+      // Also persist on server
+      try {
+        const response = await fetch(`${API_URL}/api/settings/language`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language })
+        });
+        const data = await response.json();
+        if (data.success) {
+          console.log('Language changed to:', language);
+        }
+      } catch (error) {
+        console.error('Error changing language:', error);
+      }
+    }
+
+    let currentProjectConfig = null;
+    let currentProjectPath = null;
+
+    function getStoredProjects() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY_PROJECTS) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveProjects(projects) {
+      localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
+    }
+
+    function addProjectToHistory(path) {
+      const projects = getStoredProjects();
+      const filtered = projects.filter(p => p !== path);
+      filtered.unshift(path);
+      saveProjects(filtered.slice(0, 10));
+      updateProjectSelect();
+    }
+
+    function removeProjectFromHistory(path) {
+      const projects = getStoredProjects().filter(p => p !== path);
+      saveProjects(projects);
+      updateProjectSelect();
+    }
+
+    function updateProjectSelect() {
+      const select = document.getElementById('project-select');
+      const projects = getStoredProjects();
+      const current = localStorage.getItem(STORAGE_KEY_CURRENT) || '';
+
+      select.innerHTML = `<option value="">${t('project.selectPlaceholder')}</option>`;
+      for (const path of projects) {
+        const shortName = path.split('/').slice(-2).join('/');
+        const option = document.createElement('option');
+        option.value = path;
+        option.textContent = shortName;
+        option.title = path;
+        if (path === current) option.selected = true;
+        select.appendChild(option);
+      }
+    }
+
+    function onProjectSelect(path) {
+      if (path) {
+        document.getElementById('project-path-input').value = '';
+        loadProjectConfigFromPath(path);
+      }
+    }
+
+    async function loadProjectConfig() {
+      const input = document.getElementById('project-path-input');
+      const select = document.getElementById('project-select');
+      const projectPath = input.value.trim() || select.value;
+
+      if (!projectPath) {
+        showConfigStatus(t('error.selectOrEnterPath'), 'error');
+        return;
+      }
+
+      await loadProjectConfigFromPath(projectPath);
+    }
+
+    async function loadProjectConfigFromPath(projectPath) {
+      const status = document.getElementById('config-status');
+      const info = document.getElementById('config-info');
+
+      showConfigStatus(t('status.loading'), 'loading');
+      info.classList.add('hidden');
+
+      try {
+        const response = await fetch(`${API_URL}/api/project-config?path=${encodeURIComponent(projectPath)}`);
+        const data = await response.json();
+
+        if (data.success) {
+          currentProjectConfig = data.config;
+          currentProjectPath = projectPath;
+
+          addProjectToHistory(projectPath);
+          localStorage.setItem(STORAGE_KEY_CURRENT, projectPath);
+
+          document.getElementById('project-select').value = projectPath;
+          document.getElementById('project-path-input').value = '';
+
+          const shortName = projectPath.split('/').slice(-2).join('/');
+          showConfigStatus(`<i data-lucide="check-circle"></i> ${escapeHtml(shortName)}`, 'success');
+          refreshIcons();
+
+          if (data.config.defaultModel) {
+            const modelSelect = document.getElementById('model-select');
+            if (modelSelect) {
+              modelSelect.value = data.config.defaultModel;
+              changeModel(data.config.defaultModel);
+            }
+          }
+
+          activePlatform = data.config.gitlab ? 'gitlab' : (data.config.github ? 'github' : null);
+          updateGitCliUI();
+
+          fetchReviewFiles();
+          fetchProjectStats();
+          fetchMrTracking();
+          fetchTeamInsights();
+          refreshTokenUsageTile();
+
+          document.getElementById('stats-section').classList.remove('hidden');
+          document.getElementById('team-section').classList.remove('hidden');
+          document.getElementById('token-usage-section').classList.remove('hidden');
+
+          const platformIcon = activePlatform === 'gitlab' ? '<i data-lucide="gitlab"></i> GitLab' : '<i data-lucide="github"></i> GitHub';
+          info.innerHTML = `
+            <span>${platformIcon}</span>
+            <span><i data-lucide="bot"></i> ${escapeHtml(String(data.config.defaultModel || t('status.undefined')))}</span>
+            <span><i data-lucide="file-text"></i> ${escapeHtml(String(data.config.reviewSkill ?? ''))}</span>
+            <span><i data-lucide="refresh-cw"></i> ${escapeHtml(String(data.config.reviewFollowupSkill ?? ''))}</span>
+          `;
+          info.classList.remove('hidden');
+          refreshIcons();
+        } else {
+          showConfigStatus('<i data-lucide="x-circle"></i> ' + escapeHtml(String(data.error ?? '')), 'error');
+          refreshIcons();
+        }
+      } catch (error) {
+        showConfigStatus(`<i data-lucide="x-circle"></i> ${t('error.loadingConfig')}`, 'error');
+        refreshIcons();
+        console.error('Error loading project config:', error);
+      }
+    }
+
+    function showConfigStatus(text, type) {
+      const status = document.getElementById('config-status');
+      status.innerHTML = text;
+      status.className = `config-status ${type}`;
+      status.classList.remove('hidden');
+      refreshIcons();
+    }
+
+    function removeCurrentProject() {
+      const select = document.getElementById('project-select');
+      const path = select.value;
+      if (!path) {
+        showConfigStatus(t('project.noProjectSelected'), 'error');
+        return;
+      }
+      const shortName = path.split('/').slice(-2).join('/');
+      if (confirm(t('confirm.removeProject', { name: shortName }))) {
+        removeProjectFromHistory(path);
+        localStorage.removeItem(STORAGE_KEY_CURRENT);
+        currentProjectPath = null;
+        currentProjectConfig = null;
+        document.getElementById('config-info').classList.add('hidden');
+        showConfigStatus(t('project.removed'), 'success');
+      }
+    }
+
+    async function syncServerRepositories() {
+      try {
+        const response = await fetch(`${API_URL}/api/repositories`);
+        const data = await response.json();
+        if (!data.repositories) return;
+
+        const stored = getStoredProjects();
+        for (const repository of data.repositories) {
+          if (repository.enabled && !stored.includes(repository.localPath)) {
+            stored.push(repository.localPath);
+          }
+        }
+        saveProjects(stored);
+        updateProjectSelect();
+      } catch {
+        // Server unreachable — use localStorage only
+      }
+    }
+
+    async function initProjectLoader() {
+      await syncServerRepositories();
+      updateProjectSelect();
+      const lastProject = localStorage.getItem(STORAGE_KEY_CURRENT);
+      if (lastProject) {
+        loadProjectConfigFromPath(lastProject);
+      } else {
+        const storedProjects = getStoredProjects();
+        if (storedProjects.length > 0) {
+          loadProjectConfigFromPath(storedProjects[0]);
+        } else {
+          document.getElementById('recent-reviews').innerHTML =
+            `<div class="empty-state">${t('empty.reviewsNoProject')}</div>`;
+          document.getElementById('project-stats').innerHTML =
+            `<div class="empty-state">${t('empty.statsNoProject')}</div>`;
+        }
+      }
+    }
+
+    function getMrLabel(platform = activePlatform) {
+      return platform === 'github' ? 'PR' : 'MR';
+    }
+
+    let cancelModalJobId = null;
+
+    function showCancelModal(encodedJobId, mrNumber, jobType) {
+      cancelModalJobId = safeDecodeURIComponent(encodedJobId);
+      const typeLabel = jobType === 'followup' ? t('review.type.followup').toLowerCase() : t('review.type.review').toLowerCase();
+      document.getElementById('cancel-modal-title').textContent = t('modal.cancel.title', { type: typeLabel, label: getMrLabel(), number: mrNumber });
+      const modal = document.getElementById('cancel-modal');
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => modal.classList.add('visible'));
+    }
+
+    function closeCancelModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('cancel-modal');
+      modal.classList.remove('visible');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+      cancelModalJobId = null;
+    }
+
+    async function confirmCancelReview() {
+      if (!cancelModalJobId) return;
+      trackUsefulAction('cancelReview');
+
+      const jobId = cancelModalJobId;
+      closeCancelModal();
+
+      try {
+        const response = await fetch(`${API_URL}/api/reviews/cancel/${encodeURIComponent(jobId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectPath: currentProjectPath || undefined,
+            mrId: jobId,
+          }),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          const card = document.querySelector(`.review-item[data-job-id="${jobId}"]`);
+          if (card) card.remove();
+          showToast(t('success.reviewCancelled'), 'success');
+          fetchStatus();
+        } else if (data.status === 'already-completed') {
+          showToast(t('success.reviewAlreadyCompleted'), 'info');
+          fetchStatus();
+        } else {
+          showToast(data.error || t('error.cancelReview'), 'error');
+        }
+      } catch (error) {
+        console.error('Error cancelling review:', error);
+        showToast(t('error.cancelReview'), 'error');
+      }
+    }
+
+    function showToast(message, type) {
+      const container = document.getElementById('toast-container');
+      const iconName = type === 'success' ? 'check-circle' : type === 'info' ? 'info' : 'alert-circle';
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<i data-lucide="${iconName}"></i> ${escapeHtml(message)}`;
+      container.appendChild(toast);
+      refreshIcons();
+      requestAnimationFrame(() => toast.classList.add('visible'));
+      setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function renderStaticLabels() {
+      // Header buttons
+      const checkClaudeSpan = document.getElementById('i18n-check-claude');
+      if (checkClaudeSpan) checkClaudeSpan.textContent = t('header.checkClaude');
+
+      const logsBtnSpan = document.getElementById('i18n-logs-btn');
+      if (logsBtnSpan) logsBtnSpan.textContent = logsVisible ? t('header.hideLogs') : t('header.logs');
+
+      const serverStatusSpan = document.getElementById('i18n-server-status');
+      if (serverStatusSpan) serverStatusSpan.textContent = t('status.connecting');
+
+      // Cards
+      const cardRunning = document.getElementById('i18n-card-running');
+      if (cardRunning) cardRunning.textContent = t('card.running');
+
+      const cardQueued = document.getElementById('i18n-card-queued');
+      if (cardQueued) cardQueued.textContent = t('card.queued');
+
+      const cardCompleted = document.getElementById('i18n-card-completed');
+      if (cardCompleted) cardCompleted.textContent = t('card.completed');
+
+      const cardClaudeCli = document.getElementById('i18n-card-claude-cli');
+      if (cardClaudeCli) cardClaudeCli.textContent = t('card.claudeCli');
+
+      const claudeChecking = document.getElementById('i18n-claude-checking');
+      if (claudeChecking) claudeChecking.textContent = t('status.checking');
+
+      const gitLoadProject = document.getElementById('i18n-git-load-project');
+      if (gitLoadProject) gitLoadProject.textContent = t('status.loadProject');
+
+      const gitCliLabel = document.getElementById('git-cli-label');
+      if (gitCliLabel && !activePlatform) gitCliLabel.textContent = t('card.gitCli');
+
+      const cardModel = document.getElementById('i18n-card-model');
+      if (cardModel) cardModel.textContent = t('card.model');
+
+      const cardLanguage = document.getElementById('i18n-card-language');
+      if (cardLanguage) cardLanguage.textContent = t('card.language');
+
+      const stripNow = document.getElementById('i18n-strip-now');
+      if (stripNow) stripNow.textContent = t('strip.now');
+      const stripNowMeta = document.getElementById('i18n-strip-now-meta');
+      if (stripNowMeta) stripNowMeta.textContent = t('strip.nowMeta');
+
+      const stripNext = document.getElementById('i18n-strip-next');
+      if (stripNext) stripNext.textContent = t('strip.next');
+      const stripNextMeta = document.getElementById('i18n-strip-next-meta');
+      if (stripNextMeta) stripNextMeta.textContent = t('strip.nextMeta');
+
+      const stripBlocked = document.getElementById('i18n-strip-blocked');
+      if (stripBlocked) stripBlocked.textContent = t('strip.blocked');
+      const stripBlockedMeta = document.getElementById('i18n-strip-blocked-meta');
+      if (stripBlockedMeta) stripBlockedMeta.textContent = t('strip.blockedMeta');
+      applyFocusStripMode();
+
+      const loadingDataLabel = document.getElementById('i18n-loading-data');
+      if (loadingDataLabel) loadingDataLabel.textContent = t(getLoadingMessageKey());
+      updateSessionMetricsUI();
+
+      // Model options
+      const modelOpus = document.getElementById('i18n-model-opus');
+      if (modelOpus) modelOpus.textContent = t('model.opus');
+
+      const modelSonnet = document.getElementById('i18n-model-sonnet');
+      if (modelSonnet) modelSonnet.textContent = t('model.sonnet');
+
+      // Project loader
+      const projectPlaceholder = document.getElementById('i18n-project-placeholder');
+      if (projectPlaceholder) projectPlaceholder.textContent = t('project.selectPlaceholder');
+
+      const projectPathInput = document.getElementById('project-path-input');
+      if (projectPathInput) projectPathInput.placeholder = t('project.inputPlaceholder');
+
+      const projectLoad = document.getElementById('i18n-project-load');
+      if (projectLoad) projectLoad.textContent = t('project.load');
+
+      const removeProjectBtn = document.getElementById('remove-project-btn');
+      if (removeProjectBtn) removeProjectBtn.title = t('project.removeTooltip');
+
+      // Login sections
+      const claudeLoginTitle = document.getElementById('i18n-claude-login-title');
+      if (claudeLoginTitle) claudeLoginTitle.textContent = t('login.claude.title');
+
+      const claudeLoginInstruction = document.getElementById('i18n-claude-login-instruction');
+      if (claudeLoginInstruction) claudeLoginInstruction.textContent = t('login.claude.instruction');
+
+      const claudeLoginReload = document.getElementById('i18n-claude-login-reload');
+      if (claudeLoginReload) claudeLoginReload.textContent = t('login.claude.reload');
+
+      const gitLoginTitle = document.getElementById('i18n-git-login-title');
+      if (gitLoginTitle) gitLoginTitle.textContent = t('login.git.title');
+
+      // Section headers
+      const sectionLogs = document.getElementById('i18n-section-logs');
+      if (sectionLogs) sectionLogs.textContent = t('section.logs');
+
+      const sectionStats = document.getElementById('i18n-section-stats');
+      if (sectionStats) sectionStats.textContent = t('section.stats');
+
+      const recalculateLabel = document.getElementById('recalculate-label');
+      if (recalculateLabel) recalculateLabel.textContent = t('stats.recalculate');
+
+      const sectionTeam = document.getElementById('i18n-section-team');
+      if (sectionTeam) sectionTeam.textContent = t('team.title');
+
+      const sectionActiveReviews = document.getElementById('i18n-section-active-reviews');
+      if (sectionActiveReviews) sectionActiveReviews.textContent = t('section.activeReviews');
+
+      const sectionActiveFollowups = document.getElementById('i18n-section-active-followups');
+      if (sectionActiveFollowups) sectionActiveFollowups.textContent = t('section.activeFollowups');
+
+      const sectionPendingFix = document.getElementById('i18n-section-pending-fix');
+      if (sectionPendingFix) sectionPendingFix.textContent = t('section.queueLanes');
+
+      const sectionPendingApproval = document.getElementById('i18n-section-pending-approval');
+      if (sectionPendingApproval) sectionPendingApproval.textContent = t('section.pendingApproval');
+
+      const sectionCompletedReviews = document.getElementById('i18n-section-completed-reviews');
+      if (sectionCompletedReviews) sectionCompletedReviews.textContent = t('section.completedReviews');
+
+      // Empty states
+      const emptyLogs = document.getElementById('i18n-empty-logs');
+      if (emptyLogs) emptyLogs.textContent = t('empty.logs');
+
+      const emptyStats = document.getElementById('i18n-empty-stats');
+      if (emptyStats) emptyStats.textContent = t('empty.stats');
+
+      const emptyActiveReviews = document.getElementById('i18n-empty-active-reviews');
+      if (emptyActiveReviews) emptyActiveReviews.textContent = t('empty.activeReviews');
+
+      const emptyActiveFollowups = document.getElementById('i18n-empty-active-followups');
+      if (emptyActiveFollowups) emptyActiveFollowups.textContent = t('empty.activeFollowups');
+
+      const emptyPendingFix = document.getElementById('i18n-empty-pending-fix');
+      if (emptyPendingFix) emptyPendingFix.textContent = t('empty.pendingFix');
+
+      const emptyPendingApproval = document.getElementById('i18n-empty-pending-approval');
+      if (emptyPendingApproval) emptyPendingApproval.textContent = t('empty.pendingApproval');
+
+      const emptyTeam = document.getElementById('i18n-empty-team');
+      if (emptyTeam) emptyTeam.textContent = t('team.noData');
+
+      const emptyLoading = document.getElementById('i18n-empty-loading');
+      if (emptyLoading) emptyLoading.textContent = t('status.loading');
+
+      // Sync threads button
+      const syncThreadsBtn = document.getElementById('sync-threads-btn');
+      if (syncThreadsBtn) syncThreadsBtn.title = t('button.syncThreads');
+
+      // Connection footer
+      const connectionFallback = document.getElementById('i18n-connection-fallback');
+      if (connectionFallback) connectionFallback.textContent = t('connection.fallback');
+
+      // Modal
+      const modalMessage = document.getElementById('i18n-modal-message');
+      if (modalMessage) modalMessage.textContent = t('modal.cancel.message');
+
+      const modalBack = document.getElementById('i18n-modal-back');
+      if (modalBack) modalBack.textContent = t('modal.back');
+
+      const modalConfirm = document.getElementById('cancel-modal-confirm');
+      if (modalConfirm) modalConfirm.textContent = t('modal.confirm');
+
+      // Update project select placeholder (re-render the select)
+      updateProjectSelect();
+    }
+
+    async function checkForUpdates() {
+      setVersionCheckState('checking', t);
+      try {
+        const response = await fetch(`${API_URL}/api/version/check`);
+        const data = await response.json();
+        const versionUpdateArea = document.getElementById('version-update-area');
+        if (versionUpdateArea) {
+          versionUpdateArea.innerHTML = renderVersionUpdateArea(
+            { currentVersion: data.currentVersion || '?', updateAvailable: data.updateAvailable || false, latestVersion: data.latestVersion || null },
+            t
+          );
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        if (!data.updateAvailable) {
+          showToast(t('version.upToDate'), 'success');
+        }
+      } catch (error) {
+        console.error('Error checking for updates:', error);
+        showToast(t('version.updateFailed'), 'error');
+      } finally {
+        setVersionCheckState('idle', t);
+      }
+    }
+
+    async function triggerVersionUpdate() {
+      setVersionCheckState('updating', t);
+      try {
+        const response = await fetch(`${API_URL}/api/version/update`, { method: 'POST' });
+        const data = await response.json();
+        if (data.status === 'started') {
+          setVersionCheckState('restarting', t);
+          showToast(t('version.restarting'), 'info');
+          setTimeout(() => {
+            const checkInterval = setInterval(async () => {
+              try {
+                const healthResponse = await fetch(`${API_URL}/health`);
+                if (healthResponse.ok) {
+                  clearInterval(checkInterval);
+                  window.location.reload();
+                }
+              } catch {
+                // Server still restarting, keep polling
+              }
+            }, 2000);
+            setTimeout(() => clearInterval(checkInterval), 60000);
+          }, 3000);
+        } else if (data.status === 'permission-denied') {
+          setVersionCheckState('idle', t);
+          showManualUpdateCommand(data.command);
+        } else {
+          showToast(data.error || t('version.updateFailed'), 'error');
+          setVersionCheckState('idle', t);
+        }
+      } catch (error) {
+        console.error('Error triggering update:', error);
+        showToast(t('version.updateFailed'), 'error');
+        setVersionCheckState('idle', t);
+      }
+    }
+
+    function showManualUpdateCommand(command) {
+      const container = document.getElementById('version-manual-update-container');
+      if (!container) return;
+
+      if (container.children.length > 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="version-manual-dropdown">
+          <p>${t('version.permissionDenied')}</p>
+          <div class="version-command-row">
+            <code>${command}</code>
+            <button class="btn btn-icon btn-copy" title="${t('version.copyCommand')}" onclick="copyUpdateCommand('${command}')">
+              <i data-lucide="copy"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      refreshIcons();
+    }
+
+    function copyUpdateCommand(command) {
+      navigator.clipboard.writeText(command).then(() => {
+        showToast(t('version.commandCopied'), 'success');
+      });
+    }
+
+    function openMrSheet(encodedMrId) {
+      const mrId = safeDecodeURIComponent(encodedMrId);
+      const mr = mrDataStore.get(mrId);
+      if (!mr) return;
+
+      const contentEl = document.getElementById('mr-sheet-content');
+      contentEl.innerHTML = renderMrSheetContent(mr, t, mr._sheetType);
+
+      document.getElementById('mr-sheet-overlay').classList.add('open');
+      document.getElementById('mr-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      refreshIcons();
+
+      requestAnimationFrame(() => {
+        if (mr.reviews?.length) {
+          drawScoreTimeline('sheet-score-canvas', mr.reviews);
+        }
+        const totalResolved = (mr.openThreads ?? 0) === 0 ? 1 : 0;
+        drawIssuesBreakdown('sheet-issues-canvas', mr.totalBlocking || 0, mr.totalWarnings || 0, totalResolved);
+      });
+    }
+
+    function closeMrSheet() {
+      document.getElementById('mr-sheet-overlay').classList.remove('open');
+      document.getElementById('mr-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+      logsVisible = false;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeMrSheet();
+        closeDevSheet();
+      }
+    });
+
+    // Expose functions to HTML onclick handlers
+    window.checkForUpdates = checkForUpdates;
+    window.triggerVersionUpdate = triggerVersionUpdate;
+    window.copyUpdateCommand = copyUpdateCommand;
+    window.toggleCollapsibleList = toggleCollapsibleList;
+    window.checkClaudeStatus = checkClaudeStatus;
+    window.toggleLogs = toggleLogs;
+    window.toggleStats = toggleStats;
+    window.changeModel = changeModel;
+    window.changeLanguage = changeLanguage;
+    window.onProjectSelect = onProjectSelect;
+    window.loadProjectConfig = loadProjectConfig;
+    window.removeCurrentProject = removeCurrentProject;
+    window.toggleReviewAccordion = toggleReviewAccordion;
+    window.toggleReviewDescription = toggleReviewDescription;
+    window.deleteReviewFile = deleteReviewFile;
+    window.toggleMrAccordion = toggleMrAccordion;
+    window.triggerFollowup = triggerFollowup;
+    window.toggleAutoFollowup = toggleAutoFollowup;
+    window.approveMr = approveMr;
+    window.syncGitLabThreads = syncGitLabThreads;
+    window.showCancelModal = showCancelModal;
+    window.closeCancelModal = closeCancelModal;
+    window.confirmCancelReview = confirmCancelReview;
+    window.toggleFocusStripMode = toggleFocusStripMode;
+    window.toggleSection = toggleSection;
+    window.onUsefulLinkAction = onUsefulLinkAction;
+    window.activateOnKeydown = activateOnKeydown;
+    window.handleCleanupClick = handleCleanupClick;
+    window.openMrSheet = openMrSheet;
+    window.closeMrSheet = closeMrSheet;
+    window.openDevSheet = openDevSheet;
+    window.closeDevSheet = closeDevSheet;
+    window.generateAiInsights = generateAiInsights;
+    window.exportInsightsPdf = exportInsightsPdf;
+    window.toggleTeamAnalysis = toggleTeamAnalysis;
+    window.toggleTeamSection = toggleTeamSection;
+    window.clearLogs = clearLogs;
+
+    // Init cleanup section
+    const cleanupContent = document.getElementById('cleanup-content');
+    if (cleanupContent) {
+      cleanupContent.innerHTML = renderCleanupSection(14);
+    }
+
+    // Init
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+    loadFocusStripMode();
+    renderStaticLabels();
+    updateSessionMetricsUI();
+    connectWebSocket();
+    fetchStatus();
+    checkClaudeStatus();
+    loadModelSetting();
+    loadLanguageSetting();
+    initProjectLoader();
+
+    // Initialize Lucide icons
+    refreshIcons();
+
+    setInterval(fetchStatus, 5000);
+    setInterval(() => {
+      fetchReviewFiles();
+      fetchProjectStats();
+      fetchMrTracking();
+      fetchTeamInsights();
+    }, 30000);
+
+    setInterval(() => {
+      document.querySelectorAll('.review-item').forEach(el => {
+        const jobId = el.dataset.jobId;
+        const review = currentData.activeReviews.find(r => r.id === jobId);
+        if (review?.startedAt) {
+          const metaEl = el.querySelector('.review-meta');
+          if (metaEl) {
+            const badge = metaEl.querySelector('.badge');
+            metaEl.innerHTML = `${badge?.outerHTML || ''} ${icon('clock')} ${formatDuration(review.startedAt)}`;
+            refreshIcons();
+          }
+        }
+      });
+    }, 1000);
+  </script>
+</body>
+</html>

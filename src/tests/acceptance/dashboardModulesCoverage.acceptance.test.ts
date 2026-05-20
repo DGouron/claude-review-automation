@@ -4,12 +4,12 @@ import { resolve } from 'node:path';
 
 const MODULES_DIR = resolve(
   process.cwd(),
-  'src/interface-adapters/views/dashboard/modules'
+  'src/dashboard/modules'
 );
 
 const TESTS_DIR = resolve(
   process.cwd(),
-  'src/tests/units/interface-adapters/views/dashboard/modules'
+  'src/tests/units/dashboard/modules'
 );
 
 function listJsModules(): string[] {
@@ -31,11 +31,10 @@ function listTestFiles(): string[] {
 }
 
 describe('Acceptance — Spec #51: dashboard modules coverage', () => {
-  // Outer-loop SDD acceptance test. Stays skipped until spec-051 implementation
-  // closes the gap (6 uncovered modules: cleanup, collapsibleList, mrSheet,
-  // sharedViewHelpers, statsCharts, versionUpdate). Remove `.skip` when
-  // implementing the spec and let it turn GREEN.
-  it.skip('every dashboard module has a corresponding test file', () => {
+  // Outer-loop SDD acceptance test. The 6 previously uncovered modules
+  // (cleanup, collapsibleList, mrSheet, sharedViewHelpers, statsCharts,
+  // versionUpdate) now have smoke tests, so this acceptance turns GREEN.
+  it('every dashboard module has a corresponding test file', () => {
     const modules = listJsModules();
     const tests = listTestFiles();
 
@@ -46,7 +45,7 @@ describe('Acceptance — Spec #51: dashboard modules coverage', () => {
     expect(uncovered, `Modules sans test: ${uncovered.join(', ')}`).toEqual([]);
   });
 
-  it.skip('every test file targets an existing dashboard module', () => {
+  it('every test file targets an existing dashboard module', () => {
     const modules = listJsModules();
     const tests = listTestFiles();
 

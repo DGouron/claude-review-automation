@@ -4,7 +4,7 @@ import { computeDeveloperInsights } from '@/modules/statistics-insights/usecases
 import { computeTeamInsights } from '@/modules/statistics-insights/usecases/insights/computeTeamInsights.usecase.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import { PersistedInsightsDataFactory, PersistedDeveloperMetricsFactory } from '@/tests/factories/persistedInsightsData.factory.js';
-import type { ReviewStats } from '@/services/statsService.js';
+import type { ReviewStats } from '@/modules/statistics-insights/services/statsService.js';
 
 function createReviewsForDeveloper(
   developerName: string,

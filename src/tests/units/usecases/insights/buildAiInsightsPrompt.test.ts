@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildAiInsightsPrompt } from '@/modules/statistics-insights/usecases/insights/buildAiInsightsPrompt.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
-import type { ReviewStats } from '@/services/statsService.js';
+import type { ReviewStats } from '@/modules/statistics-insights/services/statsService.js';
 import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
 

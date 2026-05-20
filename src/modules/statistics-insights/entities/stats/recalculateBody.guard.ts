@@ -8,6 +8,6 @@ export const recalculateBodySchema = z.object({
 
 export type RecalculateBody = z.infer<typeof recalculateBodySchema>;
 
-const recalculateBodyGuard = createGuard(recalculateBodySchema);
+const recalculateBodyGuard = createGuard(recalculateBodySchema, 'recalculateBody');
 
 export const safeParseRecalculateBody = recalculateBodyGuard.safeParse;

@@ -2,6 +2,7 @@
 
 | Feature | Spec | Status | Date |
 |---------|------|--------|------|
+| Token usage summary on dashboard | [126-token-usage-summary-dashboard](specs/126-token-usage-summary-dashboard.md) | implemented | 2026-05-20 |
 | Init project command | [30-init-project-command](specs/30-init-project-command.md) | drafted | 2026-03-14 |
 | Update README quickstart | [32-update-readme-quickstart](specs/32-update-readme-quickstart.md) | drafted | 2026-03-14 |
 | Zod guard GitLab webhook | [44-zod-guard-gitlab-webhook](specs/44-zod-guard-gitlab-webhook.md) | implemented | 2026-03-14 |
@@ -9,7 +10,7 @@
 | Capture git diff stats | [47-capture-git-diff-stats](specs/47-capture-git-diff-stats.md) | drafted | 2026-03-14 |
 | Review focus selection | [48-review-focus-selection](specs/48-review-focus-selection.md) | drafted | 2026-03-14 |
 | Update skills project examples | [50-update-skills-project-examples](specs/50-update-skills-project-examples.md) | drafted | 2026-03-14 |
-| Dashboard unit tests | [51-dashboard-unit-tests](specs/51-dashboard-unit-tests.md) | drafted | 2026-05-15 |
+| Dashboard unit tests | [51-dashboard-unit-tests](specs/51-dashboard-unit-tests.md) | implemented | 2026-05-20 |
 | Automated webhook secret generation | [52-automated-webhook-secret-generation](specs/52-automated-webhook-secret-generation.md) | drafted | 2026-03-14 |
 | Configuration validation command | [55-configuration-validation-command](specs/55-configuration-validation-command.md) | drafted | 2026-03-14 |
 | MCP-ready skeleton skill templates | [56-mcp-ready-skeleton-skill-templates](specs/56-mcp-ready-skeleton-skill-templates.md) | drafted | 2026-03-14 |

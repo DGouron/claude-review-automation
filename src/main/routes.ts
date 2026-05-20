@@ -32,6 +32,11 @@ import { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPu
 import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
+import { tokenUsageRoutes } from '@/modules/token-accounting/interface-adapters/controllers/http/tokenUsage.routes.js';
+import { SummarizeTokenUsageUseCase } from '@/modules/token-accounting/usecases/summarizeTokenUsage/summarizeTokenUsage.usecase.js';
+import { TokenUsageSummaryPresenter } from '@/modules/token-accounting/interface-adapters/presenters/tokenUsageSummary.presenter.js';
+import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
 import { checkVersion } from '@/modules/cli-configuration/usecases/version/checkVersion.usecase.js';
 import { triggerSelfUpdate } from '@/modules/cli-configuration/usecases/version/triggerSelfUpdate.usecase.js';
 import { NpmPackageVersionGateway } from '@/modules/cli-configuration/interface-adapters/gateways/packageVersion.npm.gateway.js';
@@ -60,7 +65,7 @@ export async function registerRoutes(
   deps: Dependencies
 ): Promise<void> {
   await app.register(fastifyStatic, {
-    root: join(__dirname, '..', 'interface-adapters', 'views', 'dashboard'),
+    root: join(__dirname, '..', 'dashboard'),
     prefix: '/dashboard/',
   });
 
@@ -94,9 +99,31 @@ export async function registerRoutes(
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
   });
 
+  await app.register(tokenUsageRoutes, {
+    summarizeTokenUsage: new SummarizeTokenUsageUseCase(new FilesystemTokenUsageGateway()),
+    presenter: new TokenUsageSummaryPresenter(),
+  });
+
+  const threadFetchGatewayFactory = (platform: 'gitlab' | 'github') =>
+    platform === 'github'
+      ? new GitHubThreadFetchGateway(defaultGitHubExecutor)
+      : new GitLabThreadFetchGateway(defaultGitLabExecutor);
   await app.register(mrTrackingAdvancedRoutes, {
     getRepositories: () => deps.config.repositories,
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+    reviewContextGateway: new ReviewContextFileSystemGateway(),
+    threadFetchGatewayFactory,
+    diffMetadataFetchGatewayFactory: (platform) =>
+      platform === 'github'
+        ? new GitHubDiffMetadataFetchGateway(defaultGitHubExecutor)
+        : new GitLabDiffMetadataFetchGateway(defaultGitLabExecutor),
+    diffStatsFetchGatewayFactory: (platform) =>
+      platform === 'github'
+        ? new GitHubDiffStatsFetchGateway(defaultGitHubExecutor)
+        : new GitLabDiffStatsFetchGateway(defaultGitLabExecutor),
+    createSyncThreadsUseCase: (platform) =>
+      new SyncThreadsUseCase(deps.reviewRequestTrackingGateway, threadFetchGatewayFactory(platform)),
+    recordReviewCompletion: new RecordReviewCompletionUseCase(deps.reviewRequestTrackingGateway),
     logger: deps.logger,
   });
 
