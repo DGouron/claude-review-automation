@@ -294,6 +294,7 @@
     import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
     import { buildInsightsReport } from './modules/insightsReport.js';
     import { fetchTokenUsageSummary, renderTokenUsageTile } from './modules/tokenUsage.js';
+    import { parseBudgetStatusMessage, parseBudgetExceededMessage, renderBudgetTile } from './modules/budgetSettings.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -1919,6 +1920,26 @@
                 if (recalcButton) recalcButton.disabled = false;
                 fetchProjectStats();
                 fetchTeamInsights();
+                break;
+              }
+              case 'budget-status': {
+                const statusViewModel = parseBudgetStatusMessage(message);
+                if (statusViewModel) {
+                  const budgetTile = document.getElementById('budget-tile');
+                  if (budgetTile) {
+                    budgetTile.innerHTML = renderBudgetTile(statusViewModel);
+                  }
+                }
+                break;
+              }
+              case 'budget-exceeded': {
+                const payload = parseBudgetExceededMessage(message);
+                if (payload) {
+                  showToast(
+                    `Budget dépassé — review !${payload.mrNumber} bloquée (${payload.consumedUsd.toFixed(2)}$ / ${payload.limitUsd}$)`,
+                    'error',
+                  );
+                }
                 break;
               }
               case 'pong':

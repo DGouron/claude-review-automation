@@ -20,6 +20,8 @@ import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/we
 import type { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
 import type { GitHubDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.js';
 import type { Logger } from 'pino';
+import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
+import type { BudgetExceededPayload } from '@/main/websocket.js';
 
 type Platform = 'gitlab' | 'github';
 
@@ -38,6 +40,8 @@ export interface MrTrackingAdvancedRoutesOptions {
   ) => GitHubDiffStatsFetchGateway | GitLabDiffStatsFetchGateway;
   createSyncThreadsUseCase: (platform: Platform) => SyncThreadsUseCase;
   recordReviewCompletion: RecordReviewCompletionUseCase;
+  enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
+  broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
   logger: Logger;
 }
 
@@ -67,6 +71,8 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     diffStatsFetchGatewayFactory,
     createSyncThreadsUseCase,
     recordReviewCompletion,
+    enforceBudget,
+    broadcastBudgetExceeded,
     logger,
   } = opts;
 
@@ -114,6 +120,30 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     const mrUrl = platform === 'gitlab'
       ? `${repo.remoteUrl.replace(/\.git$/, '')}/-/merge_requests/${mrNumber}`
       : `${repo.remoteUrl.replace(/\.git$/, '')}/pull/${mrNumber}`;
+
+    const budgetDecision = await enforceBudget.execute({
+      localPaths: [repo.localPath],
+    });
+    if (!budgetDecision.accepted) {
+      const platformLiteral: 'gitlab' | 'github' = platform === 'github' ? 'github' : 'gitlab';
+      logger.warn(
+        {
+          mrNumber,
+          limitUsd: budgetDecision.status.limitUsd,
+          consumedUsd: budgetDecision.status.consumedUsd,
+        },
+        'Budget exceeded, manual followup not enqueued'
+      );
+      broadcastBudgetExceeded({
+        mrNumber,
+        platform: platformLiteral,
+        projectPath: gitProjectPath,
+        limitUsd: budgetDecision.status.limitUsd,
+        consumedUsd: budgetDecision.status.consumedUsd,
+      });
+      reply.code(200);
+      return { status: 'rejected', reason: 'budget-exceeded' };
+    }
 
     const enqueued = await enqueueReview({
       id: jobId,

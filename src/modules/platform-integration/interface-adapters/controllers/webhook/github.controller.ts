@@ -26,6 +26,8 @@ import type { ReviewContextGateway } from '@/modules/review-execution/entities/r
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
 import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/entities/diffMetadata/diffMetadata.gateway.js';
 import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
+import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
+import type { BudgetExceededPayload } from '@/main/websocket.js';
 
 export interface GitHubWebhookDependencies {
   reviewContextGateway: ReviewContextGateway;
@@ -34,6 +36,8 @@ export interface GitHubWebhookDependencies {
   diffStatsFetchGateway: DiffStatsFetchGateway;
   trackAssignment: TrackAssignmentUseCase;
   recordCompletion: RecordReviewCompletionUseCase;
+  enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
+  broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
 }
 
 export async function handleGitHubWebhook(
@@ -199,6 +203,29 @@ export async function handleGitHubWebhook(
     description: event.pull_request?.body,
     assignedBy,
   };
+
+  const budgetDecision = await deps.enforceBudget.execute({
+    localPaths: [repoConfig.localPath],
+  });
+  if (!budgetDecision.accepted) {
+    logger.warn(
+      {
+        mrNumber: job.mrNumber,
+        limitUsd: budgetDecision.status.limitUsd,
+        consumedUsd: budgetDecision.status.consumedUsd,
+      },
+      'Budget exceeded, review not enqueued'
+    );
+    deps.broadcastBudgetExceeded({
+      mrNumber: job.mrNumber,
+      platform: 'github',
+      projectPath: job.projectPath,
+      limitUsd: budgetDecision.status.limitUsd,
+      consumedUsd: budgetDecision.status.consumedUsd,
+    });
+    reply.status(200).send({ status: 'rejected', reason: 'budget-exceeded' });
+    return;
+  }
 
   const enqueued = await enqueueReview(job, async (j, signal) => {
     // Send start notification

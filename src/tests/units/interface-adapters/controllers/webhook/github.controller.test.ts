@@ -85,6 +85,20 @@ function createMockDeps(): GitHubWebhookDependencies {
     },
     trackAssignment: { execute: vi.fn() },
     recordCompletion: { execute: vi.fn() },
+    enforceBudget: {
+      execute: vi.fn(async () => ({
+        accepted: true,
+        status: {
+          limitUsd: 200,
+          consumedUsd: 0,
+          remainingUsd: 200,
+          percentUsed: 0,
+          exceeded: false,
+          periodStart: '2026-05-01T00:00:00.000Z',
+        },
+      })),
+    },
+    broadcastBudgetExceeded: vi.fn(),
   } as unknown as GitHubWebhookDependencies;
 }
 
@@ -393,6 +407,62 @@ describe('handleGitHubWebhook', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('budget cap gate', () => {
+    it('rejects a fresh review and broadcasts budget-exceeded when enforceBudget returns accepted=false', async () => {
+      const exceededDeps = createMockDeps() as unknown as {
+        enforceBudget: { execute: ReturnType<typeof vi.fn> };
+        broadcastBudgetExceeded: ReturnType<typeof vi.fn>;
+      } & GitHubWebhookDependencies;
+      exceededDeps.enforceBudget.execute = vi.fn(async () => ({
+        accepted: false,
+        status: {
+          limitUsd: 200,
+          consumedUsd: 200.1,
+          remainingUsd: 0,
+          percentUsed: 100.05,
+          exceeded: true,
+          periodStart: '2026-05-01T00:00:00.000Z',
+        },
+      }));
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, exceededDeps);
+
+      expect(exceededDeps.enforceBudget.execute).toHaveBeenCalled();
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(exceededDeps.broadcastBudgetExceeded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mrNumber: 123,
+          platform: 'github',
+          projectPath: 'test-owner/test-repo',
+          limitUsd: 200,
+          consumedUsd: 200.1,
+        }),
+      );
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'rejected', reason: 'budget-exceeded' }),
+      );
+    });
+
+    it('enqueues a fresh review when enforceBudget returns accepted=true', async () => {
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      const acceptedDeps = mockDeps as unknown as {
+        enforceBudget: { execute: ReturnType<typeof vi.fn> };
+        broadcastBudgetExceeded: ReturnType<typeof vi.fn>;
+      };
+      expect(acceptedDeps.enforceBudget.execute).toHaveBeenCalled();
+      expect(enqueueReview).toHaveBeenCalled();
+      expect(acceptedDeps.broadcastBudgetExceeded).not.toHaveBeenCalled();
     });
   });
 });

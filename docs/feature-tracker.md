@@ -2,6 +2,7 @@
 
 | Feature | Spec | Status | Date |
 |---------|------|--------|------|
+| Token budget cap with live indicator | [163-token-budget-cap](specs/163-token-budget-cap.md) | implemented | 2026-05-20 |
 | Token usage summary on dashboard | [126-token-usage-summary-dashboard](specs/126-token-usage-summary-dashboard.md) | implemented | 2026-05-20 |
 | Init project command | [30-init-project-command](specs/30-init-project-command.md) | drafted | 2026-03-14 |
 | Update README quickstart | [32-update-readme-quickstart](specs/32-update-readme-quickstart.md) | drafted | 2026-03-14 |

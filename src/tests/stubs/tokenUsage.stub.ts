@@ -4,13 +4,18 @@ import type { TokenUsageRecord } from '@/modules/token-accounting/entities/token
 export class StubTokenUsageGateway implements TokenUsageGateway {
   records: TokenUsageRecord[] = [];
   private storedRecords: TokenUsageRecord[] = [];
+  private recordsByPath: Map<string, TokenUsageRecord[]> = new Map();
 
   async record(record: TokenUsageRecord): Promise<void> {
     this.records.push(record);
     this.storedRecords.push(record);
   }
 
-  async loadAll(_localPath: string): Promise<TokenUsageRecord[]> {
+  async loadAll(localPath: string): Promise<TokenUsageRecord[]> {
+    const perPath = this.recordsByPath.get(localPath);
+    if (perPath) {
+      return [...perPath];
+    }
     return [...this.storedRecords];
   }
 
@@ -18,8 +23,13 @@ export class StubTokenUsageGateway implements TokenUsageGateway {
     this.storedRecords = [...records];
   }
 
+  setRecordsForPath(localPath: string, records: TokenUsageRecord[]): void {
+    this.recordsByPath.set(localPath, [...records]);
+  }
+
   clear(): void {
     this.records = [];
     this.storedRecords = [];
+    this.recordsByPath.clear();
   }
 }
