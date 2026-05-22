@@ -35,5 +35,5 @@
 | Skill templates | [skill-templates](specs/skill-templates.md) | drafted | 2026-03-14 |
 | Validate --bg subscription billing (POC) | [168-validate-bg-subscription-billing](specs/168-validate-bg-subscription-billing.md) | drafted | 2026-05-22 |
 | Migrate Claude invocation -p → --bg | [169-migrate-claude-invocation-to-bg-mode](specs/169-migrate-claude-invocation-to-bg-mode.md) | implemented | 2026-05-22 |
-| Pre-built worktree lifecycle | [170-prebuilt-worktree-lifecycle](specs/170-prebuilt-worktree-lifecycle.md) | drafted | 2026-05-22 |
+| Pre-built worktree lifecycle | [170-prebuilt-worktree-lifecycle](specs/170-prebuilt-worktree-lifecycle.md) | planned | 2026-05-23 |
 | Re-enable token usage tracking in --bg mode | [171-bg-token-usage-tracking](specs/171-bg-token-usage-tracking.md) | drafted | 2026-05-22 |
