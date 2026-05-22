@@ -14,6 +14,10 @@ import { ReviewContextFileSystemGateway } from '@/modules/review-execution/inter
 import { ReviewContextWatcherService } from '@/modules/review-execution/services/reviewContextWatcher.service.js';
 import { ReviewContextProgressPresenter } from '@/modules/review-execution/interface-adapters/presenters/reviewContextProgress.presenter.js';
 import { ProjectStatsCalculator } from '@/modules/statistics-insights/interface-adapters/presenters/projectStats.calculator.js';
+import {
+  createDefaultClaudeInvocationDeps,
+  type ClaudeInvocationDeps,
+} from '@/frameworks/claude/claudeInvoker.js';
 import { pino, type Logger, type LoggerOptions } from 'pino';
 import { mkdirSync } from 'node:fs';
 import { LOG_DIR, LOG_FILE_PATH } from '../shared/services/daemonPaths.js';
@@ -27,6 +31,7 @@ export interface Dependencies {
   insightsGateway: InsightsGateway;
   reviewContextWatcher: ReviewContextWatcherService;
   progressPresenter: ReviewContextProgressPresenter;
+  claudeInvocationDeps: ClaudeInvocationDeps;
   logger: Logger;
   config: Config;
 }
@@ -74,6 +79,7 @@ export function createDependencies(config: Config): Dependencies {
     insightsGateway: new FileSystemInsightsGateway(),
     reviewContextWatcher: new ReviewContextWatcherService(reviewContextGateway),
     progressPresenter: new ReviewContextProgressPresenter(),
+    claudeInvocationDeps: createDefaultClaudeInvocationDeps(),
     logger,
     config,
   };

@@ -14,6 +14,7 @@ import { createCompleteAgentHandler } from "@/modules/review-execution/interface
 import { createSetPhaseHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/setPhase.handler.js";
 import { createGetThreadsHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/getThreads.handler.js";
 import { createAddActionHandler } from "@/modules/review-execution/interface-adapters/controllers/mcp/addAction.handler.js";
+import { FileSystemMcpCompletionBridge } from "@/modules/claude-invocation/interface-adapters/gateways/mcpCompletion.fileSystem.gateway.js";
 import { getProjectAgents, getFollowupAgents } from "../config/projectConfig.js";
 import { getJobContextFilePath } from "../shared/services/mcpJobContext.js";
 import { mcpLogger } from "./mcpLogger.js";
@@ -188,7 +189,15 @@ export async function startMcpServer(): Promise<void> {
 	const getWorkflowHandler = createGetWorkflowHandler({ progressGateway: mcpDeps.progressGateway });
 	const startAgentHandler = createStartAgentHandler({ progressGateway: mcpDeps.progressGateway });
 	const completeAgentHandler = createCompleteAgentHandler({ progressGateway: mcpDeps.progressGateway });
-	const setPhaseHandler = createSetPhaseHandler({ progressGateway: mcpDeps.progressGateway });
+	// FileSystem-backed bridge: publishes a completion event to ~/.claude-review/
+	// completions/<jobId>.json so the Fastify host's awaitSessionCompletion can
+	// observe it cross-process. The MCP server lives in a sub-process spawned
+	// by `claude --bg`; an in-memory bridge cannot cross that boundary.
+	const completionBridge = new FileSystemMcpCompletionBridge();
+	const setPhaseHandler = createSetPhaseHandler({
+		progressGateway: mcpDeps.progressGateway,
+		completionBridge,
+	});
 	const getThreadsHandler = createGetThreadsHandler({
 		jobContextGateway: mcpDeps.jobContextGateway,
 		reviewContextGateway: mcpDeps.reviewContextGateway,

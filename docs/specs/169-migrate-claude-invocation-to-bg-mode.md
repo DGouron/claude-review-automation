@@ -2,11 +2,57 @@
 title: "SPEC-169: Migrate Claude Invocation from -p to --bg Mode"
 labels: enhancement, P1-critical, claude-invocation
 milestone: June 15 Migration
-status: DRAFT
+status: IMPLEMENTED
 blocked-by: SPEC-168
 ---
 
 # SPEC-169: Migrate Claude Invocation from `-p` to `--bg` Mode
+
+## Status: implemented (2026-05-22)
+
+SPEC-168 (POC validation) was deliberately bypassed by operator decision under June 15 deadline pressure. Risk of billing regression accepted; FR-7 in-product detection covers post-deployment surveillance.
+
+See report: [docs/reports/169-migrate-claude-invocation-to-bg-mode.report.md](../reports/169-migrate-claude-invocation-to-bg-mode.report.md).
+
+## Implementation
+
+### New bounded context: `src/modules/claude-invocation/`
+
+| Layer | Artefact | Path |
+|-------|----------|------|
+| Entity | `ClaudeSession` (branded `SessionId`) | `entities/claudeSession/` |
+| Entity | `SessionCompletion` (mcp/polling/timeout source) | `entities/sessionCompletion/` |
+| Entity | `BillingState` + `Environment.gateway` contract | `entities/billingState/` |
+| Entity | `SupervisorHealth` | `entities/supervisorHealth/` |
+| Entity | `RetrySchedule` (value object, exp. backoff) | `entities/retrySchedule/` |
+| Use case | `dispatchClaudeSession` (FR-1, FR-7 pre-check) | `usecases/dispatchClaudeSession.usecase.ts` |
+| Use case | `awaitSessionCompletion` (FR-2 first-wins MCP/poll/timeout) | `usecases/awaitSessionCompletion.usecase.ts` |
+| Use case | `retrieveReviewReport` (FR-3) | `usecases/retrieveReviewReport.usecase.ts` |
+| Use case | `cleanupClaudeSession` (FR-4) | `usecases/cleanupClaudeSession.usecase.ts` |
+| Use case | `checkSupervisorHealth` (FR-6) | `usecases/checkSupervisorHealth.usecase.ts` |
+| Use case | `auditBilling` (FR-7 periodic) | `usecases/auditBilling.usecase.ts` |
+| Use case | `runClaudeReviewJob` (orchestrator) | `usecases/runClaudeReviewJob.usecase.ts` |
+| Gateway | `ClaudeSessionCliGateway` over process runner port | `interface-adapters/gateways/claudeSession.cli.gateway.ts` |
+| Gateway | `McpCompletionMemoryGateway` (in-memory event bridge) | `interface-adapters/gateways/mcpCompletion.memory.gateway.ts` |
+| Gateway | `ReviewReportFileSystemGateway` | `interface-adapters/gateways/reviewReport.fileSystem.gateway.ts` |
+| Gateway | `BillingStateMemoryGateway` | `interface-adapters/gateways/billingState.memory.gateway.ts` |
+| Gateway | `SupervisorHealthMemoryGateway` | `interface-adapters/gateways/supervisorHealth.memory.gateway.ts` |
+| Gateway | `EnvironmentProcessGateway` | `interface-adapters/gateways/environment.process.gateway.ts` |
+
+### Framework wiring
+- `src/frameworks/claude/timers/claudeInvocationTimers.ts` schedules supervisor (5min) + billing audit (1h). Per-session polling (30s) lives inside `awaitSessionCompletion`.
+- `src/frameworks/claude/claudeInvoker.ts` rewritten to spawn `claude --bg` and delegate completion/cleanup to the new use cases. No `-p`/`--print` remain in production code.
+- `src/main/server.ts` starts/stops the timers on Fastify lifecycle hooks.
+- `src/modules/review-execution/usecases/mcp/setPhase.usecase.ts` extended with an optional `mcpCompletionBridge.publish` call (no MCP contract change).
+
+### Architectural decisions
+- New bounded context `claude-invocation` (not extending `review-execution`) — invocation infrastructure is upstream of the review workflow itself.
+- One-shot CLI gateway built on a process runner port (not on `ExecutionGatewayBase` which targets action-list patterns).
+- MCP wiring is additive: the existing `set_phase` handler now optionally publishes to the in-memory completion bridge.
+- Rate-limit retry uses `RetrySchedule` value object (pure computation), wired into `dispatchClaudeSession`.
+
+### Architecture rule test
+`src/tests/units/architecture/noClaudePInProduction.test.ts` scans `src/**` for forbidden `claude -p`/`--print` patterns. FR-9 enforced at CI time.
 
 ## Problem Statement
 

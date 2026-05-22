@@ -8,6 +8,8 @@ import { initQueue } from '../frameworks/queue/pQueueAdapter.js';
 import { removePidFile } from '../shared/services/pidFileManager.js';
 import { PID_FILE_PATH } from '../shared/services/daemonPaths.js';
 import { startCleanupScheduler } from '../frameworks/scheduler/cleanupScheduler.js';
+import { startClaudeInvocationTimers } from '@/frameworks/claude/timers/claudeInvocationTimers.js';
+import { InMemorySupervisorHealthGateway } from '@/modules/claude-invocation/interface-adapters/gateways/supervisorHealth.memory.gateway.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -67,6 +69,20 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     logger: deps.logger,
   });
 
+  // Supervisor health has its own gateway because it is not consumed by the
+  // review dispatch path (only by the dashboard). Billing state and session
+  // gateway, in contrast, must be shared so a paused billing state pauses
+  // dispatch, and so timers and reviews talk to the same Claude CLI.
+  const supervisorHealthGateway = new InMemorySupervisorHealthGateway();
+  const stopClaudeInvocationTimers = startClaudeInvocationTimers({
+    sessionGateway: deps.claudeInvocationDeps.sessionGateway,
+    supervisorHealthGateway,
+    billingStateGateway: deps.claudeInvocationDeps.billingState,
+    now: () => new Date(),
+    supervisorIntervalMs: 5 * 60 * 1000,
+    billingIntervalMs: 60 * 60 * 1000,
+  });
+
   await app.listen({
     port,
     host: '0.0.0.0',
@@ -75,6 +91,7 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
   const shutdown = async () => {
     deps.logger.info('Shutting down...');
     cleanupScheduler.stop();
+    stopClaudeInvocationTimers();
     removePidFile(PID_FILE_PATH);
     await app.close();
     process.exit(0);

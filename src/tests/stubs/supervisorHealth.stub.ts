@@ -1,0 +1,25 @@
+import type {
+  SupervisorHealth,
+  SupervisorHealthStatus,
+} from '@/modules/claude-invocation/entities/supervisorHealth/supervisorHealth.schema.js';
+import type { SupervisorHealthGateway } from '@/modules/claude-invocation/entities/supervisorHealth/supervisorHealth.gateway.js';
+
+export class StubSupervisorHealthGateway implements SupervisorHealthGateway {
+  private state: SupervisorHealth = {
+    status: 'up',
+    lastCheckAt: null,
+    lastDownReason: null,
+  };
+
+  read(): SupervisorHealth {
+    return { ...this.state };
+  }
+
+  update(status: SupervisorHealthStatus, reason: string | null, checkedAt: string): void {
+    this.state = {
+      status,
+      lastCheckAt: checkedAt,
+      lastDownReason: status === 'down' ? reason : null,
+    };
+  }
+}
