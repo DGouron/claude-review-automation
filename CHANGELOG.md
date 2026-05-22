@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.12.0...reviewflow-v3.13.0) (2026-05-22)
+
+
+### Added
+
+* **claude-invocation:** implement spec-169 migrate claude -p to --bg mode ([#170](https://github.com/DGouron/review-flow/issues/170)) ([f3e408a](https://github.com/DGouron/review-flow/commit/f3e408af03056bb23017b29b62d811a25e62fb67))
+
 ## [3.12.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.11.0...reviewflow-v3.12.0) (2026-05-20)
 
 
