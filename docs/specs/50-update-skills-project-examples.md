@@ -3,10 +3,38 @@ title: "SPEC-050: Update Skills with Project-Specific Examples"
 issue: https://github.com/DGouron/review-flow/issues/50
 labels: enhancement, P2-important, skills
 milestone: null
-status: DRAFT
+status: implemented
 ---
 
 # SPEC-050: Update Skills with Project-Specific Examples
+
+## Status: implemented
+
+Delivered on 2026-05-22. See [docs/reports/50-update-skills-project-examples.report.md](../reports/50-update-skills-project-examples.report.md).
+
+## Implementation
+
+### Files modified
+
+| Skill | File | Change |
+|-------|------|--------|
+| solid | `.claude/skills/solid/SKILL.md` | Full rewrite of all 5 SOLID examples with ReviewFlow domain (gateways, use cases, presenters, composition root). Removed every React/Redux/hooks reference. |
+| tdd | `.claude/skills/tdd/SKILL.md` | Replaced the `Cart` Detroit-vs-London example with a `ReviewQueue` enqueue example. ReviewScore section preserved. |
+| anti-overengineering | `.claude/skills/anti-overengineering/SKILL.md` | Replaced `AddressSearchService` with `ReviewActionDispatcher`. Replaced `UserEmailValueObject` with `MergeRequestId` branded type evolution. |
+
+### Files audited but unchanged
+
+- `.claude/skills/product-manager/SKILL.md` and `rules/*.md` — already free of Cart/order/logged-in references. No change required despite being listed in the original audit.
+
+### Verification
+
+```bash
+grep -rln -iE "Cart|UserProfile|Employee|Student|Rectangle|Square|useState|useEffect|createAsyncThunk|configureStore|AddressSearch|UserEmailValueObject" .claude/skills/
+# → no matches
+
+grep -rEi "React|Redux|JSX|\.tsx|extraArgument" .claude/skills/solid/ .claude/skills/tdd/ .claude/skills/anti-overengineering/ .claude/skills/product-manager/
+# → no matches
+```
 
 ## Problem Statement
 

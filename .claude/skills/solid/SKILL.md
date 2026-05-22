@@ -29,59 +29,42 @@ This skill activates for:
 
 A module should be responsible to one, and only one, actor (stakeholder/user group).
 
-### In TypeScript/React
+### In ReviewFlow
 
 ```typescript
-// ❌ Bad: Multiple actors (CFO, COO, CTO all need changes here)
-class Employee {
-  calculatePay() { /* CFO's rules */ }
-  reportHours() { /* COO's rules */ }
-  save() { /* CTO's rules */ }
+// ❌ Bad: one class, three actors driving change
+//   - the developer (trigger flow)
+//   - the platform integration (GitLab/GitHub API)
+//   - the dashboard (stats persistence)
+class ReviewService {
+  async triggerReview(mr: TrackedMr): Promise<void> {
+    /* developer concern: enqueue a review job */
+  }
+  async fetchThreads(mrId: MergeRequestId): Promise<Thread[]> {
+    /* platform concern: hit GitLab/GitHub API */
+  }
+  async saveStats(stats: ReviewStats): Promise<void> {
+    /* dashboard concern: persist aggregated metrics */
+  }
 }
 
-// ✅ Good: Separated by actor
-class PayCalculator {
-  calculate(employee: Employee): Money { /* CFO */ }
+// ✅ Good: one module per actor
+export class TriggerReviewUseCase implements UseCase<TriggerReviewInput, void> {
+  constructor(private readonly queue: QueueGateway) {}
+  async execute(input: TriggerReviewInput): Promise<void> {
+    await this.queue.enqueue(input);
+  }
 }
 
-class HourReporter {
-  report(employee: Employee): Report { /* COO */ }
+export interface ThreadFetchGateway {
+  fetch(mrId: MergeRequestId): Promise<Thread[]>;
 }
 
-class EmployeeRepository {
-  save(employee: Employee): void { /* CTO */ }
+export class ReviewStatsPresenter {
+  present(stats: ReviewStats): ReviewStatsViewModel {
+    return { average: stats.averageScore, total: stats.totalReviews };
+  }
 }
-```
-
-### In React Components
-
-```typescript
-// ❌ Bad: Component handles display, business logic, AND API calls
-function UserProfile() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/user').then(r => r.json()).then(setUser);
-  }, []);
-
-  const calculateAge = () => { /* business logic */ };
-
-  return <div>{user?.name} - {calculateAge()} years old</div>;
-}
-
-// ✅ Good: Separated concerns
-// Presenter: business logic
-function useUserProfilePresenter(user: User): UserProfileViewModel {
-  return { displayName: user.name, age: calculateAge(user.birthdate) };
-}
-
-// View: display only (Humble Object)
-function UserProfileView({ viewModel }: { viewModel: UserProfileViewModel }) {
-  return <div>{viewModel.displayName} - {viewModel.age} years old</div>;
-}
-
-// Gateway: API calls
-const userGateway = { fetch: () => api.get('/user') };
 ```
 
 ---
@@ -94,48 +77,37 @@ const userGateway = { fetch: () => api.get('/user') };
 
 You should be able to change the behavior of a module by adding new code, not changing existing code.
 
-### In TypeScript
+### In ReviewFlow
 
 ```typescript
-// ❌ Bad: Must modify function to add new format
-function formatOutput(data: Data, format: string): string {
-  if (format === 'json') return JSON.stringify(data);
-  if (format === 'xml') return toXml(data);
-  if (format === 'csv') return toCsv(data); // Keep adding here...
+// ❌ Bad: every new platform forces editing the use case
+async function fetchThreads(
+  mrId: MergeRequestId,
+  platform: Platform
+): Promise<Thread[]> {
+  if (platform === 'gitlab') return glabCli.fetchThreads(mrId);
+  if (platform === 'github') return ghCli.fetchThreads(mrId);
+  // Adding Bitbucket means editing this function...
+  throw new Error(`Unknown platform: ${platform}`);
 }
 
-// ✅ Good: Extend via interface
-interface OutputFormatter {
-  format(data: Data): string;
+// ✅ Good: use case depends on an abstraction, new platforms add new classes
+export interface ThreadFetchGateway {
+  fetch(mrId: MergeRequestId): Promise<Thread[]>;
 }
 
-class JsonFormatter implements OutputFormatter {
-  format(data: Data): string { return JSON.stringify(data); }
+export class GitLabThreadFetchGateway implements ThreadFetchGateway {
+  async fetch(mrId: MergeRequestId): Promise<Thread[]> { /* glab CLI */ }
 }
 
-class XmlFormatter implements OutputFormatter {
-  format(data: Data): string { return toXml(data); }
+export class GitHubThreadFetchGateway implements ThreadFetchGateway {
+  async fetch(mrId: MergeRequestId): Promise<Thread[]> { /* gh CLI */ }
 }
 
-// Add new formats without modifying existing code
-class CsvFormatter implements OutputFormatter {
-  format(data: Data): string { return toCsv(data); }
+// Adding Bitbucket = a new class, zero changes to existing use cases
+export class BitbucketThreadFetchGateway implements ThreadFetchGateway {
+  async fetch(mrId: MergeRequestId): Promise<Thread[]> { /* bb CLI */ }
 }
-```
-
-### In React with Gateways
-
-```typescript
-// Gateway interface (open for extension)
-interface IStudentGateway {
-  getAll(): Promise<Student[]>;
-  getById(id: string): Promise<Student>;
-}
-
-// Extend behavior by creating new implementations
-class ApiStudentGateway implements IStudentGateway { /* real API */ }
-class MockStudentGateway implements IStudentGateway { /* for tests */ }
-class CachedStudentGateway implements IStudentGateway { /* with cache */ }
 ```
 
 ---
@@ -148,67 +120,40 @@ class CachedStudentGateway implements IStudentGateway { /* with cache */ }
 
 If S is a subtype of T, objects of type T may be replaced with objects of type S without altering any desirable properties.
 
-### In TypeScript
+### In ReviewFlow
+
+Gateway contracts are the most common LSP carrier in this codebase. Every implementation must honor the documented behavior — including the **null-return convention for intentional absence** (`undefined` is banned in domain types).
 
 ```typescript
-// ❌ Bad: Square violates rectangle contract
-class Rectangle {
-  constructor(protected width: number, protected height: number) {}
-  setWidth(w: number) { this.width = w; }
-  setHeight(h: number) { this.height = h; }
-  area() { return this.width * this.height; }
+// Contract: returns null when no review context exists for the MR
+export interface ReviewContextGateway {
+  findByMr(mrId: MergeRequestId): Promise<ReviewContext | null>;
 }
 
-class Square extends Rectangle {
-  setWidth(w: number) { this.width = this.height = w; } // Violates LSP!
-  setHeight(h: number) { this.width = this.height = h; } // Violates LSP!
-}
-
-// Test that breaks:
-const rect: Rectangle = new Square(5, 5);
-rect.setWidth(10);
-rect.setHeight(5);
-console.log(rect.area()); // Expected 50, got 25!
-
-// ✅ Good: Use composition or separate types
-interface Shape {
-  area(): number;
-}
-
-class Rectangle implements Shape {
-  constructor(private width: number, private height: number) {}
-  area() { return this.width * this.height; }
-}
-
-class Square implements Shape {
-  constructor(private side: number) {}
-  area() { return this.side * this.side; }
-}
-```
-
-### In React/Redux
-
-```typescript
-// Gateway implementations must honor the contract
-interface IFilterGateway {
-  // Contract: MUST return filters for the given page, NEVER throw
-  getFilters(page: PageFilterName): Promise<FiltersObject>;
-}
-
-// ✅ Good: All implementations honor the contract
-class ApiFilterGateway implements IFilterGateway {
-  async getFilters(page: PageFilterName): Promise<FiltersObject> {
-    try {
-      return await api.get(`/filters/${page}`);
-    } catch {
-      return {}; // Honor contract: return empty, don't throw
+// ❌ Bad: throws on absence — callers written against the contract break
+class FileReviewContextGateway implements ReviewContextGateway {
+  async findByMr(mrId: MergeRequestId): Promise<ReviewContext | null> {
+    const path = this.pathFor(mrId);
+    if (!existsSync(path)) {
+      throw new Error('Context not found'); // violates the null-return contract
     }
+    return JSON.parse(readFileSync(path, 'utf-8'));
   }
 }
 
-class StubFilterGateway implements IFilterGateway {
-  async getFilters(page: PageFilterName): Promise<FiltersObject> {
-    return { status: ['active'] }; // Honor contract
+// ✅ Good: every implementation honors the contract
+class FileReviewContextGateway implements ReviewContextGateway {
+  async findByMr(mrId: MergeRequestId): Promise<ReviewContext | null> {
+    const path = this.pathFor(mrId);
+    if (!existsSync(path)) return null;
+    return JSON.parse(readFileSync(path, 'utf-8'));
+  }
+}
+
+class MemoryReviewContextGateway implements ReviewContextGateway {
+  constructor(private readonly contexts = new Map<MergeRequestId, ReviewContext>()) {}
+  async findByMr(mrId: MergeRequestId): Promise<ReviewContext | null> {
+    return this.contexts.get(mrId) ?? null;
   }
 }
 ```
@@ -223,71 +168,48 @@ class StubFilterGateway implements IFilterGateway {
 
 Clients should not be forced to depend on methods they don't use. Many client-specific interfaces are better than one general-purpose interface.
 
-### In TypeScript
+### In ReviewFlow
 
 ```typescript
-// ❌ Bad: Fat interface forces unused dependencies
-interface IUserService {
-  getUser(id: string): User;
-  updateUser(user: User): void;
-  deleteUser(id: string): void;
-  sendEmail(userId: string, message: string): void;
-  generateReport(userId: string): Report;
-  syncWithCRM(userId: string): void;
+// ❌ Bad: one fat platform interface, every consumer carries unused capabilities
+export interface ReviewPlatformGateway {
+  fetchThreads(mrId: MergeRequestId): Promise<Thread[]>;
+  fetchDiff(mrId: MergeRequestId): Promise<DiffMetadata>;
+  postComment(mrId: MergeRequestId, body: string): Promise<void>;
+  resolveThread(threadId: ThreadId): Promise<void>;
+  searchOpenMrs(): Promise<TrackedMr[]>;
 }
 
-// Component only needs getUser but depends on everything
-function UserCard({ service }: { service: IUserService }) {
-  const user = service.getUser('123');
-  return <div>{user.name}</div>;
+// A presenter that only reads threads still depends transitively on write capabilities
+export class ThreadListPresenter {
+  constructor(private readonly platform: ReviewPlatformGateway) {}
+  async present(mrId: MergeRequestId): Promise<ThreadListViewModel> {
+    const threads = await this.platform.fetchThreads(mrId);
+    return { items: threads.map(toViewModel) };
+  }
 }
 
-// ✅ Good: Segregated interfaces
-interface IUserReader {
-  getUser(id: string): User;
+// ✅ Good: focused gateways, each client depends only on what it actually uses
+export interface ThreadFetchGateway {
+  fetch(mrId: MergeRequestId): Promise<Thread[]>;
 }
 
-interface IUserWriter {
-  updateUser(user: User): void;
-  deleteUser(id: string): void;
+export interface DiffMetadataFetchGateway {
+  fetch(mrId: MergeRequestId): Promise<DiffMetadata>;
 }
 
-interface IUserNotifier {
-  sendEmail(userId: string, message: string): void;
+export interface ReviewActionGateway {
+  postComment(mrId: MergeRequestId, body: string): Promise<void>;
+  resolveThread(threadId: ThreadId): Promise<void>;
 }
 
-// Component depends only on what it needs
-function UserCard({ reader }: { reader: IUserReader }) {
-  const user = reader.getUser('123');
-  return <div>{user.name}</div>;
-}
-```
-
-### In React Hooks
-
-```typescript
-// ❌ Bad: Hook returns everything
-function useUser() {
-  return {
-    user, isLoading, error,
-    updateUser, deleteUser, refreshUser,
-    userPreferences, updatePreferences,
-    userNotifications, markAsRead,
-    // ... 20 more things
-  };
-}
-
-// ✅ Good: Segregated hooks
-function useUserProfile() {
-  return { user, isLoading, error };
-}
-
-function useUserMutations() {
-  return { updateUser, deleteUser };
-}
-
-function useUserNotifications() {
-  return { notifications, markAsRead };
+// The presenter depends only on the read capability it needs
+export class ThreadListPresenter {
+  constructor(private readonly threadFetch: ThreadFetchGateway) {}
+  async present(mrId: MergeRequestId): Promise<ThreadListViewModel> {
+    const threads = await this.threadFetch.fetch(mrId);
+    return { items: threads.map(toViewModel) };
+  }
 }
 ```
 
@@ -306,55 +228,55 @@ High-level modules should not depend on low-level modules. Both should depend on
 > "The source code dependencies point in the opposite direction to the flow of control." — Clean Architecture, p.89
 
 ```
-Flow of control:    UseCase → Gateway → API
-Source dependency:  UseCase → Interface ← Gateway
+Flow of control:    Controller → Gateway → glab/gh CLI
+Source dependency:  Controller → Interface ← Gateway implementation
 ```
 
-### In TypeScript/Redux
+### In ReviewFlow
+
+The composition root (`src/main/routes.ts`) is the only place that instantiates concrete gateways. Controllers and use cases depend exclusively on abstractions injected through a typed `Dependencies` interface.
 
 ```typescript
-// ❌ Bad: Use case depends on concrete implementation
-import { ApiStudentGateway } from './api-student.gateway'; // Concrete!
+// ❌ Bad: controller depends on a concrete implementation
+import { GitLabThreadFetchGateway } from '@/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 
-export const fetchStudents = createAsyncThunk(
-  'students/fetch',
-  async () => {
-    const gateway = new ApiStudentGateway(); // Direct instantiation
-    return gateway.getAll();
-  }
-);
-
-// ✅ Good: Use case depends on abstraction (injected)
-// 1. Define abstraction in domain/application layer
-interface IStudentGateway {
-  getAll(): Promise<Student[]>;
+export async function handleGitLabWebhook(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const threadFetch = new GitLabThreadFetchGateway(executor); // direct instantiation!
+  const threads = await threadFetch.fetch(mrId);
+  // ...
 }
 
-// 2. Implementation in infrastructure layer
-class ApiStudentGateway implements IStudentGateway {
-  async getAll(): Promise<Student[]> {
-    return api.get('/students');
-  }
+// ✅ Good: depend on the abstraction, inject from the composition root
+
+// 1. Abstraction lives in the entities (domain) layer
+// src/entities/thread/threadFetch.gateway.ts
+export interface ThreadFetchGateway {
+  fetch(mrId: MergeRequestId): Promise<Thread[]>;
 }
 
-// 3. Inject via Redux extraArgument
-export const fetchStudents = createAsyncThunk(
-  'students/fetch',
-  async (_, { extra: { studentGateway } }) => {
-    return studentGateway.getAll(); // Uses injected abstraction
-  }
-);
+// 2. Controller receives the abstraction via typed Dependencies
+export interface GitLabWebhookDependencies {
+  threadFetch: ThreadFetchGateway;
+}
 
-// 4. Wire up in store configuration
-const store = configureStore({
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      thunk: {
-        extraArgument: {
-          studentGateway: new ApiStudentGateway(),
-        }
-      }
-    })
+export async function handleGitLabWebhook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  deps: GitLabWebhookDependencies
+): Promise<void> {
+  const threads = await deps.threadFetch.fetch(mrId);
+  // ...
+}
+
+// 3. Composition root wires the concrete implementation
+// src/main/routes.ts
+app.post('/webhooks/gitlab', async (request, reply) => {
+  await handleGitLabWebhook(request, reply, {
+    threadFetch: new GitLabThreadFetchGateway(executor),
+  });
 });
 ```
 
@@ -363,23 +285,23 @@ const store = configureStore({
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    Frameworks                        │
-│                   (React, Redux)                     │
+│           (Fastify, Claude CLI, p-queue)             │
 ├──────────────────────────┬──────────────────────────┤
 │                          │                          │
 │   ┌──────────────────────▼──────────────────────┐   │
 │   │              Interface Adapters              │   │
-│   │         (Controllers, Presenters,            │   │
-│   │          Gateways implementations)           │   │
+│   │     (Webhook controllers, Presenters,        │   │
+│   │      platform Gateway implementations)       │   │
 │   └──────────────────────┬──────────────────────┘   │
 │                          │                          │
 │   ┌──────────────────────▼──────────────────────┐   │
 │   │              Application Layer               │   │
-│   │    (Use Cases, Gateway interfaces)           │   │
+│   │     (Use Cases, Gateway interfaces)          │   │
 │   └──────────────────────┬──────────────────────┘   │
 │                          │                          │
 │   ┌──────────────────────▼──────────────────────┐   │
 │   │               Domain Layer                   │   │
-│   │      (Entities, Business Rules)              │   │
+│   │  (TrackedMr, ReviewContext, ReviewScore)     │   │
 │   └─────────────────────────────────────────────┘   │
 │                                                      │
 └──────────────────────────────────────────────────────┘
