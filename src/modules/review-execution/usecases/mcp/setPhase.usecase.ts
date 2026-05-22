@@ -1,3 +1,4 @@
+import type { McpCompletionBridge } from "@/modules/claude-invocation/entities/sessionCompletion/mcpCompletion.gateway.js";
 import type { ReviewProgressGateway } from "../../entities/progress/progress.gateway.js";
 import type { ReviewPhase } from "../../entities/progress/progress.type.js";
 
@@ -7,6 +8,7 @@ export type SetPhaseResult =
 
 export interface SetPhaseDependencies {
 	progressGateway: ReviewProgressGateway;
+	completionBridge?: McpCompletionBridge;
 }
 
 export function setPhase(
@@ -14,7 +16,7 @@ export function setPhase(
 	phase: ReviewPhase,
 	deps: SetPhaseDependencies,
 ): SetPhaseResult {
-	const { progressGateway } = deps;
+	const { progressGateway, completionBridge } = deps;
 
 	const progress = progressGateway.setPhase(jobId, phase);
 
@@ -23,6 +25,10 @@ export function setPhase(
 			success: false,
 			error: `Job not found: ${jobId}`,
 		};
+	}
+
+	if (phase === "completed" && completionBridge) {
+		completionBridge.publish(jobId, { source: "mcp", outcome: "completed", reason: null });
 	}
 
 	return {
