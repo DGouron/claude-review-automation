@@ -151,8 +151,14 @@ describe('SPEC-169: Migrate Claude invocation to --bg mode (acceptance)', () => 
     it('marks the job failed with reason "timeout" after 15 minutes', async () => {
       const context = createContext();
       context.sessionGateway.setDispatchResult({ status: 'dispatched', sessionId: parseSessionId('time0001') });
+      let nowMs = new Date('2026-05-22T10:00:00Z').getTime();
+      const deps = { ...context.deps, now: (): Date => new Date(nowMs) };
 
-      const runPromise = runClaudeReviewJob(baseInput, context.deps);
+      const runPromise = runClaudeReviewJob(baseInput, deps);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      nowMs += 16 * 60 * 1000;
       await vi.advanceTimersByTimeAsync(16 * 60 * 1000);
       const result = await runPromise;
 

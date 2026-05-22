@@ -37,12 +37,10 @@ export function awaitSessionCompletion(
   return new Promise<SessionCompletion>(resolve => {
     let settled = false;
     let pollTimer: NodeJS.Timeout | null = null;
-    let timeoutTimer: NodeJS.Timeout | null = null;
 
     const cleanup = (): void => {
       completionBridge.unsubscribe(session.jobId);
       if (pollTimer !== null) clearTimeout(pollTimer);
-      if (timeoutTimer !== null) clearTimeout(timeoutTimer);
     };
 
     const settle = (completion: SessionCompletion): void => {
@@ -86,9 +84,5 @@ export function awaitSessionCompletion(
     pollTimer = setTimeout(() => {
       void tick();
     }, pollIntervalMs);
-
-    timeoutTimer = setTimeout(() => {
-      settle({ source: 'timeout', outcome: 'failed', reason: 'timeout' });
-    }, timeoutMs);
   });
 }

@@ -88,6 +88,26 @@ export interface ClaudeInvokerDependencies {
  * one-shots where there is no WebSocket fanout to perform.
  */
 /**
+ * Build the environment for spawning a Claude child process.
+ *
+ * Strips CLAUDECODE so a Claude-launched ReviewFlow does not leak its parent
+ * session marker into the child, and forces TERM=dumb + CI=true to keep the
+ * child in non-interactive mode.
+ */
+export function buildSpawnEnv(
+  processEnv: NodeJS.ProcessEnv,
+  override?: Record<string, string>,
+): NodeJS.ProcessEnv {
+  const { CLAUDECODE: _claudeCode, ...rest } = processEnv;
+  return {
+    ...rest,
+    TERM: 'dumb',
+    CI: 'true',
+    ...(override ?? {}),
+  };
+}
+
+/**
  * Default process runner used by createDefaultClaudeInvocationDeps when the
  * composition root does not provide one. Wraps node:child_process.spawn so
  * tests can inject a fake runner instead.
@@ -97,7 +117,7 @@ function defaultProcessRunner(): ClaudeProcessRunner {
     new Promise((resolve, reject) => {
       const child = spawn(resolveClaudePath(), args, {
         cwd,
-        env: env ? { ...process.env, ...env } : process.env,
+        env: buildSpawnEnv(process.env, env),
         stdio: ['ignore', 'pipe', 'pipe'],
       });
       let stdout = '';
@@ -493,6 +513,7 @@ export async function invokeClaudeReview(
       mcpConfigJson,
       diffStats,
       startTime,
+      signal,
     },
     logger,
     onProgress,
@@ -508,6 +529,7 @@ interface BackgroundDispatchContext {
   mcpConfigJson: string;
   diffStats: DiffStats | null;
   startTime: number;
+  signal?: AbortSignal;
 }
 
 async function invokeViaBackgroundSession(
@@ -516,7 +538,7 @@ async function invokeViaBackgroundSession(
   onProgress: ProgressCallback | undefined,
   deps: ClaudeInvokerDependencies,
 ): Promise<InvocationResult> {
-  const { job, prompt, model, mcpSystemPrompt, mcpConfigJson, diffStats, startTime } = context;
+  const { job, prompt, model, mcpSystemPrompt, mcpConfigJson, diffStats, startTime, signal } = context;
   const invocation = deps.invocation;
   const mergeRequestId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
   const jobType = job.jobType === 'followup' ? 'followup' : 'review';
@@ -547,6 +569,7 @@ async function invokeViaBackgroundSession(
         mergeRequestId,
         mergeRequestNumber: job.mrNumber,
         attempt,
+        signal,
       },
       {
         sessionGateway: invocation.sessionGateway,
@@ -607,11 +630,11 @@ async function invokeViaBackgroundSession(
       }
     }
 
-    // NOTE: token tracking is intentionally disabled in --bg mode.
-    // The legacy stream-json path exposed { input_tokens, output_tokens, … }
-    // but `claude --bg` does not emit stream-json on stdout. Re-enabling
-    // requires parsing `claude logs <sessionId>` or `claude /usage` and is
-    // tracked as a follow-up to SPEC-169.
+    // Token usage tracking is disabled in --bg mode: the legacy stream-json
+    // path is gone and `claude --bg` does not emit usage to stdout. Re-enabling
+    // requires parsing `claude logs <sessionId>` — tracked in SPEC-171
+    // (docs/specs/171-bg-token-usage-tracking.md). Until SPEC-171 ships, the
+    // budget dashboard reports zero spending for --bg reviews.
 
     if (onProgress) {
       onProgress({

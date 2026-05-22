@@ -6,6 +6,7 @@ import type {
 } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.gateway.js';
 import type { ClaudeSessionJobType } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
 import type { McpCompletionBridge } from '@/modules/claude-invocation/entities/sessionCompletion/mcpCompletion.gateway.js';
+import type { SessionCompletion } from '@/modules/claude-invocation/entities/sessionCompletion/sessionCompletion.schema.js';
 import type { ReviewReportGateway } from '@/modules/claude-invocation/entities/sessionCompletion/reviewReport.gateway.js';
 import { planRetry } from '@/modules/claude-invocation/entities/retrySchedule/retrySchedule.valueObject.js';
 import { dispatchClaudeSession } from '@/modules/claude-invocation/usecases/dispatchClaudeSession.usecase.js';
@@ -22,6 +23,7 @@ export interface RunClaudeReviewJobInput {
   mergeRequestId: string;
   mergeRequestNumber: number;
   attempt: number;
+  signal?: AbortSignal;
 }
 
 export interface RunClaudeReviewJobDependencies {
@@ -44,6 +46,10 @@ export async function runClaudeReviewJob(
   input: RunClaudeReviewJobInput,
   deps: RunClaudeReviewJobDependencies,
 ): Promise<RunClaudeReviewJobResult> {
+  if (input.signal?.aborted) {
+    return { status: 'failed', reason: 'cancelled' };
+  }
+
   const dispatchResult = await dispatchClaudeSession(
     {
       jobId: input.jobId,
@@ -83,18 +89,40 @@ export async function runClaudeReviewJob(
 
   const { session } = dispatchResult;
 
-  const completion = await awaitSessionCompletion(
-    {
-      session,
-      timeoutMs: deps.timeoutMs,
-      pollIntervalMs: deps.pollIntervalMs,
-    },
-    {
-      sessionGateway: deps.sessionGateway,
-      completionBridge: deps.completionBridge,
-      now: deps.now,
-    },
-  );
+  const abortListener = input.signal
+    ? (): void => {
+        void deps.sessionGateway.stop(session.sessionId);
+        deps.completionBridge.publish(input.jobId, {
+          source: 'mcp',
+          outcome: 'stopped',
+          reason: 'cancelled',
+        });
+      }
+    : null;
+
+  if (input.signal && abortListener) {
+    input.signal.addEventListener('abort', abortListener);
+  }
+
+  let completion: SessionCompletion;
+  try {
+    completion = await awaitSessionCompletion(
+      {
+        session,
+        timeoutMs: deps.timeoutMs,
+        pollIntervalMs: deps.pollIntervalMs,
+      },
+      {
+        sessionGateway: deps.sessionGateway,
+        completionBridge: deps.completionBridge,
+        now: deps.now,
+      },
+    );
+  } finally {
+    if (input.signal && abortListener) {
+      input.signal.removeEventListener('abort', abortListener);
+    }
+  }
 
   await cleanupClaudeSession(
     { sessionId: session.sessionId },

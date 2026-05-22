@@ -31,7 +31,7 @@ export type ClaudeProcessRunner = (
 ) => Promise<ClaudeProcessRunResult>;
 
 export const RATE_LIMIT_DETECTION_REGEX = /\b(rate[\s-]?limit|429|throttl)/i;
-const SESSION_ID_REGEX = /\b([0-9a-f]{6,12})\b/;
+const SESSION_ID_REGEX = /^Started session ([0-9a-f]+)$/m;
 
 const agentEntrySchema = z.object({
   id: z.string().min(1),
@@ -71,10 +71,11 @@ export class ClaudeSessionCliGateway implements ClaudeSessionGateway {
 
     const result = await this.runner({ args, cwd: input.localPath });
 
+    if (RATE_LIMIT_DETECTION_REGEX.test(result.stderr) || RATE_LIMIT_DETECTION_REGEX.test(result.stdout)) {
+      return { status: 'rate-limited', rawStderr: result.stderr || result.stdout };
+    }
+
     if (result.exitCode !== 0) {
-      if (RATE_LIMIT_DETECTION_REGEX.test(result.stderr)) {
-        return { status: 'rate-limited', rawStderr: result.stderr };
-      }
       return { status: 'failed', rawStderr: result.stderr };
     }
 
@@ -126,8 +127,11 @@ export class ClaudeSessionCliGateway implements ClaudeSessionGateway {
   }
 
   async usage(): Promise<UsageReport> {
-    const result = await this.runner({ args: ['/usage'] });
+    const result = await this.runner({ args: ['usage'] });
     const raw = result.stdout || result.stderr;
+    if (result.exitCode !== 0) {
+      return { usesApiPool: false, raw };
+    }
     const usesApiPool = /\bAPI\b/i.test(raw) && /(token|cost|charge|pool)/i.test(raw);
     return { usesApiPool, raw };
   }

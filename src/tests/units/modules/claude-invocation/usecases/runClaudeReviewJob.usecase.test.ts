@@ -133,14 +133,55 @@ describe('runClaudeReviewJob orchestrator', () => {
     expect(ctx.sessionGateway.dispatchCalls).toHaveLength(0);
   });
 
+  it('cancels a running session when the AbortSignal fires', async () => {
+    const ctx = buildDeps();
+    ctx.sessionGateway.setDispatchResult({
+      status: 'dispatched',
+      sessionId: parseSessionId('abort001'),
+    });
+    const controller = new AbortController();
+
+    const runPromise = runClaudeReviewJob(buildInput({ signal: controller.signal }), ctx.deps);
+    await vi.advanceTimersByTimeAsync(10);
+    controller.abort();
+    await vi.runAllTimersAsync();
+    const result = await runPromise;
+
+    expect(ctx.sessionGateway.stopCalls).toContain(parseSessionId('abort001'));
+    expect(result.status).toBe('failed');
+    if (result.status === 'failed') {
+      expect(result.reason).toContain('stopped');
+    }
+  });
+
+  it('skips dispatch entirely when the AbortSignal is already aborted', async () => {
+    const ctx = buildDeps();
+    const controller = new AbortController();
+    controller.abort();
+
+    const result = await runClaudeReviewJob(buildInput({ signal: controller.signal }), ctx.deps);
+
+    expect(ctx.sessionGateway.dispatchCalls).toHaveLength(0);
+    expect(result.status).toBe('failed');
+    if (result.status === 'failed') {
+      expect(result.reason).toContain('cancelled');
+    }
+  });
+
   it('returns "failed" with reason "timeout" when no signal arrives in time', async () => {
     const ctx = buildDeps();
     ctx.sessionGateway.setDispatchResult({
       status: 'dispatched',
       sessionId: parseSessionId('time0003'),
     });
+    let nowMs = new Date('2026-05-22T10:00:00Z').getTime();
+    const deps = { ...ctx.deps, now: (): Date => new Date(nowMs) };
 
-    const runPromise = runClaudeReviewJob(buildInput(), ctx.deps);
+    const runPromise = runClaudeReviewJob(buildInput(), deps);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    nowMs += 16 * 60_000;
     await vi.advanceTimersByTimeAsync(16 * 60_000);
     const result = await runPromise;
 

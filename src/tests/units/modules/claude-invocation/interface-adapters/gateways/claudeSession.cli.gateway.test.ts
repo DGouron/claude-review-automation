@@ -64,6 +64,17 @@ describe('ClaudeSessionCliGateway.dispatch', () => {
     expect(result.status).toBe('rate-limited');
   });
 
+  it('returns "rate-limited" when stdout contains a rate-limit hint even with exit code 0', async () => {
+    const { runner } = createRunner([
+      { stdout: 'rate limit reached, please retry later', stderr: '', exitCode: 0 },
+    ]);
+    const gateway = new ClaudeSessionCliGateway(runner);
+
+    const result = await gateway.dispatch(baseDispatchInput);
+
+    expect(result.status).toBe('rate-limited');
+  });
+
   it('returns "failed" when the process exits non-zero without a rate-limit hint', async () => {
     const { runner } = createRunner([
       { stdout: '', stderr: 'boom', exitCode: 2 },
@@ -87,6 +98,31 @@ describe('ClaudeSessionCliGateway.dispatch', () => {
     const result = await gateway.dispatch(baseDispatchInput);
 
     expect(result.status).toBe('failed');
+  });
+
+  it('does not capture a hex sequence appearing outside the "Started session" prefix', async () => {
+    const { runner } = createRunner([
+      { stdout: 'Error: failed to start (code abc12345)\nLogs at /tmp/deadbeef.log', stderr: '', exitCode: 0 },
+    ]);
+    const gateway = new ClaudeSessionCliGateway(runner);
+
+    const result = await gateway.dispatch(baseDispatchInput);
+
+    expect(result.status).toBe('failed');
+  });
+
+  it('captures session id only from the dedicated "Started session" line', async () => {
+    const { runner } = createRunner([
+      { stdout: 'Spawning daemon abc123\nStarted session 7c5dcf5d\nLogs at /tmp/deadbeef.log', stderr: '', exitCode: 0 },
+    ]);
+    const gateway = new ClaudeSessionCliGateway(runner);
+
+    const result = await gateway.dispatch(baseDispatchInput);
+
+    expect(result.status).toBe('dispatched');
+    if (result.status === 'dispatched') {
+      expect(result.sessionId).toBe('7c5dcf5d');
+    }
   });
 });
 
@@ -184,5 +220,28 @@ describe('ClaudeSessionCliGateway.daemonStatus and usage', () => {
     const usage = await gateway.usage();
 
     expect(usage.usesApiPool).toBe(false);
+  });
+
+  it('reports usesApiPool false when the usage command fails (unknown CLI surface)', async () => {
+    const { runner } = createRunner([
+      { stdout: '', stderr: "error: unknown command 'usage'", exitCode: 1 },
+    ]);
+    const gateway = new ClaudeSessionCliGateway(runner);
+
+    const usage = await gateway.usage();
+
+    expect(usage.usesApiPool).toBe(false);
+    expect(usage.raw).toContain("unknown command 'usage'");
+  });
+
+  it('does not invoke "/usage" as a positional CLI argument', async () => {
+    const { runner, calls } = createRunner([
+      { stdout: 'Subscription plan: Pro', stderr: '', exitCode: 0 },
+    ]);
+    const gateway = new ClaudeSessionCliGateway(runner);
+
+    await gateway.usage();
+
+    expect(calls[0]?.args).not.toContain('/usage');
   });
 });
