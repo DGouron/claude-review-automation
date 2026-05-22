@@ -96,11 +96,13 @@ Progressive Enhancement
 ### ✅ Good Simplicity
 
 ```typescript
-// Simple service - clear responsibility
-class AddressSearchService {
-  async searchAddresses(query: string): Promise<AddressType[]> {
-    if (query.length < 3) return [];
-    return await this.api.search(query);
+// Simple service - clear responsibility, no premature abstraction
+class ReviewActionDispatcher {
+  constructor(private readonly gateway: ReviewActionGateway) {}
+
+  async dispatch(action: ReviewAction, mrId: MergeRequestId): Promise<void> {
+    if (action.type === 'comment') return this.gateway.postComment(mrId, action.body);
+    if (action.type === 'resolve') return this.gateway.resolveThread(action.threadId);
   }
 }
 ```
@@ -108,18 +110,18 @@ class AddressSearchService {
 ### ❌ Over-Engineering
 
 ```typescript
-// Unnecessary complexity for simple operations
-abstract class AbstractAddressSearchStrategy {
-  abstract search(query: AddressQuery): Promise<AddressSearchResult>;
+// Unnecessary strategy hierarchy for two branches
+abstract class AbstractReviewActionStrategy {
+  abstract execute(action: ReviewAction, mrId: MergeRequestId): Promise<void>;
 }
 
-class GouvAddressSearchStrategy extends AbstractAddressSearchStrategy {
-  // 50+ lines for simple API call
+class CommentActionStrategy extends AbstractReviewActionStrategy {
+  // 50+ lines wrapping a single postComment call
 }
 
-class AddressSearchFactory {
-  createStrategy(type: SearchType): AbstractAddressSearchStrategy {
-    // Complex factory for 2 simple options
+class ReviewActionStrategyFactory {
+  createStrategy(type: ReviewActionType): AbstractReviewActionStrategy {
+    // Complex factory for two simple options
   }
 }
 ```
@@ -127,17 +129,20 @@ class AddressSearchFactory {
 ### ✅ Start Simple, Evolve
 
 ```typescript
-// ❌ Over-engineered from start
-class UserEmailValueObject {
-  constructor(private email: string) {
-    this.validateEmail();
+// ❌ Over-engineered from start: class-as-value-object with manual validation
+class MergeRequestIdValueObject {
+  constructor(private readonly value: string) {
+    this.assertValid();
   }
-  getValue() { return this.email; }
+  private assertValid(): void { /* runtime check */ }
+  getValue(): string { return this.value; }
 }
 
-// ✅ Start simple
-type UserEmail = string;
-const validateEmail = (email: string) => { /* validation */ };
+// ✅ Start simple: branded type (zero runtime cost) + boundary validation
+type MergeRequestId = string & { readonly __brand: 'MergeRequestId' };
+
+const isMergeRequestId = (value: string): value is MergeRequestId =>
+  /^[a-z0-9-]+$/.test(value);
 ```
 
 ---

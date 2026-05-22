@@ -27,21 +27,21 @@ Read `.claude/roles/senior-dev.md` — adopt this profile and follow all its rul
 - Collaborations between domain objects
 
 ```typescript
-// Detroit: we test the final state
-it("should add item to cart", () => {
-  const cart = new Cart()
-  cart.add(product)
+// Detroit: we test the final STATE of the result
+it("should enqueue a review job", () => {
+  const queue = new ReviewQueue();
+  queue.enqueue({ mrId: "mr-42", platform: "gitlab" });
 
-  expect(cart.items).toContain(product)
-  expect(cart.total).toBe(10)
-})
+  expect(queue.pending).toHaveLength(1);
+  expect(queue.peek()?.mrId).toBe("mr-42");
+});
 
-// London: we test interactions (avoid this)
-it("should call inventory.reserve", () => {
-  const inventory = mock<Inventory>()
-  cart.add(product)
-  expect(inventory.reserve).toHaveBeenCalled()
-})
+// London: we test interactions (avoid this in this project)
+it("should call dispatcher.notify", () => {
+  const dispatcher = mock<JobDispatcher>();
+  queue.enqueue({ mrId: "mr-42", platform: "gitlab" });
+  expect(dispatcher.notify).toHaveBeenCalled();
+});
 ```
 
 **ReviewFlow example** (project-relevant test):
