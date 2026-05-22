@@ -28,6 +28,9 @@ export interface ReviewJob {
     username: string;
     displayName?: string;
   };
+  // SPEC-170 FR-8: clone URL of the source fork for cross-fork PRs (GitHub).
+  // null/undefined means the MR/PR source is the same repository as the base.
+  sourceForkCloneUrl?: string;
 }
 
 // Deduplication tracking

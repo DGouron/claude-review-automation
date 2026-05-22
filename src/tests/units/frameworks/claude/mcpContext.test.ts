@@ -5,7 +5,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 
 vi.mock('node:fs');
-vi.mock('node:os');
+vi.mock('node:os', () => ({
+  homedir: vi.fn(() => '/home/testuser'),
+}));
 
 describe('MCP Context file management', () => {
   beforeEach(() => {
