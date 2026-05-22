@@ -33,3 +33,6 @@
 | Developer & team insights | [125-developer-team-insights](specs/125-developer-team-insights.md) | implemented | 2026-04-01 |
 | Hybrid model routing + token tracking | (no spec — see report) | implemented | 2026-05-14 |
 | Skill templates | [skill-templates](specs/skill-templates.md) | drafted | 2026-03-14 |
+| Validate --bg subscription billing (POC) | [168-validate-bg-subscription-billing](specs/168-validate-bg-subscription-billing.md) | drafted | 2026-05-22 |
+| Migrate Claude invocation -p → --bg | [169-migrate-claude-invocation-to-bg-mode](specs/169-migrate-claude-invocation-to-bg-mode.md) | drafted | 2026-05-22 |
+| Pre-built worktree lifecycle | [170-prebuilt-worktree-lifecycle](specs/170-prebuilt-worktree-lifecycle.md) | drafted | 2026-05-22 |
