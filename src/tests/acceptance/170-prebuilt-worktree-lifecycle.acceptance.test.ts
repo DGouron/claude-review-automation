@@ -10,7 +10,17 @@
  * GREEN per the plan's §7 implementation order.
  */
 
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { removeWorktree } from '@/modules/worktree-management/usecases/removeWorktree.usecase.js';
+import { StubGitCommandExecutor } from '@/tests/stubs/gitCommandExecutor.stub.js';
+import type { WorktreeIdentity, WorktreePath } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+
+const baseIdentity: WorktreeIdentity = {
+  platform: 'gitlab',
+  projectPath: 'test-org/test-project',
+  mrNumber: 42,
+};
+const sourceCheckoutPath = '/home/user/projects/test-project';
 
 describe('Acceptance — SPEC-170: Pre-built Worktree Lifecycle', () => {
   describe('Feature: Worktree ensure-or-reuse on review dispatch', () => {
@@ -20,11 +30,56 @@ describe('Acceptance — SPEC-170: Pre-built Worktree Lifecycle', () => {
   });
 
   describe('Feature: Worktree cleanup on MR close', () => {
-    it.todo('Scenario 3 — merge cleanup: webhook(merged) → remove worktree');
+    it('Scenario 3 — merge cleanup: removeWorktree on merged identity returns removed', async () => {
+      const executor = new StubGitCommandExecutor();
+      const worktreeExistsByPath = new Map<WorktreePath, boolean>();
+      const result = await removeWorktree(
+        { identity: { ...baseIdentity }, sourceCheckoutPath },
+        {
+          executor,
+          worktreeExists: async path => {
+            if (!worktreeExistsByPath.has(path)) {
+              worktreeExistsByPath.set(path, true);
+            }
+            return worktreeExistsByPath.get(path) ?? false;
+          },
+        },
+      );
 
-    it.todo('Scenario 4 — close cleanup: webhook(closed, merged=false) → remove worktree');
+      expect(result.status).toBe('removed');
+      expect(executor.callsOfKind('worktree-prune').length).toBeGreaterThan(0);
+      expect(executor.callsOfKind('worktree-remove').length).toBe(1);
+    });
 
-    it.todo('Scenario 5 — merge with worktree already gone: webhook(merged) + worktree absent → log warning + webhook success');
+    it('Scenario 4 — close cleanup: removeWorktree on closed identity returns removed', async () => {
+      const executor = new StubGitCommandExecutor();
+      const result = await removeWorktree(
+        {
+          identity: { platform: 'github', projectPath: 'owner/repo', mrNumber: 7 },
+          sourceCheckoutPath,
+        },
+        {
+          executor,
+          worktreeExists: async () => true,
+        },
+      );
+
+      expect(result.status).toBe('removed');
+    });
+
+    it('Scenario 5 — merge with worktree already gone: returns absent, no remove call, no throw', async () => {
+      const executor = new StubGitCommandExecutor();
+      const result = await removeWorktree(
+        { identity: { ...baseIdentity }, sourceCheckoutPath },
+        {
+          executor,
+          worktreeExists: async () => false,
+        },
+      );
+
+      expect(result.status).toBe('absent');
+      expect(executor.callsOfKind('worktree-remove').length).toBe(0);
+    });
   });
 
   describe('Feature: Daily safety-net sweep', () => {

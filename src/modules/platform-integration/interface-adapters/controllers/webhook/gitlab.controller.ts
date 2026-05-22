@@ -33,6 +33,9 @@ import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/en
 import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
 import type { BudgetExceededPayload } from '@/main/websocket.js';
+import type { RemoveResult, WorktreeIdentity } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+
+export type RemoveWorktreeAction = (input: { identity: WorktreeIdentity }) => Promise<RemoveResult>;
 
 export function extractBaseUrl(remoteUrl: string): string | null {
   try {
@@ -67,6 +70,7 @@ export interface GitLabWebhookDependencies {
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
   getRepositories: () => RepositoryConfig[];
   claudeInvokerDeps?: ClaudeInvokerDependencies;
+  removeWorktree: RemoveWorktreeAction;
 }
 
 function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): string[] {
@@ -129,6 +133,23 @@ export async function handleGitLabWebhook(
       const contextGateway = deps.reviewContextGateway;
       const contextDeleted = contextGateway.delete(repoConfig.localPath, mrId);
 
+      try {
+        const worktreeRemoval = await deps.removeWorktree({
+          identity: { platform: 'gitlab', projectPath, mrNumber },
+        });
+        if (worktreeRemoval.status === 'failed') {
+          logger.warn(
+            { mrNumber, project: projectPath, warning: worktreeRemoval.warning },
+            'removeWorktree failed on close'
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          { mrNumber, project: projectPath, error: error instanceof Error ? error.message : String(error) },
+          'removeWorktree threw on close'
+        );
+      }
+
       logger.info(
         {
           mrNumber,
@@ -162,6 +183,31 @@ export async function handleGitLabWebhook(
     if (repoConfig) {
       const mrId = `gitlab-${mergeResult.projectPath}-${mergeResult.mergeRequestNumber}`;
       transitionState.execute({ projectPath: repoConfig.localPath, mrId, targetState: 'merged' });
+
+      try {
+        const worktreeRemoval = await deps.removeWorktree({
+          identity: {
+            platform: 'gitlab',
+            projectPath: mergeResult.projectPath,
+            mrNumber: mergeResult.mergeRequestNumber,
+          },
+        });
+        if (worktreeRemoval.status === 'failed') {
+          logger.warn(
+            { mrNumber: mergeResult.mergeRequestNumber, warning: worktreeRemoval.warning },
+            'removeWorktree failed on merge'
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          {
+            mrNumber: mergeResult.mergeRequestNumber,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          'removeWorktree threw on merge'
+        );
+      }
+
       logger.info({ mrNumber: mergeResult.mergeRequestNumber }, 'MR marked as merged');
       reply.status(200).send({ status: 'merged', mrNumber: mergeResult.mergeRequestNumber });
       return;

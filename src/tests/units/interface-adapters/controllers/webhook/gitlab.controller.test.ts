@@ -161,6 +161,7 @@ function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTracking
     enforceBudget: createAcceptAllEnforceBudget(),
     broadcastBudgetExceeded: vi.fn(),
     getRepositories: vi.fn(() => []),
+    removeWorktree: vi.fn(async () => ({ status: 'removed' as const })),
   };
 }
 
@@ -408,6 +409,63 @@ describe('handleGitLabWebhook', () => {
       expect(stubThreadFetch.fetchThreads).toHaveBeenCalledWith(
         'test-org/test-project',
         42
+      );
+    });
+  });
+
+  describe('worktree cleanup on close and merge', () => {
+    it('calls removeWorktree on MR close with platform/projectPath/mrNumber identity', async () => {
+      const removeWorktree = vi.fn(async () => ({ status: 'removed' as const }));
+      const deps = { ...defaultDeps, removeWorktree };
+      const event = GitLabEventFactory.createClosedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(removeWorktree).toHaveBeenCalledWith(
+        expect.objectContaining({
+          identity: {
+            platform: 'gitlab',
+            projectPath: 'test-org/test-project',
+            mrNumber: 42,
+          },
+        }),
+      );
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+    });
+
+    it('calls removeWorktree on MR merge with platform/projectPath/mrNumber identity', async () => {
+      const removeWorktree = vi.fn(async () => ({ status: 'removed' as const }));
+      const deps = { ...defaultDeps, removeWorktree };
+      const event = GitLabEventFactory.createMergedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(removeWorktree).toHaveBeenCalledWith(
+        expect.objectContaining({
+          identity: {
+            platform: 'gitlab',
+            projectPath: 'test-org/test-project',
+            mrNumber: 42,
+          },
+        }),
+      );
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+    });
+
+    it('keeps webhook response success when removeWorktree fails', async () => {
+      const removeWorktree = vi.fn(async () => ({ status: 'failed' as const, warning: 'boom' }));
+      const deps = { ...defaultDeps, removeWorktree };
+      const event = GitLabEventFactory.createClosedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(removeWorktree).toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'cleaned' }),
       );
     });
   });
