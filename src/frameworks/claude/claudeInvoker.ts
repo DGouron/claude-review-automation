@@ -32,7 +32,7 @@ import {
   ClaudeSessionCliGateway,
   type ClaudeProcessRunner,
 } from '@/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.js';
-import { InMemoryMcpCompletionBridge } from '@/modules/claude-invocation/interface-adapters/gateways/mcpCompletion.memory.gateway.js';
+import { FileSystemMcpCompletionBridge } from '@/modules/claude-invocation/interface-adapters/gateways/mcpCompletion.fileSystem.gateway.js';
 import { ReviewReportFileSystemGateway } from '@/modules/claude-invocation/interface-adapters/gateways/reviewReport.fileSystem.gateway.js';
 import { InMemoryBillingStateGateway } from '@/modules/claude-invocation/interface-adapters/gateways/billingState.memory.gateway.js';
 import { ProcessEnvironmentGateway } from '@/modules/claude-invocation/interface-adapters/gateways/environment.process.gateway.js';
@@ -118,7 +118,10 @@ function defaultProcessRunner(): ClaudeProcessRunner {
 export function createDefaultClaudeInvocationDeps(): ClaudeInvocationDeps {
   return {
     sessionGateway: new ClaudeSessionCliGateway(defaultProcessRunner()),
-    completionBridge: new InMemoryMcpCompletionBridge(),
+    // FileSystem-backed because the MCP server runs in a sub-process spawned
+    // by `claude --bg`, so an in-memory bridge cannot reach the Fastify host.
+    // See FileSystemMcpCompletionBridge for the wire format.
+    completionBridge: new FileSystemMcpCompletionBridge(),
     reportGateway: new ReviewReportFileSystemGateway(),
     billingState: new InMemoryBillingStateGateway(),
     environment: new ProcessEnvironmentGateway(),
