@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-export type SessionId = string & { readonly __brand: 'SessionId' };
-
 export const sessionIdSchema = z
   .string()
   .min(1, 'session id must not be empty')
-  .transform((value): SessionId => value as SessionId);
+  .brand<'SessionId'>();
+
+export type SessionId = z.infer<typeof sessionIdSchema>;
 
 export function parseSessionId(value: string): SessionId {
   return sessionIdSchema.parse(value);
