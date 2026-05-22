@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import type { Logger } from 'pino';
 import type { ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
 import type { ReviewProgress, ProgressEvent } from '@/modules/review-execution/entities/progress/progress.type.js';
-import { ProgressParser } from '@/frameworks/claude/progressParser.js';
 import { logInfo, logWarn, logError } from '@/frameworks/logging/logBuffer.js';
 import { getModel } from '@/frameworks/settings/runtimeSettings.js';
 import { getProjectAgents, getFollowupAgents, loadProjectConfig } from '@/config/projectConfig.js';
@@ -29,8 +28,35 @@ import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interfac
 import { GetBudgetStatusUseCase } from '@/modules/token-accounting/usecases/getBudgetStatus/getBudgetStatus.usecase.js';
 import { FilesystemBudgetGateway } from '@/modules/token-accounting/interface-adapters/gateways/budget/budget.filesystem.gateway.js';
 import { BudgetStatusPresenter, type BudgetStatusViewModel } from '@/modules/token-accounting/interface-adapters/presenters/budgetStatus.presenter.js';
-import { broadcastBudgetAfterUsage } from '@/frameworks/claude/broadcastBudgetAfterUsage.js';
-import { StreamJsonParser } from '@/frameworks/claude/streamJsonParser.js';
+import {
+  ClaudeSessionCliGateway,
+  type ClaudeProcessRunner,
+} from '@/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.js';
+import { InMemoryMcpCompletionBridge } from '@/modules/claude-invocation/interface-adapters/gateways/mcpCompletion.memory.gateway.js';
+import { ReviewReportFileSystemGateway } from '@/modules/claude-invocation/interface-adapters/gateways/reviewReport.fileSystem.gateway.js';
+import { InMemoryBillingStateGateway } from '@/modules/claude-invocation/interface-adapters/gateways/billingState.memory.gateway.js';
+import { ProcessEnvironmentGateway } from '@/modules/claude-invocation/interface-adapters/gateways/environment.process.gateway.js';
+import { runClaudeReviewJob } from '@/modules/claude-invocation/usecases/runClaudeReviewJob.usecase.js';
+import type { ClaudeSessionGateway } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.gateway.js';
+import type { McpCompletionBridge } from '@/modules/claude-invocation/entities/sessionCompletion/mcpCompletion.gateway.js';
+import type { ReviewReportGateway } from '@/modules/claude-invocation/entities/sessionCompletion/reviewReport.gateway.js';
+import type { BillingStateGateway } from '@/modules/claude-invocation/entities/billingState/billingState.gateway.js';
+import type { EnvironmentGateway } from '@/modules/claude-invocation/entities/billingState/environment.gateway.js';
+
+/**
+ * Bundle of gateways needed by runClaudeReviewJob. Built in the composition
+ * root so the Fastify process, the supervisor/billing timers, and the MCP
+ * completion bridge can share the same instances.
+ */
+export interface ClaudeInvocationDeps {
+  sessionGateway: ClaudeSessionGateway;
+  completionBridge: McpCompletionBridge;
+  reportGateway: ReviewReportGateway;
+  billingState: BillingStateGateway;
+  environment: EnvironmentGateway;
+  timeoutMs: number;
+  pollIntervalMs: number;
+}
 
 /**
  * Gateways and use cases required by invokeClaudeReview. Extracted from the
@@ -49,6 +75,7 @@ export interface ClaudeInvokerDependencies {
   budgetStatusPresenter: BudgetStatusPresenter;
   broadcastBudgetStatus: (viewModel: BudgetStatusViewModel) => void;
   getEnabledLocalPaths?: () => string[];
+  invocation: ClaudeInvocationDeps;
 }
 
 /**
@@ -60,6 +87,46 @@ export interface ClaudeInvokerDependencies {
  * The no-op `broadcastBudgetStatus` here is intentional for tests and CLI
  * one-shots where there is no WebSocket fanout to perform.
  */
+/**
+ * Default process runner used by createDefaultClaudeInvocationDeps when the
+ * composition root does not provide one. Wraps node:child_process.spawn so
+ * tests can inject a fake runner instead.
+ */
+function defaultProcessRunner(): ClaudeProcessRunner {
+  return async ({ args, cwd, env }) =>
+    new Promise((resolve, reject) => {
+      const child = spawn(resolveClaudePath(), args, {
+        cwd,
+        env: env ? { ...process.env, ...env } : process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout?.on('data', chunk => {
+        stdout += chunk.toString();
+      });
+      child.stderr?.on('data', chunk => {
+        stderr += chunk.toString();
+      });
+      child.on('error', reject);
+      child.on('close', code => {
+        resolve({ stdout, stderr, exitCode: code ?? -1 });
+      });
+    });
+}
+
+export function createDefaultClaudeInvocationDeps(): ClaudeInvocationDeps {
+  return {
+    sessionGateway: new ClaudeSessionCliGateway(defaultProcessRunner()),
+    completionBridge: new InMemoryMcpCompletionBridge(),
+    reportGateway: new ReviewReportFileSystemGateway(),
+    billingState: new InMemoryBillingStateGateway(),
+    environment: new ProcessEnvironmentGateway(),
+    timeoutMs: 15 * 60 * 1000,
+    pollIntervalMs: 30 * 1000,
+  };
+}
+
 export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependencies {
   const tokenUsageGateway = new FilesystemTokenUsageGateway();
   const budgetGateway = new FilesystemBudgetGateway();
@@ -75,6 +142,7 @@ export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependenc
     getBudgetStatus: new GetBudgetStatusUseCase({ budgetGateway, tokenUsageGateway }),
     budgetStatusPresenter: new BudgetStatusPresenter(),
     broadcastBudgetStatus: () => {},
+    invocation: createDefaultClaudeInvocationDeps(),
   };
 }
 
@@ -150,9 +218,10 @@ export function cleanupMcpContext(jobId: string): void {
 }
 
 // Memory guard configuration
-const MEMORY_LIMIT_GB = 4; // Kill process if RSS exceeds 4GB
-const MEMORY_CHECK_INTERVAL_MS = 5000; // Check every 5 seconds
-const MEMORY_LIMIT_BYTES = MEMORY_LIMIT_GB * 1024 * 1024 * 1024;
+// Memory guard removed alongside the synchronous spawn loop (SPEC-169 B1).
+// `claude --bg` runs the review in a separate supervised process, so RSS
+// monitoring of the Fastify host is no longer relevant. Reintroduce if a new
+// host-side leak is observed.
 
 export interface InvocationResult {
   success: boolean;
@@ -399,15 +468,6 @@ export async function invokeClaudeReview(
     customAgents: projectAgents?.length ?? 'default',
   });
 
-  // Initialize progress parser with project agents (or defaults)
-  const progressParser = new ProgressParser(job.id, (event, progress) => {
-    logger.debug({ event, progress: progress.overallProgress }, 'Progress update');
-    onProgress?.(progress, event);
-  }, projectAgents);
-
-  // Emit initial progress
-  onProgress?.(progressParser.getProgress());
-
   // Check if already cancelled
   if (signal?.aborted) {
     logWarn('Review annulée avant démarrage', { jobId: job.id });
@@ -417,290 +477,191 @@ export async function invokeClaudeReview(
       stdout: '',
       stderr: 'Review cancelled before start',
       durationMs: Date.now() - startTime,
-      finalProgress: progressParser.getProgress(),
       cancelled: true,
     };
   }
 
-  return new Promise((resolve) => {
-    let stdout = '';
-    let stderr = '';
-    let cancelled = false;
-    const streamParser = new StreamJsonParser();
+  return invokeViaBackgroundSession(
+    {
+      job,
+      prompt,
+      model,
+      mcpSystemPrompt,
+      mcpConfigJson,
+      diffStats,
+      startTime,
+    },
+    logger,
+    onProgress,
+    deps,
+  );
+}
 
-    const childEnv = { ...process.env };
-    // Remove CLAUDECODE to allow spawning Claude from within a Claude session
-    childEnv.CLAUDECODE = undefined;
-    const child = spawn(resolveClaudePath(), args, {
-      cwd: job.localPath,
-      env: {
-        ...childEnv,
-        // Ensure non-interactive mode
-        TERM: 'dumb',
-        CI: 'true',
-        // Note: MCP env vars are now passed via --mcp-config
+interface BackgroundDispatchContext {
+  job: ReviewJob;
+  prompt: string;
+  model: ClaudeModelName;
+  mcpSystemPrompt: string;
+  mcpConfigJson: string;
+  diffStats: DiffStats | null;
+  startTime: number;
+}
+
+async function invokeViaBackgroundSession(
+  context: BackgroundDispatchContext,
+  logger: Logger,
+  onProgress: ProgressCallback | undefined,
+  deps: ClaudeInvokerDependencies,
+): Promise<InvocationResult> {
+  const { job, prompt, model, mcpSystemPrompt, mcpConfigJson, diffStats, startTime } = context;
+  const invocation = deps.invocation;
+  const mergeRequestId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
+  const jobType = job.jobType === 'followup' ? 'followup' : 'review';
+  // attempt counter is reserved for the queue layer to re-enqueue with backoff
+  // when status === 'retry' is returned. Until that wiring exists, every
+  // invocation is treated as attempt 0 and a single retry signal surfaces back
+  // to the controller as a soft failure.
+  const attempt = 0;
+
+  const flags = {
+    model,
+    mcpConfigJson,
+    systemPrompt: mcpSystemPrompt,
+    allowedTools: 'Read,Glob,Grep,Bash,Edit,Task,Skill,Write,LSP,mcp__review-progress__*',
+    disallowedTools: 'EnterPlanMode,AskUserQuestion',
+    permissionMode: 'bypassPermissions' as const,
+  };
+
+  let result: Awaited<ReturnType<typeof runClaudeReviewJob>>;
+  try {
+    result = await runClaudeReviewJob(
+      {
+        jobId: job.id,
+        jobType,
+        prompt,
+        flags,
+        localPath: job.localPath,
+        mergeRequestId,
+        mergeRequestNumber: job.mrNumber,
+        attempt,
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
+      {
+        sessionGateway: invocation.sessionGateway,
+        completionBridge: invocation.completionBridge,
+        reportGateway: invocation.reportGateway,
+        billingState: invocation.billingState,
+        environment: invocation.environment,
+        now: () => new Date(),
+        timeoutMs: invocation.timeoutMs,
+        pollIntervalMs: invocation.pollIntervalMs,
+      },
+    );
+  } catch (error) {
+    cleanupMcpContext(job.id);
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error({ error: message, jobId: job.id }, 'runClaudeReviewJob threw');
+    logError('Review en erreur', { jobId: job.id, message });
+    return {
+      success: false,
+      exitCode: null,
+      stdout: '',
+      stderr: message,
+      durationMs: Date.now() - startTime,
+      selectedModel: model,
+    };
+  }
+
+  cleanupMcpContext(job.id);
+  const durationMs = Date.now() - startTime;
+  const durationMin = Math.round(durationMs / 60000);
+
+  if (result.status === 'completed') {
+    logInfo('Review terminée', {
+      jobId: job.id,
+      mrNumber: job.mrNumber,
+      duration: `${durationMin} min`,
+      outputLength: result.content.length,
+      model,
     });
 
-    // Memory guard: monitor RSS and kill if exceeds limit
-    let memoryExceeded = false;
-    const memoryCheckInterval = setInterval(() => {
-      const memUsage = process.memoryUsage();
-      const rssMB = Math.round(memUsage.rss / 1024 / 1024);
-
-      if (memUsage.rss > MEMORY_LIMIT_BYTES) {
-        memoryExceeded = true;
-        const errorMessage = `
-╔═══════════════════════════════════════════════════════════════════╗
-║  🚨 MEMORY LIMIT EXCEEDED - REVIEW KILLED                        ║
-╠═══════════════════════════════════════════════════════════════════╣
-║                                                                   ║
-║  Current RSS: ${rssMB} MB (limit: ${MEMORY_LIMIT_GB * 1024} MB)            ║
-║  Job: ${job.id.substring(0, 50).padEnd(50)}    ║
-║                                                                   ║
-║  The review process consumed too much memory.                     ║
-║  This usually happens when running too many sub-agents            ║
-║  in parallel. Consider using sequential execution.                ║
-║                                                                   ║
-╚═══════════════════════════════════════════════════════════════════╝
-`;
-        logger.error({ rssMB, limitMB: MEMORY_LIMIT_GB * 1024, jobId: job.id }, 'Memory limit exceeded, killing process');
-        logError('Memory limit exceeded', {
-          jobId: job.id,
-          rssMB,
-          limitMB: MEMORY_LIMIT_GB * 1024,
-          message: 'Review killed due to excessive memory consumption',
-        });
-
-        // Output error to stderr for visibility
-        stderr += errorMessage;
-
-        // Kill the child process
-        child.kill('SIGKILL');
-        clearInterval(memoryCheckInterval);
-      } else if (rssMB > (MEMORY_LIMIT_GB * 1024 * 0.8)) {
-        // Warn when approaching limit (80%)
-        logger.warn({ rssMB, limitMB: MEMORY_LIMIT_GB * 1024 }, 'Memory usage high, approaching limit');
+    // Save review statistics (followups are not counted as reviews)
+    if (job.jobType !== 'followup') {
+      try {
+        const mrId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
+        const mrDetails = deps.trackingGateway.getById(job.localPath, mrId);
+        const assignedBy = mrDetails?.assignment?.username;
+        const reviewStats = addReviewStats(
+          job.localPath,
+          job.mrNumber,
+          durationMs,
+          result.content,
+          assignedBy,
+          diffStats,
+        );
+        logger.info({ reviewStats }, 'Stats de review enregistrées');
+      } catch (statsError) {
+        logger.warn({ error: statsError }, 'Erreur lors de l\'enregistrement des stats');
       }
-    }, MEMORY_CHECK_INTERVAL_MS);
-
-    // Handle cancellation via AbortSignal
-    const abortHandler = () => {
-      if (!cancelled) {
-        cancelled = true;
-        logger.info({ jobId: job.id }, 'Review annulée par utilisateur');
-        logWarn('Review annulée', { jobId: job.id });
-        child.kill('SIGTERM');
-        // Give it time to cleanup, then force kill
-        setTimeout(() => {
-          if (!child.killed) {
-            child.kill('SIGKILL');
-          }
-        }, 5000);
-      }
-    };
-
-    if (signal) {
-      signal.addEventListener('abort', abortHandler, { once: true });
     }
 
-    child.stdout.on('data', (data: Buffer) => {
-      const chunk = data.toString();
-      stdout += chunk;
-      streamParser.feed(chunk);
+    // NOTE: token tracking is intentionally disabled in --bg mode.
+    // The legacy stream-json path exposed { input_tokens, output_tokens, … }
+    // but `claude --bg` does not emit stream-json on stdout. Re-enabling
+    // requires parsing `claude logs <sessionId>` or `claude /usage` and is
+    // tracked as a follow-up to SPEC-169.
 
-      // Progress markers may still appear in assistant text within stream-json events;
-      // feeding the raw chunk keeps any legacy markers detected without coupling to JSON shape.
-      progressParser.parseChunk(chunk);
-
-      const preview = chunk.length > 200 ? chunk.substring(0, 200) + '...' : chunk;
-      logger.debug({ preview }, 'Claude stdout');
-    });
-
-    child.stderr.on('data', (data: Buffer) => {
-      const chunk = data.toString();
-      stderr += chunk;
-      logger.warn({ chunk }, 'Claude stderr');
-      logWarn('Claude stderr', { jobId: job.id, message: chunk.substring(0, 500) });
-    });
-
-    child.on('error', (error) => {
-      logger.error({ error }, 'Erreur lors du spawn de Claude');
-      logError('Erreur spawn Claude', { jobId: job.id, error: error.message });
-      progressParser.markFailed(error.message);
-      resolve({
-        success: false,
-        exitCode: null,
-        stdout,
-        stderr: stderr + `\nSpawn error: ${error.message}`,
-        durationMs: Date.now() - startTime,
-        finalProgress: progressParser.getProgress(),
+    if (onProgress) {
+      onProgress({
+        currentPhase: 'completed',
+        overallProgress: 100,
+        lastUpdate: new Date(),
+        agents: [],
       });
+    }
+
+    return {
+      success: true,
+      exitCode: 0,
+      stdout: result.content,
+      stderr: '',
+      durationMs,
+      usage: null,
+      selectedModel: model,
+    };
+  }
+
+  if (result.status === 'retry') {
+    logWarn('Rate-limited — backoff demandé', {
+      jobId: job.id,
+      delayMs: result.delayMs,
+      nextAttempt: result.attempt,
     });
+    return {
+      success: false,
+      exitCode: 1,
+      stdout: '',
+      stderr: `rate-limited; retry in ${result.delayMs}ms (attempt ${result.attempt})`,
+      durationMs,
+      selectedModel: model,
+    };
+  }
 
-    child.on('close', async (code) => {
-      // Cleanup interval, abort listener, and MCP context
-      clearInterval(memoryCheckInterval);
-      cleanupMcpContext(job.id);
-      if (signal) {
-        signal.removeEventListener('abort', abortHandler);
-      }
-
-      const durationMs = Date.now() - startTime;
-      const success = code === 0 && !cancelled && !memoryExceeded;
-
-      const assistantText = streamParser.getAssistantText();
-      const tokenUsage = streamParser.getUsage();
-
-      // Save logs: raw stream-json + reconstructed human text for readability
-      try {
-        const logsDir = join(job.localPath, '.claude', 'reviews', 'logs');
-        if (!existsSync(logsDir)) {
-          mkdirSync(logsDir, { recursive: true });
-        }
-        const sanitizedJobId = job.id.replace(/[:/\\]/g, '-');
-        const logPath = join(logsDir, `${sanitizedJobId}-stdout.log`);
-        writeFileSync(logPath, `=== Claude Review Output ===\nJob: ${job.id}\nMR: ${job.mrNumber}\nSkill: ${job.skill}\nModel: ${model}\nExit code: ${code}\nDuration: ${Math.round(durationMs / 1000)}s\nTimestamp: ${new Date().toISOString()}\n\n--- ASSISTANT TEXT ---\n${assistantText}\n\n--- STDERR ---\n${stderr}\n\n--- RAW STREAM-JSON ---\n${stdout}\n`);
-        logger.info({ logPath }, 'Review stdout saved to log file');
-      } catch {
-        // Non-critical
-      }
-
-      // Finalize progress
-      if (memoryExceeded) {
-        progressParser.markFailed('Memory limit exceeded - review killed');
-      } else if (cancelled) {
-        progressParser.markFailed('Annulée par utilisateur');
-      } else if (success) {
-        progressParser.markAllCompleted();
-      } else {
-        progressParser.markFailed(`Exit code: ${code}`);
-      }
-
-      const finalProgress = progressParser.getProgress();
-      onProgress?.(finalProgress);
-
-      logger.info(
-        {
-          exitCode: code,
-          durationMs,
-          stdoutLength: stdout.length,
-          stderrLength: stderr.length,
-          finalProgress: finalProgress.overallProgress,
-          cancelled,
-          memoryExceeded,
-        },
-        memoryExceeded
-          ? 'Claude killed - memory limit exceeded'
-          : cancelled
-            ? 'Claude annulé'
-            : success
-              ? 'Claude terminé avec succès'
-              : 'Claude terminé avec erreur'
-      );
-
-      // Log to dashboard with summary
-      const durationMin = Math.round(durationMs / 60000);
-      if (memoryExceeded) {
-        logError('Review killed - Memory limit exceeded', {
-          jobId: job.id,
-          mrNumber: job.mrNumber,
-          duration: `${durationMin} min`,
-          limitGB: MEMORY_LIMIT_GB,
-        });
-      } else if (cancelled) {
-        logWarn('Review annulée', {
-          jobId: job.id,
-          mrNumber: job.mrNumber,
-          duration: `${durationMin} min`,
-        });
-      } else if (success) {
-        logInfo('Review terminée', {
-          jobId: job.id,
-          mrNumber: job.mrNumber,
-          duration: `${durationMin} min`,
-          outputLength: assistantText.length,
-          model,
-        });
-
-        // Save review statistics (followups are not counted as reviews)
-        if (job.jobType !== 'followup') {
-          try {
-            const mrId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
-            const mrDetails = deps.trackingGateway.getById(job.localPath, mrId);
-            const assignedBy = mrDetails?.assignment?.username;
-
-            const reviewStats = addReviewStats(job.localPath, job.mrNumber, durationMs, assistantText, assignedBy, diffStats);
-            logger.info({ reviewStats }, 'Stats de review enregistrées');
-          } catch (statsError) {
-            logger.warn({ error: statsError }, 'Erreur lors de l\'enregistrement des stats');
-          }
-        }
-
-        // Persist token usage for cost tracking (non-critical, never blocks the review result)
-        if (tokenUsage) {
-          try {
-            await deps.trackTokenUsage.execute({
-              jobId: job.id,
-              mrNumber: job.mrNumber,
-              platform: job.platform,
-              projectPath: job.projectPath,
-              localPath: job.localPath,
-              model,
-              recordedAt: new Date().toISOString(),
-              usage: tokenUsage,
-            });
-            logger.info({ jobId: job.id, model, usage: tokenUsage }, 'Token usage recorded');
-
-            const broadcastLocalPaths = deps.getEnabledLocalPaths?.() ?? [job.localPath];
-            await broadcastBudgetAfterUsage(
-              {
-                getBudgetStatus: deps.getBudgetStatus,
-                broadcastBudgetStatus: deps.broadcastBudgetStatus,
-                presenter: deps.budgetStatusPresenter,
-              },
-              { localPaths: broadcastLocalPaths },
-              logger,
-            );
-          } catch (trackError) {
-            logger.warn({ jobId: job.id, error: trackError }, 'Failed to persist token usage');
-          }
-        }
-
-        // Log assistant text preview for debugging
-        if (assistantText.length > 0) {
-          logInfo('Claude output preview', {
-            jobId: job.id,
-            preview: assistantText.substring(0, 1000),
-            fullLength: assistantText.length,
-          });
-        }
-      } else {
-        logError('Review échouée', {
-          jobId: job.id,
-          mrNumber: job.mrNumber,
-          exitCode: code,
-          duration: `${durationMin} min`,
-          stderr: stderr.substring(0, 500),
-          stdoutPreview: (assistantText || stdout).substring(0, 300),
-        });
-      }
-
-      resolve({
-        success,
-        exitCode: memoryExceeded ? null : code,
-        stdout: assistantText,
-        stderr,
-        durationMs,
-        finalProgress,
-        cancelled: cancelled || memoryExceeded,
-        usage: tokenUsage,
-        selectedModel: model,
-      });
-    });
+  logError('Review échouée', {
+    jobId: job.id,
+    mrNumber: job.mrNumber,
+    duration: `${durationMin} min`,
+    reason: result.reason,
   });
+  return {
+    success: false,
+    exitCode: 1,
+    stdout: '',
+    stderr: result.reason,
+    durationMs,
+    selectedModel: model,
+  };
 }
+
 
 /**
  * Send desktop notification

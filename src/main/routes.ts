@@ -143,6 +143,9 @@ export async function registerRoutes(
     broadcastBudgetStatus,
     getEnabledLocalPaths: () =>
       deps.config.repositories.filter((repository) => repository.enabled).map((repository) => repository.localPath),
+    // Reuse the shared invocation deps so timers (server.ts) and review jobs
+    // see the same BillingState / SupervisorHealth / completion bridge.
+    invocation: deps.claudeInvocationDeps,
   };
 
   const threadFetchGatewayFactory = (platform: 'gitlab' | 'github') =>

@@ -9,11 +9,7 @@ import { removePidFile } from '../shared/services/pidFileManager.js';
 import { PID_FILE_PATH } from '../shared/services/daemonPaths.js';
 import { startCleanupScheduler } from '../frameworks/scheduler/cleanupScheduler.js';
 import { startClaudeInvocationTimers } from '@/frameworks/claude/timers/claudeInvocationTimers.js';
-import { InMemoryBillingStateGateway } from '@/modules/claude-invocation/interface-adapters/gateways/billingState.memory.gateway.js';
 import { InMemorySupervisorHealthGateway } from '@/modules/claude-invocation/interface-adapters/gateways/supervisorHealth.memory.gateway.js';
-import { ClaudeSessionCliGateway, type ClaudeProcessRunner } from '@/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.js';
-import { spawn } from 'node:child_process';
-import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -34,42 +30,6 @@ function addRawBodyParser(app: FastifyInstance): void {
       }
     }
   );
-}
-
-function createProcessRunner(): ClaudeProcessRunner {
-  return async ({ args, cwd, env }) => {
-    return await new Promise((resolve, reject) => {
-      const child = spawn(resolveClaudePath(), args, {
-        cwd,
-        env: { ...process.env, ...env },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      let stdout = '';
-      let stderr = '';
-      child.stdout.on('data', chunk => {
-        stdout += chunk.toString();
-      });
-      child.stderr.on('data', chunk => {
-        stderr += chunk.toString();
-      });
-      child.on('error', reject);
-      child.on('close', code => {
-        resolve({ stdout, stderr, exitCode: code ?? -1 });
-      });
-    });
-  };
-}
-
-function createClaudeInvocationDependencies(): {
-  sessionGateway: ClaudeSessionCliGateway;
-  billingStateGateway: InMemoryBillingStateGateway;
-  supervisorHealthGateway: InMemorySupervisorHealthGateway;
-} {
-  return {
-    sessionGateway: new ClaudeSessionCliGateway(createProcessRunner()),
-    billingStateGateway: new InMemoryBillingStateGateway(),
-    supervisorHealthGateway: new InMemorySupervisorHealthGateway(),
-  };
 }
 
 async function buildServer(deps: Dependencies): Promise<FastifyInstance> {
@@ -109,11 +69,15 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     logger: deps.logger,
   });
 
-  const claudeInvocationDeps = createClaudeInvocationDependencies();
+  // Supervisor health has its own gateway because it is not consumed by the
+  // review dispatch path (only by the dashboard). Billing state and session
+  // gateway, in contrast, must be shared so a paused billing state pauses
+  // dispatch, and so timers and reviews talk to the same Claude CLI.
+  const supervisorHealthGateway = new InMemorySupervisorHealthGateway();
   const stopClaudeInvocationTimers = startClaudeInvocationTimers({
-    sessionGateway: claudeInvocationDeps.sessionGateway,
-    supervisorHealthGateway: claudeInvocationDeps.supervisorHealthGateway,
-    billingStateGateway: claudeInvocationDeps.billingStateGateway,
+    sessionGateway: deps.claudeInvocationDeps.sessionGateway,
+    supervisorHealthGateway,
+    billingStateGateway: deps.claudeInvocationDeps.billingState,
     now: () => new Date(),
     supervisorIntervalMs: 5 * 60 * 1000,
     billingIntervalMs: 60 * 60 * 1000,
