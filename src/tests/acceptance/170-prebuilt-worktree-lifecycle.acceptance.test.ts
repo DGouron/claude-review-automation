@@ -10,10 +10,20 @@
  * GREEN per the plan's §7 implementation order.
  */
 
+import { vi } from 'vitest';
+
+vi.mock('@/frameworks/config/configLoader.js', () => ({
+  loadConfig: vi.fn(() => ({
+    queue: { maxConcurrent: 4, deduplicationWindowMs: 60000 },
+  })),
+}));
+
 import { describe, it, expect } from 'vitest';
 import { removeWorktree } from '@/modules/worktree-management/usecases/removeWorktree.usecase.js';
 import { StubGitCommandExecutor } from '@/tests/stubs/gitCommandExecutor.stub.js';
 import type { WorktreeIdentity, WorktreePath } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+import { enqueueReview, initQueue, type ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
+import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 
 const baseIdentity: WorktreeIdentity = {
   platform: 'gitlab',
@@ -95,7 +105,53 @@ describe('Acceptance — SPEC-170: Pre-built Worktree Lifecycle', () => {
   });
 
   describe('Feature: Per-MR serialization of concurrent operations', () => {
-    it.todo('Scenario 10 — concurrent followups: two push webhooks within 5s on same MR → second waits for first; both complete in order');
+    it('Scenario 10 — concurrent followups on same MR: second waits for first; both complete in order', async () => {
+      initQueue(createStubLogger());
+
+      const events: string[] = [];
+      let releaseFirst: (() => void) | null = null;
+
+      const baseJob: ReviewJob = {
+        id: 'gitlab:test-org/test-project:99',
+        platform: 'gitlab',
+        projectPath: 'test-org/test-project',
+        localPath: '/home/user/projects/test-project',
+        mrNumber: 99,
+        skill: 'review-front',
+        mrUrl: 'https://gitlab.com/test-org/test-project/-/merge_requests/99',
+        sourceBranch: 'feature/test',
+        targetBranch: 'main',
+        jobType: 'review',
+      };
+
+      const freshEnqueued = await enqueueReview(baseJob, async () => {
+        events.push('fresh:start');
+        await new Promise<void>(resolve => {
+          releaseFirst = resolve;
+        });
+        events.push('fresh:end');
+      });
+      expect(freshEnqueued).toBe(true);
+
+      const followupJob: ReviewJob = {
+        ...baseJob,
+        id: 'gitlab-followup:test-org/test-project:99',
+        jobType: 'followup',
+      };
+
+      const followupEnqueued = await enqueueReview(followupJob, async () => {
+        events.push('followup:start');
+        events.push('followup:end');
+      });
+      expect(followupEnqueued).toBe(true);
+
+      await new Promise<void>(resolve => setTimeout(resolve, 20));
+      expect(events).toEqual(['fresh:start']);
+
+      releaseFirst!();
+      await new Promise<void>(resolve => setTimeout(resolve, 50));
+      expect(events).toEqual(['fresh:start', 'fresh:end', 'followup:start', 'followup:end']);
+    });
   });
 
   describe('Feature: System prompt no longer disclaims local state', () => {
