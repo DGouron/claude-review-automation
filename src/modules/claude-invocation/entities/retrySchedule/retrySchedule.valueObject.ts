@@ -15,7 +15,7 @@ export function planRetry(
   if (nextAttempt > config.maxAttempts) {
     return { status: 'give-up' };
   }
-  const exponential = config.initialDelayMs * Math.pow(config.multiplier, currentAttempt);
+  const exponential = config.initialDelayMs * config.multiplier ** currentAttempt;
   const delayMs = Math.min(exponential, config.maxDelayMs);
   return { status: 'retry', delayMs, nextAttempt };
 }
