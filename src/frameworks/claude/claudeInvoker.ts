@@ -355,13 +355,11 @@ export async function invokeClaudeReview(
   // third-party MCP servers (e.g. gitnexus) causing initialization timeouts
   const mcpConfigJson = buildMcpConfigJson();
 
-  // Build arguments
-  // --permission-mode bypassPermissions: automated review, no user to approve
-  // --allowedTools / --disallowedTools: belt-and-suspenders to restrict tool scope
-  // --mcp-config + --strict-mcp-config: use ONLY review-progress MCP server
+  // Build arguments for the --bg (background subscription billing) invocation.
+  // The session id is captured from stdout; completion is observed through MCP
+  // (set_phase) or `claude agents --json` polling. No -p, no --print, no stream-json.
   const args = [
-    '--output-format', 'stream-json',
-    '--verbose',
+    '--bg',
     '--model', model,
     '--permission-mode', 'bypassPermissions',
     '--append-system-prompt', mcpSystemPrompt,
@@ -369,7 +367,7 @@ export async function invokeClaudeReview(
     '--strict-mcp-config',
     '--allowedTools', 'Read,Glob,Grep,Bash,Edit,Task,Skill,Write,LSP,mcp__review-progress__*',
     '--disallowedTools', 'EnterPlanMode,AskUserQuestion',
-    '-p', prompt,
+    prompt,
   ];
 
   // Setup MCP job context file (used by MCP server to identify the review)
