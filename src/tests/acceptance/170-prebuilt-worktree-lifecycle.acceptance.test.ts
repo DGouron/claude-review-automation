@@ -24,6 +24,7 @@ import { StubGitCommandExecutor } from '@/tests/stubs/gitCommandExecutor.stub.js
 import type { WorktreeIdentity, WorktreePath } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
 import { enqueueReview, initQueue, type ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
+import { buildMcpSystemPrompt } from '@/frameworks/claude/claudeInvoker.js';
 
 const baseIdentity: WorktreeIdentity = {
   platform: 'gitlab',
@@ -155,6 +156,26 @@ describe('Acceptance — SPEC-170: Pre-built Worktree Lifecycle', () => {
   });
 
   describe('Feature: System prompt no longer disclaims local state', () => {
-    it.todo('Scenario 11 — system prompt without disclaimer: review dispatched via claudeInvoker → prompt contains no "UNRELIABLE" / "FORBIDDEN" / "glab mr diff" / "gh pr diff" substrings');
+    it('Scenario 11 — system prompt contains no UNRELIABLE / FORBIDDEN / glab mr diff / gh pr diff substrings', () => {
+      const job: ReviewJob = {
+        id: 'gitlab:test-org/test-project:42',
+        platform: 'gitlab',
+        projectPath: 'test-org/test-project',
+        localPath: '/home/user/projects/test-project',
+        mrNumber: 42,
+        skill: 'review-front',
+        mrUrl: 'https://gitlab.com/test-org/test-project/-/merge_requests/42',
+        sourceBranch: 'feat/x',
+        targetBranch: 'main',
+        jobType: 'review',
+      };
+
+      const prompt = buildMcpSystemPrompt(job);
+
+      expect(prompt).not.toContain('UNRELIABLE');
+      expect(prompt).not.toContain('FORBIDDEN');
+      expect(prompt).not.toContain('glab mr diff');
+      expect(prompt).not.toContain('gh pr diff');
+    });
   });
 });

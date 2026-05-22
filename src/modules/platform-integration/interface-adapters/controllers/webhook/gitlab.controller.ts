@@ -35,7 +35,10 @@ import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/e
 import type { BudgetExceededPayload } from '@/main/websocket.js';
 import type { RemoveResult, WorktreeIdentity } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
 
-export type RemoveWorktreeAction = (input: { identity: WorktreeIdentity }) => Promise<RemoveResult>;
+export type RemoveWorktreeAction = (input: {
+  identity: WorktreeIdentity;
+  sourceCheckoutPath: string;
+}) => Promise<RemoveResult>;
 
 export function extractBaseUrl(remoteUrl: string): string | null {
   try {
@@ -136,6 +139,7 @@ export async function handleGitLabWebhook(
       try {
         const worktreeRemoval = await deps.removeWorktree({
           identity: { platform: 'gitlab', projectPath, mrNumber },
+          sourceCheckoutPath: repoConfig.localPath,
         });
         if (worktreeRemoval.status === 'failed') {
           logger.warn(
@@ -191,6 +195,7 @@ export async function handleGitLabWebhook(
             projectPath: mergeResult.projectPath,
             mrNumber: mergeResult.mergeRequestNumber,
           },
+          sourceCheckoutPath: repoConfig.localPath,
         });
         if (worktreeRemoval.status === 'failed') {
           logger.warn(

@@ -35,7 +35,10 @@ import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/e
 import type { BudgetExceededPayload } from '@/main/websocket.js';
 import type { RemoveResult, WorktreeIdentity } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
 
-export type RemoveWorktreeAction = (input: { identity: WorktreeIdentity }) => Promise<RemoveResult>;
+export type RemoveWorktreeAction = (input: {
+  identity: WorktreeIdentity;
+  sourceCheckoutPath: string;
+}) => Promise<RemoveResult>;
 
 export interface GitHubWebhookDependencies {
   reviewContextGateway: ReviewContextGateway;
@@ -117,6 +120,7 @@ export async function handleGitHubWebhook(
       try {
         const worktreeRemoval = await deps.removeWorktree({
           identity: { platform: 'github', projectPath, mrNumber: prNumber },
+          sourceCheckoutPath: repoConfig.localPath,
         });
         if (worktreeRemoval.status === 'failed') {
           logger.warn(

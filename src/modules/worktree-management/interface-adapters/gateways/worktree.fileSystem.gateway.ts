@@ -88,7 +88,7 @@ export class WorktreeFileSystemGateway implements WorktreeGateway {
         const stats = statSync(path);
         entries.push({ identity, path, mtime: stats.mtime });
       } catch {
-        continue;
+        // ignore worktrees whose stat fails (transient FS errors, race with removal)
       }
     }
     return entries;
