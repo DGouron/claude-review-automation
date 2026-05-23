@@ -484,7 +484,9 @@ export async function handleGitLabWebhook(
               sendNotification('Review followup terminée', `MR !${j.mrNumber} - ${j.projectPath}`, logger);
             } else if (!result.cancelled) {
               sendNotification('Review followup échouée', `MR !${j.mrNumber} - Code ${result.exitCode}`, logger);
-              throw new Error(`Followup review failed with exit code ${result.exitCode}`);
+              throw new Error(
+                result.stderr?.trim() || `Followup review failed with exit code ${result.exitCode}`
+              );
             }
           });
 
@@ -750,8 +752,9 @@ export async function handleGitLabWebhook(
         `MR !${j.mrNumber} - Code ${result.exitCode}`,
         logger
       );
-      // Throw to mark job as failed (allows retry)
-      throw new Error(`Review failed with exit code ${result.exitCode}`);
+      throw new Error(
+        result.stderr?.trim() || `Review failed with exit code ${result.exitCode}`
+      );
     }
   });
 

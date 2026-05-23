@@ -427,7 +427,9 @@ export async function handleGitHubWebhook(
               sendNotification('Review followup terminée', `PR #${j.mrNumber} - ${j.projectPath}`, logger);
             } else if (!result.cancelled) {
               sendNotification('Review followup échouée', `PR #${j.mrNumber} - Code ${result.exitCode}`, logger);
-              throw new Error(`Followup review failed with exit code ${result.exitCode}`);
+              throw new Error(
+                result.stderr?.trim() || `Followup review failed with exit code ${result.exitCode}`
+              );
             }
           });
 
@@ -683,11 +685,14 @@ export async function handleGitHubWebhook(
         `PR #${j.mrNumber} - ${j.projectPath}`,
         logger
       );
-    } else {
+    } else if (!result.cancelled) {
       sendNotification(
         'Review échouée',
         `PR #${j.mrNumber} - Code ${result.exitCode}`,
         logger
+      );
+      throw new Error(
+        result.stderr?.trim() || `Review failed with exit code ${result.exitCode}`
       );
     }
   });

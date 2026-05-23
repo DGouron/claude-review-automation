@@ -311,11 +311,18 @@ describe('handleGitHubWebhook', () => {
         stdout: 'Error occurred',
         durationMs: 10000,
         exitCode: 1,
-        stderr: '',
+        stderr: 'dispatch-failed: branch-not-found',
       };
 
+      // Simulate pQueue behaviour: queue swallows processor throws and surfaces
+      // them via jobStatus.error (see pQueueAdapter.ts catch block).
       vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
-        await callback(job, new AbortController().signal);
+        try {
+          await callback(job, new AbortController().signal);
+        } catch {
+          // expected: controller now throws on dispatch failure so the
+          // queue can populate jobStatus.error for dashboard surfacing
+        }
         return true;
       });
 
