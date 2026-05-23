@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.14.0...reviewflow-v3.15.0) (2026-05-23)
+
+
+### Added
+
+* **claude-invocation:** re-enable token usage tracking in --bg mode ([#179](https://github.com/DGouron/review-flow/issues/179)) ([ec6f8ea](https://github.com/DGouron/review-flow/commit/ec6f8ea37daad221d1786a3b13749e18afbb51c1))
+
 ## [3.14.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.13.0...reviewflow-v3.14.0) (2026-05-23)
 
 
