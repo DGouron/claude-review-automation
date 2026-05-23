@@ -94,6 +94,7 @@ export async function registerRoutes(
   await app.register(healthRoutes, {
     getConfig: () => ({ version: currentVersion }),
     versionCache,
+    supervisorStatusStore: deps.supervisorStatusStore,
   });
 
   await app.register(settingsRoutes);

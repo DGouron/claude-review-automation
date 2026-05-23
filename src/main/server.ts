@@ -10,6 +10,9 @@ import { PID_FILE_PATH } from '../shared/services/daemonPaths.js';
 import { startCleanupScheduler } from '../frameworks/scheduler/cleanupScheduler.js';
 import { startClaudeInvocationTimers } from '@/frameworks/claude/timers/claudeInvocationTimers.js';
 import { InMemorySupervisorHealthGateway } from '@/modules/claude-invocation/interface-adapters/gateways/supervisorHealth.memory.gateway.js';
+import { startSupervisorScheduler } from '@/frameworks/scheduler/supervisorScheduler.js';
+import { SupervisorCliGateway, createDefaultSupervisorProbe, createDefaultSupervisorSpawner } from '@/modules/supervisor-management/interface-adapters/gateways/supervisor.cli.gateway.js';
+import { SupervisorLockFileSystemGateway, createDefaultSupervisorLockFileSystem, getDefaultSupervisorLockFilePath } from '@/modules/supervisor-management/interface-adapters/gateways/supervisorLock.fileSystem.gateway.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -69,6 +72,24 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     logger: deps.logger,
   });
 
+  const supervisorGateway = new SupervisorCliGateway({
+    probe: createDefaultSupervisorProbe(),
+    spawn: createDefaultSupervisorSpawner(),
+  });
+  const supervisorLockGateway = new SupervisorLockFileSystemGateway({
+    lockFilePath: getDefaultSupervisorLockFilePath(),
+    currentPid: process.pid,
+    fileSystem: createDefaultSupervisorLockFileSystem(),
+  });
+  const supervisorScheduler = startSupervisorScheduler({
+    supervisorGateway,
+    lockGateway: supervisorLockGateway,
+    statusStore: deps.supervisorStatusStore,
+    logger: deps.logger,
+    now: () => new Date(),
+    intervalMs: 60_000,
+  });
+
   // Supervisor health has its own gateway because it is not consumed by the
   // review dispatch path (only by the dashboard). Billing state and session
   // gateway, in contrast, must be shared so a paused billing state pauses
@@ -92,6 +113,7 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     deps.logger.info('Shutting down...');
     cleanupScheduler.stop();
     stopClaudeInvocationTimers();
+    supervisorScheduler.stop();
     removePidFile(PID_FILE_PATH);
     await app.close();
     process.exit(0);

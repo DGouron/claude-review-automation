@@ -4,6 +4,8 @@ import type { FastifyInstance } from 'fastify'
 import { healthRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/health.routes.js'
 import { StubVersionCache } from '@/tests/stubs/versionCache.stub.js'
 import { PackageVersionFactory } from '@/tests/factories/packageVersion.factory.js'
+import { InMemorySupervisorStatusStore } from '@/modules/supervisor-management/interface-adapters/gateways/supervisorStatusStore.memory.gateway.js'
+import { createSupervisorStatus } from '@/modules/supervisor-management/entities/supervisor/supervisorStatus.schema.js'
 
 describe('health routes', () => {
   let application: FastifyInstance
@@ -109,6 +111,62 @@ describe('health routes', () => {
       const body = JSON.parse(response.body)
       expect(response.statusCode).toBe(200)
       expect(body.status).toBe('ok')
+    })
+
+    it('reports the supervisor block from the injected status store', async () => {
+      const store = new InMemorySupervisorStatusStore()
+      store.set(createSupervisorStatus('up', null, new Date('2026-05-23T08:00:00Z')))
+
+      application = Fastify()
+      await application.register(healthRoutes, {
+        getConfig: () => ({ version: '3.6.0' }),
+        supervisorStatusStore: store,
+      })
+      await application.ready()
+
+      const response = await application.inject({ method: 'GET', url: '/health' })
+      const body = JSON.parse(response.body)
+
+      expect(body.status).toBe('ok')
+      expect(body.supervisor.state).toBe('up')
+      expect(body.supervisor.reason).toBeNull()
+      expect(body.supervisor.lastCheckedAt).toBe('2026-05-23T08:00:00.000Z')
+    })
+
+    it('returns degraded status when the supervisor is down', async () => {
+      const store = new InMemorySupervisorStatusStore()
+      store.set(
+        createSupervisorStatus('down', 'supervisor-spawn-failed', new Date('2026-05-23T08:00:00Z')),
+      )
+
+      application = Fastify()
+      await application.register(healthRoutes, {
+        getConfig: () => ({ version: '3.6.0' }),
+        supervisorStatusStore: store,
+      })
+      await application.ready()
+
+      const response = await application.inject({ method: 'GET', url: '/health' })
+      const body = JSON.parse(response.body)
+
+      expect(body.status).toBe('degraded')
+      expect(body.supervisor.state).toBe('down')
+      expect(body.supervisor.reason).toBe('supervisor-spawn-failed')
+    })
+
+    it('returns supervisor state unknown when no store is provided', async () => {
+      application = Fastify()
+      await application.register(healthRoutes, {
+        getConfig: () => ({ version: '3.6.0' }),
+      })
+      await application.ready()
+
+      const response = await application.inject({ method: 'GET', url: '/health' })
+      const body = JSON.parse(response.body)
+
+      expect(body.status).toBe('ok')
+      expect(body.supervisor.state).toBe('unknown')
+      expect(body.supervisor.reason).toBeNull()
     })
   })
 })
