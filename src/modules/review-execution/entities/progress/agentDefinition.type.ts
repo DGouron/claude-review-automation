@@ -8,6 +8,7 @@ export const DEFAULT_AGENTS: AgentDefinition[] = [
   { name: 'ddd', displayName: 'DDD' },
   { name: 'react-best-practices', displayName: 'React' },
   { name: 'solid', displayName: 'SOLID' },
+  { name: 'clean-code', displayName: 'Clean Code' },
   { name: 'testing', displayName: 'Testing' },
   { name: 'code-quality', displayName: 'Code Quality' },
   { name: 'threads', displayName: 'Threads' },

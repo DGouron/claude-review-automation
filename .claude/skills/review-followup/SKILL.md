@@ -135,7 +135,7 @@ For EACH blocking issue identified:
 
 **Call:** `start_agent(jobId, "scan")`
 
-Check only the **critical rules** from CLAUDE.md:
+Check only the **critical rules** from CLAUDE.md and **Clean Code red flags** (see `/.claude/skills/clean-code/SKILL.md`):
 
 | Rule | What to check |
 |------|---------------|
@@ -144,12 +144,18 @@ Check only the **critical rules** from CLAUDE.md:
 | Law of Demeter | No chaining `a.b.c.d` |
 | Imports | `@/` aliases used |
 | Tests | New business logic = new test |
+| Function size (Clean Code) | No new function > 20 lines or with 4+ arguments |
+| Flag arguments (Clean Code) | No new boolean parameter switching behavior |
+| Naming (Clean Code) | No new abbreviation (`ctx`, `idx`, `gw`), intention-revealing identifiers |
+| Comments (Clean Code) | No new comment rephrasing the code, no commented-out code |
+| Magic numbers (Clean Code) | New literals (`> 7`, `* 86400`) extracted to named constants |
 
 **Do not check** (out of scope for follow-up):
 - Global architecture
 - Strategic DDD
 - Framework-specific performance
 - Full SOLID
+- Full Clean Code audit (only red flags above; for a complete pass, see `review-front`)
 
 **Call:** `complete_agent(jobId, "scan", "success")`
 
