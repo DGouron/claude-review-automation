@@ -100,6 +100,16 @@ export class ClaudeSessionCliGateway implements ClaudeSessionGateway {
       input.flags.allowedTools,
       '--disallowedTools',
       input.flags.disallowedTools,
+      // `--allowedTools` and `--disallowedTools` are variadic flags that
+      // slurp every following positional arg until the next flag. Without
+      // an explicit `--` terminator, claude CLI swallows the prompt into
+      // the disallowedTools list and the session is dispatched with no
+      // prompt, leaving the background agent idle forever. Verified with
+      // `claude --print ... --allowedTools Read -- "say hi"` (responds)
+      // vs. `claude --print ... --allowedTools Read "say hi"`
+      // (fails: "Input must be provided either through stdin or as a
+      // prompt argument when using --print").
+      '--',
       input.prompt,
     ];
 
