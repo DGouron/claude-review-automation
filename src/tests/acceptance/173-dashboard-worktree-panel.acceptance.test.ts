@@ -25,6 +25,7 @@ import type {
 import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
 import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 import type { LastSweepSummary } from '@/modules/worktree-management/entities/sweep/lastSweepSummary.schema.js';
+import type { RunSweepNowResult } from '@/modules/worktree-management/entities/sweep/runSweepResult.js';
 
 const NOW = new Date('2026-05-23T12:00:00.000Z');
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -75,10 +76,7 @@ interface BuildAppOptions {
   sizeMap?: Record<string, number | null>;
   lastSweep?: LastSweepSummary | null;
   nextSweepAt?: Date;
-  runSweepNow?: () => Promise<
-    | { status: 'ok'; summary: LastSweepSummary }
-    | { status: 'conflict'; startedAt: Date }
-  >;
+  runSweepNow?: () => Promise<RunSweepNowResult>;
 }
 
 async function buildAcceptanceApp(options: BuildAppOptions): Promise<FastifyInstance> {
@@ -99,10 +97,7 @@ async function buildAcceptanceApp(options: BuildAppOptions): Promise<FastifyInst
 
   let lastSweep = options.lastSweep ?? null;
   const nextSweepAt = options.nextSweepAt ?? NOW;
-  const defaultRunSweep = async (): Promise<
-    | { status: 'ok'; summary: LastSweepSummary }
-    | { status: 'conflict'; startedAt: Date }
-  > => {
+  const defaultRunSweep = async (): Promise<RunSweepNowResult> => {
     const summary = LastSweepSummaryFactory.create({ ranAt: NOW, removed: 4, failures: 0, scanned: 4 });
     lastSweep = summary;
     return { status: 'ok', summary };

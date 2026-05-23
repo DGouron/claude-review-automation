@@ -35,6 +35,9 @@ export interface LastSweepViewModel {
 export interface WorktreePanelViewModel {
   totalCount: number;
   totalSizeBytes: number;
+  activeCount: number;
+  idleCount: number;
+  staleCount: number;
   nextSweepAt: string;
   lastSweep: LastSweepViewModel | null;
   groups: WorktreeGroupViewModel[];
@@ -84,6 +87,9 @@ export class WorktreePanelPresenter {
     const nowMs = this.now().getTime();
     const groupsMap = new Map<string, WorktreeGroupViewModel>();
     let totalSizeBytes = 0;
+    let activeCount = 0;
+    let idleCount = 0;
+    let staleCount = 0;
 
     for (const entry of input.worktrees) {
       const sizeBytes = await this.resolveSize(entry.path, nowMs);
@@ -91,13 +97,17 @@ export class WorktreePanelPresenter {
         totalSizeBytes += sizeBytes;
       }
       const ageSeconds = Math.max(0, Math.floor((nowMs - entry.mtime.getTime()) / 1000));
+      const status = computeStatus(ageSeconds);
+      if (status === 'active') activeCount += 1;
+      else if (status === 'idle') idleCount += 1;
+      else staleCount += 1;
       const row: WorktreeRowViewModel = {
         mrNumber: entry.identity.mrNumber,
         path: entry.path,
         mtime: entry.mtime.toISOString(),
         ageSeconds,
         sizeBytes,
-        status: computeStatus(ageSeconds),
+        status,
       };
       const key = groupKey(entry.identity.platform, entry.identity.projectPath);
       const existing = groupsMap.get(key);
@@ -126,6 +136,9 @@ export class WorktreePanelPresenter {
     return {
       totalCount: input.worktrees.length,
       totalSizeBytes,
+      activeCount,
+      idleCount,
+      staleCount,
       nextSweepAt: input.nextSweepAt.toISOString(),
       lastSweep:
         input.lastSweep === null

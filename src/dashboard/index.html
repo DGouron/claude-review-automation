@@ -317,6 +317,8 @@
       renderWorktreeSection,
       fetchWorktreeOverview,
       triggerManualSweep,
+      snapshotTotals,
+      computeChangedMetricKeys,
     } from './modules/worktreePanel.js';
     import {
       parseBudgetStatusMessage,
@@ -2914,12 +2916,12 @@
 
     function flashChangedMetrics(nextTotals) {
       if (prefersReducedMotion || worktreeSection === null) return;
+      const changedKeys = computeChangedMetricKeys(lastWorktreeTotals, nextTotals);
+      if (changedKeys.length === 0) return;
       const changed = [];
-      for (const key of ['total', 'active', 'idle', 'stale']) {
-        if (lastWorktreeTotals[key] !== null && lastWorktreeTotals[key] !== nextTotals[key]) {
-          const el = worktreeSection.querySelector(`.worktree-metric-value[data-metric="${key}"]`);
-          if (el) changed.push(el);
-        }
+      for (const key of changedKeys) {
+        const el = worktreeSection.querySelector(`.worktree-metric-value[data-metric="${key}"]`);
+        if (el) changed.push(el);
       }
       if (changed.length === 0) return;
       loadAnimeApi().then((anime) => {
@@ -2930,21 +2932,6 @@
           easing: 'easeOutQuad',
         });
       }).catch(() => {});
-    }
-
-    function snapshotTotals(viewModel) {
-      const counters = { active: 0, idle: 0, stale: 0 };
-      for (const group of viewModel.groups) {
-        for (const row of group.worktrees) {
-          counters[row.status] = (counters[row.status] ?? 0) + 1;
-        }
-      }
-      return {
-        total: viewModel.totalCount,
-        active: counters.active,
-        idle: counters.idle,
-        stale: counters.stale,
-      };
     }
 
     async function refreshWorktreeSection({ animate } = { animate: false }) {

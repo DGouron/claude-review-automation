@@ -39,9 +39,28 @@
  * @typedef {Object} WorktreePanelViewModel
  * @property {number} totalCount
  * @property {number} totalSizeBytes
+ * @property {number} activeCount
+ * @property {number} idleCount
+ * @property {number} staleCount
  * @property {string} nextSweepAt
  * @property {LastSweepViewModel | null} lastSweep
  * @property {WorktreeGroupViewModel[]} groups
+ */
+
+/**
+ * @typedef {Object} WorktreeTotals
+ * @property {number} total
+ * @property {number} active
+ * @property {number} idle
+ * @property {number} stale
+ */
+
+/**
+ * @typedef {Object} NullableWorktreeTotals
+ * @property {number | null} total
+ * @property {number | null} active
+ * @property {number | null} idle
+ * @property {number | null} stale
  */
 
 /**
@@ -159,19 +178,19 @@ export function renderWorktreeEmptyState() {
 
 /**
  * @param {WorktreeRowViewModel} row
- * @param {string} projectPath
+ * @param {string} groupLabel  Display label for the row's group (e.g. "gitlab · group/project").
  * @returns {string}
  */
-function renderRow(row, projectPath) {
+function renderRow(row, groupLabel) {
   const escapedPath = escapeHtml(row.path);
   const truncatedPath = escapeHtml(truncatePathMiddle(row.path));
-  const truncatedProjectPath =
-    projectPath.length > 28 ? `${projectPath.slice(0, 24)}…` : projectPath;
+  const truncatedLabel =
+    groupLabel.length > 28 ? `${groupLabel.slice(0, 24)}…` : groupLabel;
   return `
     <tr class="worktree-row" data-status="${escapeHtml(row.status)}">
       <td class="worktree-cell worktree-cell-status">${renderWorktreeStatusBadge(row.status)}</td>
       <td class="worktree-cell worktree-cell-identity">
-        <span class="worktree-project" title="${escapeHtml(projectPath)}">${escapeHtml(truncatedProjectPath)}</span>
+        <span class="worktree-project" title="${escapeHtml(groupLabel)}">${escapeHtml(truncatedLabel)}</span>
         <span class="worktree-mr">#${escapeHtml(row.mrNumber)}</span>
       </td>
       <td class="worktree-cell worktree-cell-path"><span title="${escapedPath}">${truncatedPath}</span></td>
@@ -191,17 +210,39 @@ function renderGroupRows(group) {
 }
 
 /**
+ * Flattens the view model status counts into a single record consumed by the
+ * animation layer (count-up + change-flash). The presenter is the single source
+ * of truth for these counts — this helper just renames the keys.
+ *
  * @param {WorktreePanelViewModel} viewModel
- * @returns {number}
+ * @returns {WorktreeTotals}
  */
-function countByStatus(viewModel, status) {
-  let count = 0;
-  for (const group of viewModel.groups) {
-    for (const row of group.worktrees) {
-      if (row.status === status) count += 1;
-    }
-  }
-  return count;
+export function snapshotTotals(viewModel) {
+  return {
+    total: viewModel.totalCount,
+    active: viewModel.activeCount,
+    idle: viewModel.idleCount,
+    stale: viewModel.staleCount,
+  };
+}
+
+/**
+ * Returns the metric keys whose value changed between two snapshots. A key
+ * whose previous value is null (cold start) is ignored — only transitions
+ * between known values are surfaced.
+ *
+ * @param {NullableWorktreeTotals} previous
+ * @param {WorktreeTotals} next
+ * @returns {Array<'total' | 'active' | 'idle' | 'stale'>}
+ */
+export function computeChangedMetricKeys(previous, next) {
+  const keys = /** @type {Array<'total' | 'active' | 'idle' | 'stale'>} */ ([
+    'total',
+    'active',
+    'idle',
+    'stale',
+  ]);
+  return keys.filter((key) => previous[key] !== null && previous[key] !== next[key]);
 }
 
 /**
@@ -239,18 +280,15 @@ function renderNextSweep(nextSweepAt) {
  */
 export function renderWorktreeSection(viewModel) {
   const isEmpty = viewModel.totalCount === 0;
-  const runningCount = countByStatus(viewModel, 'active');
-  const idleCount = countByStatus(viewModel, 'idle');
-  const staleCount = countByStatus(viewModel, 'stale');
 
   const body = isEmpty
     ? renderWorktreeEmptyState()
     : `
       <div class="worktree-metrics">
         <div class="worktree-metric"><div class="worktree-metric-label">TOTAL</div><div class="worktree-metric-value" data-metric="total">${escapeHtml(viewModel.totalCount)}</div></div>
-        <div class="worktree-metric"><div class="worktree-metric-label">ACTIVE</div><div class="worktree-metric-value" data-metric="active">${escapeHtml(runningCount)}</div></div>
-        <div class="worktree-metric"><div class="worktree-metric-label">IDLE</div><div class="worktree-metric-value" data-metric="idle">${escapeHtml(idleCount)}</div></div>
-        <div class="worktree-metric"><div class="worktree-metric-label">STALE</div><div class="worktree-metric-value" data-metric="stale">${escapeHtml(staleCount)}</div></div>
+        <div class="worktree-metric"><div class="worktree-metric-label">ACTIVE</div><div class="worktree-metric-value" data-metric="active">${escapeHtml(viewModel.activeCount)}</div></div>
+        <div class="worktree-metric"><div class="worktree-metric-label">IDLE</div><div class="worktree-metric-value" data-metric="idle">${escapeHtml(viewModel.idleCount)}</div></div>
+        <div class="worktree-metric"><div class="worktree-metric-label">STALE</div><div class="worktree-metric-value" data-metric="stale">${escapeHtml(viewModel.staleCount)}</div></div>
         <div class="worktree-metric"><div class="worktree-metric-label">TOTAL SIZE</div><div class="worktree-metric-value" data-metric="size">${escapeHtml(formatBytes(viewModel.totalSizeBytes))}</div></div>
       </div>
       <div class="worktree-table-wrapper">

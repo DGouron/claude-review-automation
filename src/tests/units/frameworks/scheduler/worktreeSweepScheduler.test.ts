@@ -240,6 +240,35 @@ describe('worktreeSweepScheduler', () => {
       scheduler.stop();
     });
 
+    it('runSweepNow returns an error result when the internal sweep throws', async () => {
+      const throwingGateway: WorktreeGateway = {
+        list: async () => {
+          throw new Error('disk full');
+        },
+        remove: async () => ({ status: 'absent' }),
+        ensure: async () => ({ status: 'failed', reason: 'not-implemented-in-stub' }),
+        exists: async () => false,
+      };
+      const scheduler = startWorktreeSweepScheduler({
+        worktreeGateway: throwingGateway,
+        trackingGateway: createStubTrackingGateway(),
+        getRepositories: () => [],
+        logger: createStubLogger(),
+        now: () => new Date('2026-05-23T12:00:00Z'),
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      const result = await scheduler.runSweepNow();
+
+      expect(result.status).toBe('error');
+      if (result.status === 'error') {
+        expect(result.reason).toContain('disk full');
+      }
+
+      scheduler.stop();
+    });
+
     it('runSweepNow returns a conflict result when a sweep is already running', async () => {
       let resolveList: (entries: WorktreeEntry[]) => void = () => undefined;
       const blockingGateway: WorktreeGateway = {

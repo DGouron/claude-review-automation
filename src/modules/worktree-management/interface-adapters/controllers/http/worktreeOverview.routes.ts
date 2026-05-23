@@ -3,10 +3,7 @@ import type { Logger } from 'pino';
 import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
 import type { WorktreePanelPresenter } from '@/modules/worktree-management/interface-adapters/presenters/worktreePanel.presenter.js';
 import type { LastSweepSummary } from '@/modules/worktree-management/entities/sweep/lastSweepSummary.schema.js';
-
-export type RunSweepNowResult =
-  | { status: 'ok'; summary: LastSweepSummary }
-  | { status: 'conflict'; startedAt: Date };
+import type { RunSweepNowResult } from '@/modules/worktree-management/entities/sweep/runSweepResult.js';
 
 export interface WorktreeSchedulerControls {
   getLastSweep: () => LastSweepSummary | null;
@@ -48,22 +45,21 @@ export const worktreeOverviewRoutes: FastifyPluginAsync<WorktreeOverviewRoutesOp
       return { error: 'scheduler-unavailable' };
     }
 
-    try {
-      const result = await schedulerControls.runSweepNow();
-      if (result.status === 'conflict') {
-        reply.code(409);
-        return { error: 'sweep-in-progress', startedAt: result.startedAt.toISOString() };
-      }
-      return {
-        ranAt: result.summary.ranAt.toISOString(),
-        removed: result.summary.removed,
-        failures: result.summary.failures,
-        scanned: result.summary.scanned,
-      };
-    } catch (error) {
-      logger.error({ error }, 'Manual worktree sweep failed');
+    const result = await schedulerControls.runSweepNow();
+    if (result.status === 'conflict') {
+      reply.code(409);
+      return { error: 'sweep-in-progress', startedAt: result.startedAt.toISOString() };
+    }
+    if (result.status === 'error') {
+      logger.error({ reason: result.reason }, 'Manual worktree sweep failed');
       reply.code(500);
       return { error: 'sweep-failed' };
     }
+    return {
+      ranAt: result.summary.ranAt.toISOString(),
+      removed: result.summary.removed,
+      failures: result.summary.failures,
+      scanned: result.summary.scanned,
+    };
   });
 };

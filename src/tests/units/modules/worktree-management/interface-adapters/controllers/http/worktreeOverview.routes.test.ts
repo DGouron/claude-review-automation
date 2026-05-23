@@ -48,6 +48,7 @@ interface BuildAppOptions {
   runSweepNow?: () => Promise<
     | { status: 'ok'; summary: LastSweepSummary }
     | { status: 'conflict'; startedAt: Date }
+    | { status: 'error'; reason: string }
   >;
   controlsAbsent?: boolean;
   sizeProbeMap?: Record<string, number | null>;
@@ -194,11 +195,9 @@ describe('worktreeOverviewRoutes', () => {
       await app.close();
     });
 
-    it('returns 500 with a generic message when runSweepNow throws', async () => {
+    it('returns 500 with a generic message when runSweepNow returns an error result', async () => {
       const app = await buildApp({
-        runSweepNow: async () => {
-          throw new Error('disk full');
-        },
+        runSweepNow: async () => ({ status: 'error', reason: 'disk full' }),
       });
 
       const response = await app.inject({ method: 'POST', url: '/api/worktrees/sweep' });

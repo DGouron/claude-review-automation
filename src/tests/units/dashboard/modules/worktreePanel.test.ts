@@ -7,6 +7,8 @@ import {
   triggerManualSweep,
   formatBytes,
   formatRelativeAge,
+  snapshotTotals,
+  computeChangedMetricKeys,
 } from '@/dashboard/modules/worktreePanel.js';
 
 const NOW_ISO = '2026-05-23T12:00:00.000Z';
@@ -15,6 +17,9 @@ function buildViewModel(overrides = {}) {
   return {
     totalCount: 0,
     totalSizeBytes: 0,
+    activeCount: 0,
+    idleCount: 0,
+    staleCount: 0,
     nextSweepAt: '2026-05-24T03:00:00.000Z',
     lastSweep: null,
     groups: [],
@@ -299,5 +304,48 @@ describe('triggerManualSweep', () => {
     const result = await triggerManualSweep(fetchImpl);
 
     expect(result.status).toBe('error');
+  });
+});
+
+describe('snapshotTotals', () => {
+  it('flattens the view model status counts into a single record', () => {
+    const totals = snapshotTotals(
+      buildViewModel({
+        totalCount: 4,
+        activeCount: 2,
+        idleCount: 1,
+        staleCount: 1,
+      }),
+    );
+
+    expect(totals).toEqual({ total: 4, active: 2, idle: 1, stale: 1 });
+  });
+
+  it('returns zeros for an empty pool view model', () => {
+    const totals = snapshotTotals(buildViewModel());
+
+    expect(totals).toEqual({ total: 0, active: 0, idle: 0, stale: 0 });
+  });
+});
+
+describe('computeChangedMetricKeys', () => {
+  it('returns the keys whose values differ between previous and next', () => {
+    const previous = { total: 3, active: 2, idle: 1, stale: 0 };
+    const next = { total: 4, active: 3, idle: 1, stale: 0 };
+
+    expect(computeChangedMetricKeys(previous, next)).toEqual(['total', 'active']);
+  });
+
+  it('returns an empty array when nothing changed', () => {
+    const totals = { total: 1, active: 1, idle: 0, stale: 0 };
+
+    expect(computeChangedMetricKeys(totals, totals)).toEqual([]);
+  });
+
+  it('treats null previous values as no change (cold start)', () => {
+    const previous = { total: null, active: null, idle: null, stale: null };
+    const next = { total: 5, active: 5, idle: 0, stale: 0 };
+
+    expect(computeChangedMetricKeys(previous, next)).toEqual([]);
   });
 });

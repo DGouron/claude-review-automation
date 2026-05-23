@@ -270,6 +270,48 @@ describe('WorktreePanelPresenter', () => {
       expect(viewModel.groups).toEqual([]);
       expect(viewModel.totalCount).toBe(0);
       expect(viewModel.totalSizeBytes).toBe(0);
+      expect(viewModel.activeCount).toBe(0);
+      expect(viewModel.idleCount).toBe(0);
+      expect(viewModel.staleCount).toBe(0);
+    });
+  });
+
+  describe('status counts', () => {
+    it('exposes activeCount / idleCount / staleCount computed from status thresholds', async () => {
+      const entries: WorktreeEntry[] = [
+        buildEntry(
+          { platform: 'gitlab', projectPath: 'group/active-a', mrNumber: 1 },
+          new Date(NOW.getTime() - ONE_HOUR_MS),
+          '/tmp/worktrees/active-a',
+        ),
+        buildEntry(
+          { platform: 'gitlab', projectPath: 'group/active-b', mrNumber: 2 },
+          new Date(NOW.getTime() - 2 * ONE_HOUR_MS),
+          '/tmp/worktrees/active-b',
+        ),
+        buildEntry(
+          { platform: 'gitlab', projectPath: 'group/idle', mrNumber: 3 },
+          new Date(NOW.getTime() - 36 * ONE_HOUR_MS),
+          '/tmp/worktrees/idle',
+        ),
+        buildEntry(
+          { platform: 'gitlab', projectPath: 'group/stale', mrNumber: 4 },
+          new Date(NOW.getTime() - 8 * ONE_DAY_MS),
+          '/tmp/worktrees/stale',
+        ),
+      ];
+      for (const entry of entries) sizeProbe.setSize(entry.path, 100);
+
+      const viewModel = await presenter.present({
+        worktrees: entries,
+        lastSweep: null,
+        nextSweepAt: NOW,
+      });
+
+      expect(viewModel.activeCount).toBe(2);
+      expect(viewModel.idleCount).toBe(1);
+      expect(viewModel.staleCount).toBe(1);
+      expect(viewModel.totalCount).toBe(4);
     });
   });
 
