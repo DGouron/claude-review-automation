@@ -20,7 +20,8 @@ import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getJobContextFilePath } from '@/shared/services/mcpJobContext.js';
 import { buildLanguageDirective } from '@/frameworks/claude/languageDirective.js';
 import type { ClaudeModelName } from '@/modules/review-execution/entities/modelRouting/modelRouting.schema.js';
-import type { TokenUsage } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
+import type { TokenUsage, TokenUsageRecord } from '@/modules/token-accounting/entities/tokenUsage/tokenUsage.schema.js';
+import { broadcastBudgetAfterUsage } from '@/frameworks/claude/broadcastBudgetAfterUsage.js';
 import { SelectModelForReviewUseCase } from '@/modules/review-execution/usecases/selectModelForReview/selectModelForReview.usecase.js';
 import { ProjectConfigRoutingPolicyGateway } from '@/modules/review-execution/interface-adapters/gateways/projectConfig/routingPolicy.projectConfig.gateway.js';
 import { TrackTokenUsageUseCase } from '@/modules/token-accounting/usecases/trackTokenUsage/trackTokenUsage.usecase.js';
@@ -665,11 +666,40 @@ async function invokeViaBackgroundSession(
       }
     }
 
-    // Token usage tracking is disabled in --bg mode: the legacy stream-json
-    // path is gone and `claude --bg` does not emit usage to stdout. Re-enabling
-    // requires parsing `claude logs <sessionId>` — tracked in SPEC-171
-    // (docs/specs/171-bg-token-usage-tracking.md). Until SPEC-171 ships, the
-    // budget dashboard reports zero spending for --bg reviews.
+    if (result.usage !== null) {
+      try {
+        const tokenUsageRecord: TokenUsageRecord = {
+          jobId: job.id,
+          mrNumber: job.mrNumber,
+          platform: job.platform,
+          projectPath: job.projectPath,
+          model: result.usage.model,
+          recordedAt: new Date().toISOString(),
+          localPath: job.localPath,
+          usage: result.usage.usage,
+        };
+        await deps.trackTokenUsage.execute(tokenUsageRecord);
+        await broadcastBudgetAfterUsage(
+          {
+            getBudgetStatus: deps.getBudgetStatus,
+            broadcastBudgetStatus: deps.broadcastBudgetStatus,
+            presenter: deps.budgetStatusPresenter,
+          },
+          { localPaths: deps.getEnabledLocalPaths?.() ?? [job.localPath] },
+          logger,
+        );
+      } catch (tokenUsageError) {
+        logger.warn(
+          { error: tokenUsageError, jobId: job.id },
+          'Failed to record token usage for --bg review',
+        );
+      }
+    } else {
+      logger.warn(
+        { jobId: job.id, sessionContext: worktreePath },
+        'Token usage unavailable for --bg review (missing or unparseable JSONL transcript)',
+      );
+    }
 
     if (onProgress) {
       onProgress({
@@ -686,7 +716,7 @@ async function invokeViaBackgroundSession(
       stdout: result.content,
       stderr: '',
       durationMs,
-      usage: null,
+      usage: result.usage?.usage ?? null,
       selectedModel: model,
     };
   }

@@ -12,6 +12,7 @@ import {
   parseSessionId,
   type SessionId,
 } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
+import type { SessionUsageSnapshot } from '@/modules/claude-invocation/entities/claudeSession/sessionUsage.schema.js';
 
 interface ScheduledAgentStatus {
   sessionId: SessionId;
@@ -24,6 +25,7 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
   stopCalls: string[] = [];
   removeCalls: string[] = [];
   listAgentsCallCount = 0;
+  getSessionUsageCalls: Array<{ sessionId: SessionId; cwd: string }> = [];
 
   private dispatchResult: DispatchResult = {
     status: 'dispatched',
@@ -32,6 +34,7 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
   private daemonStatusValue: DaemonStatus = { reachable: true, reason: null };
   private usageValue: UsageReport = { usesApiPool: false, raw: 'subscription pool' };
   private scheduledAgentStatuses: ScheduledAgentStatus[] = [];
+  private sessionUsageResult: SessionUsageSnapshot | null = null;
 
   setDispatchResult(result: DispatchResult): void {
     this.dispatchResult = result;
@@ -43,6 +46,10 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
 
   setUsage(report: UsageReport): void {
     this.usageValue = report;
+  }
+
+  setSessionUsage(value: SessionUsageSnapshot | null): void {
+    this.sessionUsageResult = value;
   }
 
   scheduleAgentCompletion(
@@ -85,5 +92,13 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
 
   async usage(): Promise<UsageReport> {
     return this.usageValue;
+  }
+
+  async getSessionUsage(
+    sessionId: SessionId,
+    cwd: string,
+  ): Promise<SessionUsageSnapshot | null> {
+    this.getSessionUsageCalls.push({ sessionId, cwd });
+    return this.sessionUsageResult;
   }
 }

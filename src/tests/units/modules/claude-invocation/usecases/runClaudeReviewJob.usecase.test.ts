@@ -168,6 +168,108 @@ describe('runClaudeReviewJob orchestrator', () => {
     }
   });
 
+  describe('SPEC-171 — session usage capture between completion and cleanup', () => {
+    it('calls getSessionUsage once when outcome is completed and returns the snapshot in the result', async () => {
+      const ctx = buildDeps();
+      ctx.sessionGateway.setDispatchResult({
+        status: 'dispatched',
+        sessionId: parseSessionId('usg00001'),
+      });
+      ctx.completionBridge.scheduleCompletion('gitlab:owner/repo:42', {
+        source: 'mcp',
+        outcome: 'completed',
+        reason: null,
+      });
+      ctx.sessionGateway.setSessionUsage({
+        model: 'claude-opus-4-7',
+        usage: {
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          costUsd: 0.0019,
+        },
+      });
+
+      const runPromise = runClaudeReviewJob(buildInput(), ctx.deps);
+      await vi.runAllTimersAsync();
+      const result = await runPromise;
+
+      expect(ctx.sessionGateway.getSessionUsageCalls).toHaveLength(1);
+      expect(ctx.sessionGateway.getSessionUsageCalls[0]?.sessionId).toBe(parseSessionId('usg00001'));
+      expect(ctx.sessionGateway.getSessionUsageCalls[0]?.cwd).toBe('/tmp/project');
+      expect(result.status).toBe('completed');
+      if (result.status === 'completed') {
+        expect(result.usage).not.toBeNull();
+        expect(result.usage?.model).toBe('claude-opus-4-7');
+        expect(result.usage?.usage.inputTokens).toBe(100);
+      }
+    });
+
+    it('returns usage null in the completed result when the gateway returns null', async () => {
+      const ctx = buildDeps();
+      ctx.sessionGateway.setDispatchResult({
+        status: 'dispatched',
+        sessionId: parseSessionId('usg00002'),
+      });
+      ctx.completionBridge.scheduleCompletion('gitlab:owner/repo:42', {
+        source: 'mcp',
+        outcome: 'completed',
+        reason: null,
+      });
+      ctx.sessionGateway.setSessionUsage(null);
+
+      const runPromise = runClaudeReviewJob(buildInput(), ctx.deps);
+      await vi.runAllTimersAsync();
+      const result = await runPromise;
+
+      expect(result.status).toBe('completed');
+      if (result.status === 'completed') {
+        expect(result.usage).toBeNull();
+      }
+    });
+
+    it('does NOT call getSessionUsage when outcome is failed', async () => {
+      const ctx = buildDeps();
+      ctx.sessionGateway.setDispatchResult({
+        status: 'dispatched',
+        sessionId: parseSessionId('usg00003'),
+      });
+      ctx.completionBridge.scheduleCompletion('gitlab:owner/repo:42', {
+        source: 'mcp',
+        outcome: 'failed',
+        reason: 'agent-crash',
+      });
+
+      const runPromise = runClaudeReviewJob(buildInput(), ctx.deps);
+      await vi.runAllTimersAsync();
+      const result = await runPromise;
+
+      expect(ctx.sessionGateway.getSessionUsageCalls).toHaveLength(0);
+      expect(result.status).toBe('failed');
+    });
+
+    it('does NOT call getSessionUsage on timeout', async () => {
+      const ctx = buildDeps();
+      ctx.sessionGateway.setDispatchResult({
+        status: 'dispatched',
+        sessionId: parseSessionId('usg00004'),
+      });
+      let nowMs = new Date('2026-05-22T10:00:00Z').getTime();
+      const deps = { ...ctx.deps, now: (): Date => new Date(nowMs) };
+
+      const runPromise = runClaudeReviewJob(buildInput(), deps);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      nowMs += 16 * 60_000;
+      await vi.advanceTimersByTimeAsync(16 * 60_000);
+      await runPromise;
+
+      expect(ctx.sessionGateway.getSessionUsageCalls).toHaveLength(0);
+    });
+  });
+
   it('returns "failed" with reason "timeout" when no signal arrives in time', async () => {
     const ctx = buildDeps();
     ctx.sessionGateway.setDispatchResult({

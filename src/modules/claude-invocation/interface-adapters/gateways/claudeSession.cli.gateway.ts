@@ -1,3 +1,6 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { z } from 'zod';
 import type {
   AgentStatusEntry,
@@ -13,6 +16,8 @@ import {
   parseSessionId,
   type SessionId,
 } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
+import type { SessionUsageSnapshot } from '@/modules/claude-invocation/entities/claudeSession/sessionUsage.schema.js';
+import { computeCostUsd } from '@/modules/token-accounting/entities/modelPricing/modelPricing.js';
 
 export interface ClaudeProcessRunArgs {
   args: string[];
@@ -39,6 +44,19 @@ const agentEntrySchema = z.object({
 });
 const agentArraySchema = z.array(agentEntrySchema);
 
+const assistantUsageLineSchema = z.object({
+  type: z.literal('assistant'),
+  message: z.object({
+    model: z.string(),
+    usage: z.object({
+      input_tokens: z.number(),
+      output_tokens: z.number(),
+      cache_creation_input_tokens: z.number().optional(),
+      cache_read_input_tokens: z.number().optional(),
+    }),
+  }),
+});
+
 function classifyAgentStatus(raw: string | undefined): AgentStatusValue {
   if (raw === 'running' || raw === 'completed' || raw === 'failed' || raw === 'stopped') {
     return raw;
@@ -46,8 +64,19 @@ function classifyAgentStatus(raw: string | undefined): AgentStatusValue {
   return 'unknown';
 }
 
+export interface ClaudeSessionCliGatewayOptions {
+  homeDir?: string;
+}
+
 export class ClaudeSessionCliGateway implements ClaudeSessionGateway {
-  constructor(private readonly runner: ClaudeProcessRunner) {}
+  private readonly homeDir: string;
+
+  constructor(
+    private readonly runner: ClaudeProcessRunner,
+    options: ClaudeSessionCliGatewayOptions = {},
+  ) {
+    this.homeDir = options.homeDir ?? homedir();
+  }
 
   async dispatch(input: DispatchInput): Promise<DispatchResult> {
     const args = [
@@ -135,4 +164,70 @@ export class ClaudeSessionCliGateway implements ClaudeSessionGateway {
     const usesApiPool = /\bAPI\b/i.test(raw) && /(token|cost|charge|pool)/i.test(raw);
     return { usesApiPool, raw };
   }
+
+  async getSessionUsage(
+    sessionId: SessionId,
+    cwd: string,
+  ): Promise<SessionUsageSnapshot | null> {
+    const slug = cwd.replace(/\//g, '-');
+    const transcriptPath = join(this.homeDir, '.claude', 'projects', slug, `${sessionId}.jsonl`);
+    if (!existsSync(transcriptPath)) {
+      return null;
+    }
+
+    let raw: string;
+    try {
+      raw = readFileSync(transcriptPath, 'utf-8');
+    } catch {
+      return null;
+    }
+
+    const entries = raw
+      .split('\n')
+      .filter(line => line.trim().length > 0)
+      .map(line => safeParseAssistantUsage(line))
+      .filter((entry): entry is z.infer<typeof assistantUsageLineSchema> => entry !== null);
+
+    if (entries.length === 0) {
+      return null;
+    }
+
+    const totals = entries.reduce(
+      (accumulator, entry) => {
+        const usage = entry.message.usage;
+        accumulator.inputTokens += usage.input_tokens;
+        accumulator.outputTokens += usage.output_tokens;
+        accumulator.cacheCreationInputTokens += usage.cache_creation_input_tokens ?? 0;
+        accumulator.cacheReadInputTokens += usage.cache_read_input_tokens ?? 0;
+        return accumulator;
+      },
+      {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+      },
+    );
+
+    const lastEntry = entries[entries.length - 1];
+    const model = lastEntry.message.model;
+    const usageWithoutCost = { ...totals, costUsd: 0 };
+    const costUsd = computeCostUsd(model, usageWithoutCost);
+
+    return {
+      model,
+      usage: { ...totals, costUsd },
+    };
+  }
+}
+
+function safeParseAssistantUsage(line: string): z.infer<typeof assistantUsageLineSchema> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  const result = assistantUsageLineSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }
