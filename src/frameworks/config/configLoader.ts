@@ -3,6 +3,11 @@ import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { config as loadEnv } from 'dotenv';
 import { getConfigDir } from '../../shared/services/configDir.js';
+import {
+  type ReviewFocus,
+  isReviewFocus,
+  reviewSkillForFocus,
+} from '@/modules/review-execution/entities/progress/reviewFocus.type.js';
 
 const configDir = getConfigDir();
 const xdgEnvPath = join(configDir, '.env');
@@ -60,6 +65,7 @@ interface ProjectConfig {
   github?: boolean;
   gitlab?: boolean;
   reviewSkill?: string;
+  reviewFocus?: ReviewFocus;
 }
 
 function loadProjectConfig(localPath: string): ProjectConfig | null {
@@ -69,7 +75,21 @@ function loadProjectConfig(localPath: string): ProjectConfig | null {
   }
   try {
     const content = readFileSync(configPath, 'utf-8');
-    return JSON.parse(content) as ProjectConfig;
+    const parsed = JSON.parse(content) as Record<string, unknown>;
+    const result: ProjectConfig = {};
+    if (typeof parsed.github === 'boolean') {
+      result.github = parsed.github;
+    }
+    if (typeof parsed.gitlab === 'boolean') {
+      result.gitlab = parsed.gitlab;
+    }
+    if (typeof parsed.reviewSkill === 'string') {
+      result.reviewSkill = parsed.reviewSkill;
+    }
+    if (isReviewFocus(parsed.reviewFocus)) {
+      result.reviewFocus = parsed.reviewFocus;
+    }
+    return result;
   } catch {
     return null;
   }
@@ -112,7 +132,9 @@ function enrichRepository(input: RepositoryInput): RepositoryConfig | null {
   }
 
   const platform: 'gitlab' | 'github' = projectConfig.gitlab ? 'gitlab' : 'github';
-  const skill = projectConfig.reviewSkill || 'review-code';
+  const skill =
+    projectConfig.reviewSkill ||
+    (projectConfig.reviewFocus ? reviewSkillForFocus(projectConfig.reviewFocus) : 'review-code');
 
   return {
     name: input.name,

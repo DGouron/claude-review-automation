@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'node:fs';
-import { loadProjectConfig, getProjectLanguage, getProjectRetentionDays } from '@/config/projectConfig.js';
+import {
+  loadProjectConfig,
+  getProjectLanguage,
+  getProjectRetentionDays,
+  getProjectAgentsOrFocusDefaults,
+} from '@/config/projectConfig.js';
+import {
+  DEFAULT_FRONT_AGENTS,
+  DEFAULT_BACK_AGENTS,
+  DEFAULT_FULLSTACK_AGENTS,
+  DEFAULT_DOC_AGENTS,
+} from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
+import { clearLogs, getLogs } from '@/frameworks/logging/logBuffer.js';
+import { ProjectConfigFactory } from '@/tests/factories/projectConfig.factory.js';
 
 vi.mock('node:fs');
 
@@ -233,5 +246,184 @@ describe('loadProjectConfig — routingPolicy', () => {
     const config = loadProjectConfig('/fake/path');
 
     expect(config?.routingPolicy).toBeUndefined();
+  });
+});
+
+describe('loadProjectConfig — reviewFocus derivation', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    clearLogs();
+  });
+
+  it('derives reviewSkill as "review-back" when reviewFocus is "back" and reviewSkill is absent', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'back', reviewSkill: undefined }),
+      ),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.reviewSkill).toBe('review-back');
+    expect(config?.reviewFocus).toBe('back');
+  });
+
+  it('derives reviewSkill as "review-front" for "front" focus', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'front', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(loadProjectConfig('/fake/path')?.reviewSkill).toBe('review-front');
+  });
+
+  it('derives reviewSkill as "review-fullstack" for "fullstack" focus', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'fullstack', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(loadProjectConfig('/fake/path')?.reviewSkill).toBe('review-fullstack');
+  });
+
+  it('derives reviewSkill as "review-doc" for "doc" focus', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'doc', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(loadProjectConfig('/fake/path')?.reviewSkill).toBe('review-doc');
+  });
+
+  it('keeps explicit reviewSkill and logs a warning when both reviewFocus and reviewSkill are set', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'back', reviewSkill: 'my-custom-skill' }),
+      ),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.reviewSkill).toBe('my-custom-skill');
+    expect(config?.reviewFocus).toBe('back');
+    const warnLogs = getLogs().filter(log => log.level === 'warn');
+    expect(warnLogs.length).toBeGreaterThan(0);
+    expect(warnLogs[0]?.message).toContain('reviewSkill takes precedence');
+  });
+
+  it('throws an error listing the four valid focus values when reviewFocus is invalid', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'mobile' }),
+      ),
+    );
+
+    expect(() => loadProjectConfig('/fake/path')).toThrow(
+      /Invalid reviewFocus.*'front'.*'back'.*'fullstack'.*'doc'/,
+    );
+  });
+
+  it('still throws when both reviewFocus and reviewSkill are missing (no over-relaxation)', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewFollowupSkill: 'review-followup',
+      }),
+    );
+
+    expect(() => loadProjectConfig('/fake/path')).toThrow(/reviewSkill/);
+  });
+});
+
+describe('getProjectAgentsOrFocusDefaults', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('returns the explicit agents array when one is set in config', () => {
+    const explicitAgents = [{ name: 'security', displayName: 'Security' }];
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({
+          reviewFocus: 'back',
+          reviewSkill: undefined,
+          agents: explicitAgents,
+        }),
+      ),
+    );
+
+    expect(getProjectAgentsOrFocusDefaults('/fake/path')).toEqual(explicitAgents);
+  });
+
+  it('falls back to DEFAULT_FRONT_AGENTS when reviewFocus is "front" and no agents array is set', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'front', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(getProjectAgentsOrFocusDefaults('/fake/path')).toEqual(DEFAULT_FRONT_AGENTS);
+  });
+
+  it('falls back to DEFAULT_BACK_AGENTS when reviewFocus is "back"', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'back', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(getProjectAgentsOrFocusDefaults('/fake/path')).toEqual(DEFAULT_BACK_AGENTS);
+  });
+
+  it('falls back to DEFAULT_FULLSTACK_AGENTS when reviewFocus is "fullstack"', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'fullstack', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(getProjectAgentsOrFocusDefaults('/fake/path')).toEqual(DEFAULT_FULLSTACK_AGENTS);
+  });
+
+  it('falls back to DEFAULT_DOC_AGENTS when reviewFocus is "doc"', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(
+        ProjectConfigFactory.create({ reviewFocus: 'doc', reviewSkill: undefined }),
+      ),
+    );
+
+    expect(getProjectAgentsOrFocusDefaults('/fake/path')).toEqual(DEFAULT_DOC_AGENTS);
+  });
+
+  it('returns undefined when neither agents nor reviewFocus is set', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify(ProjectConfigFactory.create({ reviewFocus: undefined })),
+    );
+
+    expect(getProjectAgentsOrFocusDefaults('/fake/path')).toBeUndefined();
+  });
+
+  it('returns undefined when the config does not exist', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    expect(getProjectAgentsOrFocusDefaults('/nonexistent')).toBeUndefined();
   });
 });
