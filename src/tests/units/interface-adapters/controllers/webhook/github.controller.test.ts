@@ -311,11 +311,18 @@ describe('handleGitHubWebhook', () => {
         stdout: 'Error occurred',
         durationMs: 10000,
         exitCode: 1,
-        stderr: '',
+        stderr: 'dispatch-failed: branch-not-found',
       };
 
+      // Simulate pQueue behaviour: queue swallows processor throws and surfaces
+      // them via jobStatus.error (see pQueueAdapter.ts catch block).
       vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
-        await callback(job, new AbortController().signal);
+        try {
+          await callback(job, new AbortController().signal);
+        } catch {
+          // expected: controller now throws on dispatch failure so the
+          // queue can populate jobStatus.error for dashboard surfacing
+        }
         return true;
       });
 
@@ -630,6 +637,89 @@ describe('handleGitHubWebhook', () => {
       expect(enqueueReview).not.toHaveBeenCalled();
       expect(deps.recordPush.execute).not.toHaveBeenCalled();
       expect(mockReply.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe('cross-fork PR detection (FR-8)', () => {
+    it('populates ReviewJob.sourceForkCloneUrl on a fresh review when head.repo differs from base.repo', async () => {
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      (event.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'contributor/test-repo',
+        clone_url: 'https://github.com/contributor/test-repo.git',
+      };
+      (event.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      };
+
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(enqueueReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobType: 'review',
+          sourceForkCloneUrl: 'https://github.com/contributor/test-repo.git',
+        }),
+        expect.any(Function),
+      );
+    });
+
+    it('leaves ReviewJob.sourceForkCloneUrl undefined for a same-repo review', async () => {
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      (event.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+        clone_url: 'https://github.com/test-owner/test-repo.git',
+      };
+      (event.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      };
+
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(enqueueReview).toHaveBeenCalled();
+      const enqueuedJob = vi.mocked(enqueueReview).mock.calls[0][0];
+      expect(enqueuedJob.sourceForkCloneUrl).toBeUndefined();
+    });
+
+    it('propagates sourceForkCloneUrl to the followup job on cross-fork synchronize', async () => {
+      const deps = createMockDeps();
+      const trackedMr = TrackedMrFactory.create({
+        id: 'github-test-owner/test-repo-123',
+        mrNumber: 123,
+        platform: 'github',
+        project: 'test-owner/test-repo',
+        state: 'pending-fix',
+        openThreads: 3,
+        totalThreads: 3,
+        lastPushAt: '2026-05-20T12:00:00Z',
+        lastReviewAt: '2026-05-20T10:00:00Z',
+        autoFollowup: true,
+      });
+      (deps.recordPush.execute as ReturnType<typeof vi.fn>).mockReturnValue(trackedMr);
+      (deps.checkFollowupNeeded.execute as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      const event = GitHubEventFactory.createSynchronizePr();
+      (event.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'contributor/test-repo',
+        clone_url: 'https://github.com/contributor/test-repo.git',
+      };
+      (event.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      };
+
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobType: 'followup',
+          sourceForkCloneUrl: 'https://github.com/contributor/test-repo.git',
+        }),
+        expect.any(Function),
+      );
     });
   });
 

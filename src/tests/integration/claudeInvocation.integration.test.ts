@@ -74,7 +74,11 @@ describe('SPEC-169 — end-to-end integration: production wire-up reaches runCla
 
   it('dispatches via --bg, observes MCP completion through the FS bridge, retrieves the report, and cleans up', async () => {
     const { runner, responses, calls } = makeFakeRunner();
-    responses.set('--bg', { stdout: 'Started session abc12345\n', stderr: '', exitCode: 0 });
+    responses.set('--bg', {
+      stdout: 'backgrounded · abc12345\n  claude attach abc12345    open in this terminal\n',
+      stderr: '',
+      exitCode: 0,
+    });
     responses.set('stop', { stdout: '', stderr: '', exitCode: 0 });
     responses.set('rm', { stdout: '', stderr: '', exitCode: 0 });
 

@@ -48,9 +48,13 @@ const baseDispatchInput = {
 };
 
 describe('ClaudeSessionCliGateway.dispatch', () => {
-  it('extracts the session id from claude --bg stdout', async () => {
+  it('extracts the session id from claude --bg stdout (new "backgrounded · <id>" format)', async () => {
     const { runner, calls } = createRunner([
-      { stdout: 'Started session 7c5dcf5d\nLogs: ~/.claude/logs/...', stderr: '', exitCode: 0 },
+      {
+        stdout: 'backgrounded · 7c5dcf5d\n  claude agents             list sessions\n  claude attach 7c5dcf5d    open in this terminal',
+        stderr: '',
+        exitCode: 0,
+      },
     ]);
     const gateway = new ClaudeSessionCliGateway(runner);
 
@@ -63,6 +67,10 @@ describe('ClaudeSessionCliGateway.dispatch', () => {
     expect(calls[0]?.args).toContain('--bg');
     expect(calls[0]?.args).not.toContain('-p');
     expect(calls[0]?.args).not.toContain('--print');
+    // --permission-mode auto is used; --dangerously-skip-permissions
+    // must NOT be added because it is an alias for bypassPermissions,
+    // which contradicts auto and triggers the disclaimer requirement.
+    expect(calls[0]?.args).not.toContain('--dangerously-skip-permissions');
   });
 
   it('returns "rate-limited" when stderr matches a rate-limit pattern', async () => {
@@ -112,7 +120,7 @@ describe('ClaudeSessionCliGateway.dispatch', () => {
     expect(result.status).toBe('failed');
   });
 
-  it('does not capture a hex sequence appearing outside the "Started session" prefix', async () => {
+  it('does not capture a hex sequence appearing outside the "backgrounded · <id>" prefix', async () => {
     const { runner } = createRunner([
       { stdout: 'Error: failed to start (code abc12345)\nLogs at /tmp/deadbeef.log', stderr: '', exitCode: 0 },
     ]);
@@ -123,9 +131,13 @@ describe('ClaudeSessionCliGateway.dispatch', () => {
     expect(result.status).toBe('failed');
   });
 
-  it('captures session id only from the dedicated "Started session" line', async () => {
+  it('captures session id only from the dedicated "backgrounded · <id>" line', async () => {
     const { runner } = createRunner([
-      { stdout: 'Spawning daemon abc123\nStarted session 7c5dcf5d\nLogs at /tmp/deadbeef.log', stderr: '', exitCode: 0 },
+      {
+        stdout: 'Spawning daemon abc123\nbackgrounded · 7c5dcf5d\n  claude attach 7c5dcf5d    open in this terminal',
+        stderr: '',
+        exitCode: 0,
+      },
     ]);
     const gateway = new ClaudeSessionCliGateway(runner);
 

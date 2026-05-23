@@ -36,7 +36,13 @@ export type ClaudeProcessRunner = (
 ) => Promise<ClaudeProcessRunResult>;
 
 export const RATE_LIMIT_DETECTION_REGEX = /\b(rate[\s-]?limit|429|throttl)/i;
-const SESSION_ID_REGEX = /^Started session ([0-9a-f]+)$/m;
+// Claude CLI (>= 2.1.x) outputs the new background session in the form:
+//   "backgrounded · <hexSessionId>"
+// followed by a multi-line "claude agents" hint block. The middle dot is
+// U+00B7 (·). The daemon spawns the CLI with a piped stdout, so no ANSI
+// colour codes wrap the id — interactive TTY output is not the dispatcher
+// path and is not handled here.
+const SESSION_ID_REGEX = /^backgrounded\s*[·]\s*([0-9a-f]+)/m;
 
 const agentEntrySchema = z.object({
   id: z.string().min(1),
@@ -94,7 +100,6 @@ export class ClaudeSessionCliGateway implements ClaudeSessionGateway {
       input.flags.allowedTools,
       '--disallowedTools',
       input.flags.disallowedTools,
-      '--dangerously-skip-permissions',
       input.prompt,
     ];
 

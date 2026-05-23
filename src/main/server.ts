@@ -8,6 +8,7 @@ import { initQueue } from '../frameworks/queue/pQueueAdapter.js';
 import { removePidFile } from '../shared/services/pidFileManager.js';
 import { PID_FILE_PATH } from '../shared/services/daemonPaths.js';
 import { startCleanupScheduler } from '../frameworks/scheduler/cleanupScheduler.js';
+import { startWorktreeSweepScheduler } from '../frameworks/scheduler/worktreeSweepScheduler.js';
 import { startClaudeInvocationTimers } from '@/frameworks/claude/timers/claudeInvocationTimers.js';
 import { InMemorySupervisorHealthGateway } from '@/modules/claude-invocation/interface-adapters/gateways/supervisorHealth.memory.gateway.js';
 import { startSupervisorScheduler } from '@/frameworks/scheduler/supervisorScheduler.js';
@@ -72,6 +73,14 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     logger: deps.logger,
   });
 
+  const worktreeSweepScheduler = startWorktreeSweepScheduler({
+    worktreeGateway: deps.worktreeGateway,
+    trackingGateway: deps.reviewRequestTrackingGateway,
+    getRepositories: () => config.repositories,
+    logger: deps.logger,
+    now: () => new Date(),
+  });
+
   const supervisorGateway = new SupervisorCliGateway({
     probe: createDefaultSupervisorProbe(),
     spawn: createDefaultSupervisorSpawner(),
@@ -112,6 +121,7 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
   const shutdown = async () => {
     deps.logger.info('Shutting down...');
     cleanupScheduler.stop();
+    worktreeSweepScheduler.stop();
     stopClaudeInvocationTimers();
     supervisorScheduler.stop();
     removePidFile(PID_FILE_PATH);

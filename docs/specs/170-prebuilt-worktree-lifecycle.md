@@ -2,11 +2,51 @@
 title: "SPEC-170: Pre-built Worktree Lifecycle Managed by ReviewFlow"
 labels: enhancement, P2-important, worktree, webhook
 milestone: June 15 Migration
-status: DRAFT
+status: implemented
 blocked-by: SPEC-169
 ---
 
 # SPEC-170: Pre-built Worktree Lifecycle Managed by ReviewFlow
+
+## Status: implemented
+
+All 9 functional requirements shipped across 2 PRs. Acceptance file **11/11 GREEN**. AC-11 (manual one-time sweep of pre-SPEC-170 worktrees on prod) remains a deploy-runbook task, not a code item.
+
+## Implementation
+
+Shipped across two PRs.
+
+**PR #175 — FRs 1, 2, 3, 4, 5, 7, 9** (report: `docs/reports/170-prebuilt-worktree-lifecycle.report.md`)
+
+- New bounded context `src/modules/worktree-management/` (entities, gateways, use cases)
+- Path convention + ensure-or-reuse + dispatch-from-worktree + bgIsolation settings + close/merge cleanup + system prompt slimming + MR-scoped p-queue serialization
+- 5 acceptance scenarios GREEN (3, 4, 5, 10, 11)
+
+**FR-6 + FR-8 follow-up** (plan: `docs/plans/170-prebuilt-worktree-lifecycle-fr6-fr8.plan.md` · report: `docs/reports/170-prebuilt-worktree-lifecycle-fr6-fr8.report.md`)
+
+- `src/frameworks/scheduler/worktreeSweepScheduler.ts` — daily 24h sweep wrapping the existing `sweepStaleWorktrees` use case; booted in `src/main/server.ts` alongside `cleanupScheduler`
+- `src/modules/platform-integration/entities/github/githubPullRequestEvent.guard.ts` — optional `head.repo` + `base.repo`
+- `src/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.ts` — `computeSourceForkCloneUrl` helper populates `ReviewJob.sourceForkCloneUrl` on both fresh and followup paths; existing `deriveMrSourceFromJob → ensureWorktree → deriveFetchRef` chain does the rest
+- `src/main/dependencies.ts` + `src/main/routes.ts` — `worktreeGateway` + `gitCommandExecutor` promoted to `Dependencies` (single executor instance shared by routes, scheduler, gateway)
+- 4 acceptance scenarios GREEN (6, 7, 8, 9)
+
+**Acceptance close-out — same PR**
+
+- `src/tests/acceptance/170-prebuilt-worktree-lifecycle.acceptance.test.ts` — scenarios 1 + 2 converted from `it.todo` to active tests at the `ensureWorktree` boundary (same assertion shape as scenario 9). Acceptance file now **11/11 GREEN**.
+
+**Architectural decisions taken**
+
+| Decision | Choice |
+|----------|--------|
+| Mapping storage | None — path encodes identity, active MR list from existing tracker |
+| Worktree location | `~/.reviewflow/worktrees/<platform>-<projectSlug>-<mrNumber>/` |
+| Per-MR serialization | MR-scoped p-queue concurrency key (extends existing `pQueueAdapter`) |
+| Single `GitCommandExecutor` instance | Avoids `.git/worktree.lock` contention between sweep + close-branch action |
+| Fork auth | Operator-managed (cached HTTPS creds or SSH key); failure surfaces as `branch-not-found` |
+
+**Deferred (deploy-runbook task, not code)**
+
+- AC-11 — manual one-time sweep of pre-SPEC-170 worktrees on the operator's prod server
 
 ## Context
 

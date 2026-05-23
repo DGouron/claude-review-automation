@@ -63,5 +63,37 @@ describe('gitHubPullRequestEventGuard', () => {
         expect(result.data.pull_request.assignees).toBeUndefined()
       }
     })
+
+    it('should parse payload with head.repo and base.repo for cross-fork detection', () => {
+      const payload = GitHubEventFactory.createPullRequestEvent()
+      ;(payload.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'contributor/test-repo',
+        clone_url: 'https://github.com/contributor/test-repo.git',
+      }
+      ;(payload.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      }
+
+      const result = gitHubPullRequestEventGuard.safeParse(payload)
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.pull_request.head.repo?.full_name).toBe('contributor/test-repo')
+        expect(result.data.pull_request.head.repo?.clone_url).toBe('https://github.com/contributor/test-repo.git')
+        expect(result.data.pull_request.base.repo?.full_name).toBe('test-owner/test-repo')
+      }
+    })
+
+    it('should parse payload without head.repo and base.repo (backwards compatible)', () => {
+      const payload = GitHubEventFactory.createPullRequestEvent()
+
+      const result = gitHubPullRequestEventGuard.safeParse(payload)
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.pull_request.head.repo).toBeUndefined()
+        expect(result.data.pull_request.base.repo).toBeUndefined()
+      }
+    })
   })
 })

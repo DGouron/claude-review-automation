@@ -64,6 +64,17 @@ function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): strin
     .map((repository) => repository.localPath);
 }
 
+function computeSourceForkCloneUrl(pullRequest: {
+  head: { repo?: { full_name: string; clone_url: string } };
+  base: { repo?: { full_name: string } };
+}): string | undefined {
+  const headRepo = pullRequest.head.repo;
+  const baseRepo = pullRequest.base.repo;
+  if (!headRepo || !baseRepo) return undefined;
+  if (headRepo.full_name === baseRepo.full_name) return undefined;
+  return headRepo.clone_url;
+}
+
 export async function handleGitHubWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -247,6 +258,7 @@ export async function handleGitHubWebhook(
             sourceBranch: updateResult.sourceBranch,
             targetBranch: updateResult.targetBranch,
             jobType: 'followup',
+            sourceForkCloneUrl: computeSourceForkCloneUrl(event.pull_request),
           };
 
           const followupBudgetDecision = await deps.enforceBudget.execute({
@@ -415,7 +427,9 @@ export async function handleGitHubWebhook(
               sendNotification('Review followup terminée', `PR #${j.mrNumber} - ${j.projectPath}`, logger);
             } else if (!result.cancelled) {
               sendNotification('Review followup échouée', `PR #${j.mrNumber} - Code ${result.exitCode}`, logger);
-              throw new Error(`Followup review failed with exit code ${result.exitCode}`);
+              throw new Error(
+                result.stderr?.trim() || `Followup review failed with exit code ${result.exitCode}`
+              );
             }
           });
 
@@ -492,6 +506,7 @@ export async function handleGitHubWebhook(
     title: prTitle,
     description: event.pull_request?.body,
     assignedBy,
+    sourceForkCloneUrl: computeSourceForkCloneUrl(event.pull_request),
   };
 
   const budgetDecision = await deps.enforceBudget.execute({
@@ -670,11 +685,14 @@ export async function handleGitHubWebhook(
         `PR #${j.mrNumber} - ${j.projectPath}`,
         logger
       );
-    } else {
+    } else if (!result.cancelled) {
       sendNotification(
         'Review échouée',
         `PR #${j.mrNumber} - Code ${result.exitCode}`,
         logger
+      );
+      throw new Error(
+        result.stderr?.trim() || `Review failed with exit code ${result.exitCode}`
       );
     }
   });

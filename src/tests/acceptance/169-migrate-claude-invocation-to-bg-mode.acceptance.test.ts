@@ -240,19 +240,19 @@ describe('SPEC-169: Migrate Claude invocation to --bg mode (acceptance)', () => 
     });
   });
 
-  describe('Scenario 9: Periodic billing audit detects API consumption', () => {
-    it('pauses the dispatch queue when usage indicates API-pool consumption', async () => {
+  describe('Scenario 9: Periodic billing audit never pauses on usage heuristics', () => {
+    it('does not pause the dispatch queue regardless of usage output (heuristic removed — only env var ANTHROPIC_API_KEY pauses dispatch, see dispatchClaudeSession.usecase.ts)', async () => {
       const context = createContext();
       context.sessionGateway.setUsage({ usesApiPool: true, raw: 'API tokens used: 12345' });
 
       const result = await auditBilling({
-        sessionGateway: context.sessionGateway,
         billingStateGateway: context.billingState,
         now: () => new Date('2026-05-22T10:00:00Z'),
       });
 
-      expect(result.regression).toBe(true);
-      expect(context.billingState.read().dispatchPaused).toBe(true);
+      expect(result.regression).toBe(false);
+      expect(context.billingState.read().dispatchPaused).toBe(false);
+      expect(context.billingState.read().lastAuditAt).toBe('2026-05-22T10:00:00.000Z');
     });
   });
 
