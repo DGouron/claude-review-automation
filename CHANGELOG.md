@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.13.0...reviewflow-v3.14.0) (2026-05-23)
+
+
+### Added
+
+* **supervisor-management:** implement SPEC-172 claude agents supervisor lifecycle ([#176](https://github.com/DGouron/review-flow/issues/176)) ([e997c20](https://github.com/DGouron/review-flow/commit/e997c20d3bcb367a836495911ed2f22b289d34f2))
+* **worktree-management:** implement SPEC-170 worktree lifecycle (partial — FR-6 and FR-8 follow-up) ([#175](https://github.com/DGouron/review-flow/issues/175)) ([0474587](https://github.com/DGouron/review-flow/commit/0474587fa4ef25ae1d2ca71cf46ee4c68edb0045))
+
+
+### Changed
+
+* **claude-invocation:** switch permission mode from bypassPermissions to auto ([#177](https://github.com/DGouron/review-flow/issues/177)) ([42b9298](https://github.com/DGouron/review-flow/commit/42b929821770c09929ddb73fb50638b8c1a8ecab))
+
 ## [3.13.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.12.0...reviewflow-v3.13.0) (2026-05-22)
 
 
