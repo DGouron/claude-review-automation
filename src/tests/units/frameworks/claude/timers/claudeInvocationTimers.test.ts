@@ -35,9 +35,8 @@ describe('startClaudeInvocationTimers', () => {
     stop();
   });
 
-  it('runs billing audit at the configured interval', async () => {
+  it('runs billing audit at the configured interval and records audit time (audit no longer pauses on heuristics)', async () => {
     const sessionGateway = new StubClaudeSessionGateway();
-    sessionGateway.setUsage({ usesApiPool: true, raw: 'API tokens used' });
     const supervisorHealthGateway = new StubSupervisorHealthGateway();
     const billingStateGateway = new StubBillingStateGateway();
 
@@ -52,7 +51,8 @@ describe('startClaudeInvocationTimers', () => {
 
     await vi.advanceTimersByTimeAsync(60 * 60_000);
 
-    expect(billingStateGateway.read().dispatchPaused).toBe(true);
+    expect(billingStateGateway.read().dispatchPaused).toBe(false);
+    expect(billingStateGateway.read().lastAuditAt).toBe('2026-05-22T10:00:00.000Z');
     stop();
   });
 

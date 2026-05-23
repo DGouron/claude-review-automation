@@ -26,7 +26,6 @@ export function startClaudeInvocationTimers(input: ClaudeInvocationTimersInput):
 
   const billingTimer = setInterval(() => {
     void auditBilling({
-      sessionGateway: input.sessionGateway,
       billingStateGateway: input.billingStateGateway,
       now: input.now,
     });
