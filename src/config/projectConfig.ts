@@ -3,6 +3,14 @@ import { join } from 'node:path';
 import type { AgentDefinition } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 import type { RoutingPolicy } from '@/modules/review-execution/entities/modelRouting/modelRouting.schema.js';
+import {
+  type ReviewFocus,
+  REVIEW_FOCUS_VALUES,
+  defaultAgentsForFocus,
+  isReviewFocus,
+  reviewSkillForFocus,
+} from '@/modules/review-execution/entities/progress/reviewFocus.type.js';
+import { logWarn } from '@/frameworks/logging/logBuffer.js';
 
 export interface ProjectConfig {
   github: boolean;
@@ -10,6 +18,7 @@ export interface ProjectConfig {
   defaultModel: 'haiku' | 'sonnet' | 'opus';
   reviewSkill: string;
   reviewFollowupSkill: string;
+  reviewFocus?: ReviewFocus;
   language: Language;
   retentionDays: number;
   agents?: AgentDefinition[];
@@ -70,6 +79,22 @@ function parseRoutingPolicy(value: unknown): RoutingPolicy | undefined {
   return undefined;
 }
 
+function formatReviewFocusValues(): string {
+  return REVIEW_FOCUS_VALUES.map(value => `'${value}'`).join(', ');
+}
+
+function parseReviewFocus(value: unknown): ReviewFocus | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isReviewFocus(value)) {
+    throw new Error(
+      `Invalid reviewFocus: must be ${formatReviewFocusValues()}`,
+    );
+  }
+  return value;
+}
+
 /**
  * Load project configuration from .claude/reviews/config.json
  * @param localPath - Path to the project root directory
@@ -86,13 +111,32 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
   const rawContent = readFileSync(configPath, 'utf-8');
   const parsed = JSON.parse(rawContent) as Record<string, unknown>;
 
-  // Validate required fields
-  const requiredFields = ['github', 'gitlab', 'defaultModel', 'reviewSkill', 'reviewFollowupSkill'];
-  for (const field of requiredFields) {
+  const reviewFocus = parseReviewFocus(parsed.reviewFocus);
+
+  const hasExplicitReviewSkill =
+    typeof parsed.reviewSkill === 'string' && parsed.reviewSkill.length > 0;
+
+  // Validate required fields. reviewSkill is required UNLESS a valid reviewFocus is present.
+  const baseRequiredFields = ['github', 'gitlab', 'defaultModel', 'reviewFollowupSkill'];
+  for (const field of baseRequiredFields) {
     if (!(field in parsed)) {
       throw new Error(`Project config missing required field: ${field}`);
     }
   }
+  if (!hasExplicitReviewSkill && reviewFocus === undefined) {
+    throw new Error('Project config missing required field: reviewSkill');
+  }
+
+  if (hasExplicitReviewSkill && reviewFocus !== undefined) {
+    logWarn(
+      'Both reviewFocus and reviewSkill set — reviewSkill takes precedence',
+      { reviewSkill: parsed.reviewSkill, reviewFocus },
+    );
+  }
+
+  const resolvedReviewSkill = hasExplicitReviewSkill
+    ? String(parsed.reviewSkill)
+    : reviewSkillForFocus(reviewFocus as ReviewFocus);
 
   // Validate agents if present
   if ('agents' in parsed && parsed.agents !== undefined) {
@@ -112,18 +156,24 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
     }
   }
 
-  return {
+  const config: ProjectConfig = {
     github: Boolean(parsed.github),
     gitlab: Boolean(parsed.gitlab),
     defaultModel: parsed.defaultModel === 'opus' ? 'opus' : parsed.defaultModel === 'haiku' ? 'haiku' : 'sonnet',
-    reviewSkill: String(parsed.reviewSkill),
+    reviewSkill: resolvedReviewSkill,
     reviewFollowupSkill: String(parsed.reviewFollowupSkill),
     language: parsed.language === 'fr' ? 'fr' : 'en',
     retentionDays: parseRetentionDays(parsed.retentionDays),
-    agents: parsed.agents as AgentDefinition[] | undefined,
-    followupAgents: parsed.followupAgents as AgentDefinition[] | undefined,
+    agents: validateAgents(parsed.agents) ? parsed.agents : undefined,
+    followupAgents: validateAgents(parsed.followupAgents) ? parsed.followupAgents : undefined,
     routingPolicy: parseRoutingPolicy(parsed.routingPolicy),
   };
+
+  if (reviewFocus !== undefined) {
+    config.reviewFocus = reviewFocus;
+  }
+
+  return config;
 }
 
 /**
@@ -133,6 +183,31 @@ export function getProjectAgents(localPath: string): AgentDefinition[] | undefin
   try {
     const config = loadProjectConfig(localPath);
     return config?.agents;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Resolve agents for a project: explicit agents array first, then focus-derived defaults.
+ * Returns undefined when no explicit array and no focus are configured, leaving the caller
+ * free to fall back to the legacy DEFAULT_AGENTS.
+ */
+export function getProjectAgentsOrFocusDefaults(
+  localPath: string,
+): AgentDefinition[] | undefined {
+  try {
+    const config = loadProjectConfig(localPath);
+    if (!config) {
+      return undefined;
+    }
+    if (config.agents !== undefined) {
+      return config.agents;
+    }
+    if (config.reviewFocus !== undefined) {
+      return defaultAgentsForFocus(config.reviewFocus);
+    }
+    return undefined;
   } catch {
     return undefined;
   }

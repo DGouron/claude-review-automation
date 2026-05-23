@@ -2,6 +2,15 @@ import type { FastifyPluginAsync } from 'fastify';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logInfo, logError } from '@/frameworks/logging/logBuffer.js';
+import {
+  REVIEW_FOCUS_VALUES,
+  isReviewFocus,
+  reviewSkillForFocus,
+} from '@/modules/review-execution/entities/progress/reviewFocus.type.js';
+
+function formatReviewFocusValues(): string {
+  return REVIEW_FOCUS_VALUES.map(value => `'${value}'`).join(', ');
+}
 
 export const projectConfigRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/project-config', async (request, reply) => {
@@ -24,11 +33,28 @@ export const projectConfigRoutes: FastifyPluginAsync = async (fastify) => {
       const content = await readFile(configPath, 'utf-8');
       const config = JSON.parse(content);
 
-      const requiredFields = ['github', 'gitlab', 'defaultModel', 'reviewSkill', 'reviewFollowupSkill'];
-      const missingFields = requiredFields.filter(field => !(field in config));
-      if (missingFields.length > 0) {
-        return { success: false, error: `Missing fields: ${missingFields.join(', ')}` };
+      const hasReviewFocus = 'reviewFocus' in config && config.reviewFocus !== undefined;
+      if (hasReviewFocus && !isReviewFocus(config.reviewFocus)) {
+        return {
+          success: false,
+          error: `Invalid reviewFocus: must be ${formatReviewFocusValues()}`,
+        };
       }
+
+      const baseRequiredFields = ['github', 'gitlab', 'defaultModel', 'reviewFollowupSkill'];
+      const missingBase = baseRequiredFields.filter(field => !(field in config));
+      if (missingBase.length > 0) {
+        return { success: false, error: `Missing fields: ${missingBase.join(', ')}` };
+      }
+
+      const hasReviewSkill = typeof config.reviewSkill === 'string' && config.reviewSkill.length > 0;
+      if (!hasReviewSkill && !hasReviewFocus) {
+        return { success: false, error: 'Missing fields: reviewSkill' };
+      }
+
+      const resolvedReviewSkill = hasReviewSkill
+        ? config.reviewSkill
+        : reviewSkillForFocus(config.reviewFocus);
 
       if ('agents' in config && config.agents !== undefined) {
         if (!Array.isArray(config.agents)) {
@@ -54,11 +80,11 @@ export const projectConfigRoutes: FastifyPluginAsync = async (fastify) => {
       const skillsPath = join(projectPath, '.claude', 'skills');
       const skillErrors: string[] = [];
 
-      const reviewSkillPath = join(skillsPath, config.reviewSkill, 'SKILL.md');
+      const reviewSkillPath = join(skillsPath, resolvedReviewSkill, 'SKILL.md');
       try {
         await stat(reviewSkillPath);
       } catch {
-        skillErrors.push(`reviewSkill "${config.reviewSkill}" not found (${reviewSkillPath})`);
+        skillErrors.push(`reviewSkill "${resolvedReviewSkill}" not found (${reviewSkillPath})`);
       }
 
       const followupSkillPath = join(skillsPath, config.reviewFollowupSkill, 'SKILL.md');

@@ -55,6 +55,7 @@ vi.mock('../../../../../main/websocket.js', () => ({
 vi.mock('../../../../../config/projectConfig.js', () => ({
   loadProjectConfig: vi.fn(() => null),
   getProjectAgents: vi.fn(() => null),
+  getProjectAgentsOrFocusDefaults: vi.fn(() => null),
   getFollowupAgents: vi.fn(() => null),
   getProjectLanguage: vi.fn(() => 'en'),
 }));
