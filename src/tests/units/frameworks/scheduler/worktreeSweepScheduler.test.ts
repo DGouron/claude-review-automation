@@ -158,4 +158,119 @@ describe('worktreeSweepScheduler', () => {
 
     scheduler.stop();
   });
+
+  describe('SPEC-173 extensions', () => {
+    it('returns null from getLastSweep when no sweep has run yet', () => {
+      const stub = createStubWorktreeGateway([]);
+      const scheduler = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: createStubTrackingGateway(),
+        getRepositories: () => [],
+        logger: createStubLogger(),
+        now: () => new Date('2026-05-23T12:00:00Z'),
+      });
+
+      expect(scheduler.getLastSweep()).toBeNull();
+
+      scheduler.stop();
+    });
+
+    it('exposes the last sweep summary after the boot run completes', async () => {
+      const stub = createStubWorktreeGateway([]);
+      const scheduler = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: createStubTrackingGateway(),
+        getRepositories: () => [],
+        logger: createStubLogger(),
+        now: () => new Date('2026-05-23T12:00:00Z'),
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      const summary = scheduler.getLastSweep();
+      expect(summary).not.toBeNull();
+      expect(summary?.removed).toBe(0);
+      expect(summary?.failures).toBe(0);
+      expect(summary?.scanned).toBe(0);
+      expect(summary?.ranAt.toISOString()).toBe('2026-05-23T12:00:00.000Z');
+
+      scheduler.stop();
+    });
+
+    it('getNextSweepEta returns now + interval before any sweep runs and ranAt + interval after a sweep', async () => {
+      const stub = createStubWorktreeGateway([]);
+      const startTime = new Date('2026-05-23T12:00:00Z');
+      const scheduler = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: createStubTrackingGateway(),
+        getRepositories: () => [],
+        logger: createStubLogger(),
+        now: () => startTime,
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      const eta = scheduler.getNextSweepEta();
+      expect(eta.getTime()).toBe(startTime.getTime() + TWENTY_FOUR_HOURS_MS);
+
+      scheduler.stop();
+    });
+
+    it('runSweepNow runs the sweep and returns an ok result with the new summary', async () => {
+      const stub = createStubWorktreeGateway([]);
+      const scheduler = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: createStubTrackingGateway(),
+        getRepositories: () => [],
+        logger: createStubLogger(),
+        now: () => new Date('2026-05-23T12:00:00Z'),
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+      const callsBefore = stub.listCalls;
+
+      const result = await scheduler.runSweepNow();
+
+      expect(result.status).toBe('ok');
+      if (result.status === 'ok') {
+        expect(result.summary.scanned).toBe(0);
+      }
+      expect(stub.listCalls).toBe(callsBefore + 1);
+
+      scheduler.stop();
+    });
+
+    it('runSweepNow returns a conflict result when a sweep is already running', async () => {
+      let resolveList: (entries: WorktreeEntry[]) => void = () => undefined;
+      const blockingGateway: WorktreeGateway = {
+        list: () => new Promise<WorktreeEntry[]>(resolve => {
+          resolveList = resolve;
+        }),
+        remove: async () => ({ status: 'removed' }),
+        ensure: async () => ({ status: 'failed', reason: 'not-implemented-in-stub' }),
+        exists: async () => false,
+      };
+
+      const scheduler = startWorktreeSweepScheduler({
+        worktreeGateway: blockingGateway,
+        trackingGateway: createStubTrackingGateway(),
+        getRepositories: () => [],
+        logger: createStubLogger(),
+        now: () => new Date('2026-05-23T12:00:00Z'),
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      const conflictResult = await scheduler.runSweepNow();
+
+      expect(conflictResult.status).toBe('conflict');
+      if (conflictResult.status === 'conflict') {
+        expect(conflictResult.startedAt).toBeInstanceOf(Date);
+      }
+
+      resolveList([]);
+      await vi.advanceTimersByTimeAsync(0);
+
+      scheduler.stop();
+    });
+  });
 });

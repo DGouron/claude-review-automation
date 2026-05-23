@@ -258,6 +258,8 @@
       <div class="section-content" id="cleanup-content"></div>
     </div>
 
+    <section id="worktree-section" aria-label="Worktree pool"></section>
+
     <div class="refresh-info">
       <span id="connection-mode"></span> • <span id="i18n-connection-fallback"></span>
       <span class="refresh-separator"> • </span>
@@ -311,6 +313,11 @@
     import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
     import { buildInsightsReport } from './modules/insightsReport.js';
     import { fetchTokenUsageSummary, renderTokenUsageTile } from './modules/tokenUsage.js';
+    import {
+      renderWorktreeSection,
+      fetchWorktreeOverview,
+      triggerManualSweep,
+    } from './modules/worktreePanel.js';
     import {
       parseBudgetStatusMessage,
       parseBudgetExceededMessage,
@@ -2821,6 +2828,144 @@
         }
       });
     }, 1000);
+
+    // SPEC-173 — Worktree pool panel
+    const worktreeSection = document.getElementById('worktree-section');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let animeApi = null;
+    let lastWorktreeTotals = { total: null, active: null, idle: null, stale: null };
+
+    async function loadAnimeApi() {
+      if (prefersReducedMotion) return null;
+      if (animeApi !== null) return animeApi;
+      try {
+        animeApi = await import('./vendor/anime.esm.min.js');
+        return animeApi;
+      } catch (error) {
+        animeApi = null;
+        return null;
+      }
+    }
+
+    function bindWorktreeSweepButton() {
+      const button = worktreeSection?.querySelector('[data-action="sweep"]');
+      if (!button) return;
+      button.addEventListener('click', async () => {
+        if (button.dataset.busy === '1') return;
+        button.dataset.busy = '1';
+        const label = button.querySelector('.worktree-sweep-label');
+        const previousLabel = label?.textContent ?? 'SWEEP NOW';
+        if (label) label.textContent = 'SWEEPING…';
+        button.classList.add('worktree-sweep-pending');
+
+        const anime = await loadAnimeApi();
+        const broom = button.querySelector('.worktree-sweep-broom');
+        if (anime && broom) {
+          anime.animate(broom, {
+            translateX: [{ from: -6, to: 22 }],
+            opacity: [{ from: 0.6, to: 1 }],
+            duration: 700,
+            easing: 'easeInOutQuad',
+          });
+        }
+
+        try {
+          const result = await triggerManualSweep();
+          if (result.status === 'conflict') {
+            button.classList.add('worktree-sweep-conflict');
+            window.setTimeout(() => button.classList.remove('worktree-sweep-conflict'), 1200);
+          } else if (result.status === 'error') {
+            button.classList.add('worktree-sweep-error');
+            window.setTimeout(() => button.classList.remove('worktree-sweep-error'), 1200);
+          }
+        } finally {
+          if (label) label.textContent = previousLabel;
+          button.classList.remove('worktree-sweep-pending');
+          button.dataset.busy = '0';
+          await refreshWorktreeSection({ animate: true });
+        }
+      });
+    }
+
+    function animateWorktreeMetrics() {
+      if (prefersReducedMotion || worktreeSection === null) return;
+      loadAnimeApi().then((anime) => {
+        if (anime === null) return;
+        const metrics = worktreeSection.querySelectorAll('.worktree-metric-value');
+        if (metrics.length === 0) return;
+        anime.animate(metrics, {
+          opacity: [{ from: 0, to: 1 }],
+          translateY: [{ from: 4, to: 0 }],
+          duration: 400,
+          delay: anime.stagger(40),
+          easing: 'easeOutQuad',
+        });
+        const rows = worktreeSection.querySelectorAll('.worktree-row');
+        if (rows.length === 0) return;
+        anime.animate(rows, {
+          opacity: [{ from: 0, to: 1 }],
+          translateY: [{ from: 2, to: 0 }],
+          duration: 260,
+          delay: anime.stagger(25),
+          easing: 'easeOutQuad',
+        });
+      }).catch(() => {});
+    }
+
+    function flashChangedMetrics(nextTotals) {
+      if (prefersReducedMotion || worktreeSection === null) return;
+      const changed = [];
+      for (const key of ['total', 'active', 'idle', 'stale']) {
+        if (lastWorktreeTotals[key] !== null && lastWorktreeTotals[key] !== nextTotals[key]) {
+          const el = worktreeSection.querySelector(`.worktree-metric-value[data-metric="${key}"]`);
+          if (el) changed.push(el);
+        }
+      }
+      if (changed.length === 0) return;
+      loadAnimeApi().then((anime) => {
+        if (anime === null) return;
+        anime.animate(changed, {
+          backgroundColor: [{ from: 'rgba(255, 138, 61, 0.18)', to: 'rgba(255, 138, 61, 0)' }],
+          duration: 600,
+          easing: 'easeOutQuad',
+        });
+      }).catch(() => {});
+    }
+
+    function snapshotTotals(viewModel) {
+      const counters = { active: 0, idle: 0, stale: 0 };
+      for (const group of viewModel.groups) {
+        for (const row of group.worktrees) {
+          counters[row.status] = (counters[row.status] ?? 0) + 1;
+        }
+      }
+      return {
+        total: viewModel.totalCount,
+        active: counters.active,
+        idle: counters.idle,
+        stale: counters.stale,
+      };
+    }
+
+    async function refreshWorktreeSection({ animate } = { animate: false }) {
+      if (worktreeSection === null) return;
+      try {
+        const viewModel = await fetchWorktreeOverview();
+        const totals = snapshotTotals(viewModel);
+        worktreeSection.innerHTML = renderWorktreeSection(viewModel);
+        bindWorktreeSweepButton();
+        if (animate) animateWorktreeMetrics();
+        flashChangedMetrics(totals);
+        lastWorktreeTotals = totals;
+      } catch (error) {
+        if (worktreeSection.childElementCount === 0) {
+          worktreeSection.innerHTML = '<div class="worktree-panel worktree-panel-error">// WORKTREE POOL · unavailable</div>';
+        }
+      }
+    }
+
+    refreshWorktreeSection({ animate: true });
+    setInterval(() => refreshWorktreeSection({ animate: false }), 30000);
   </script>
 </body>
 </html>

@@ -63,9 +63,6 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     progressPresenter: deps.progressPresenter,
   });
 
-  const app = await buildServer(deps);
-  const port = options.portOverride ?? config.server.port;
-
   const cleanupScheduler = startCleanupScheduler({
     reviewFileGateway: deps.reviewFileGateway,
     reviewLogFileGateway: deps.reviewLogFileGateway,
@@ -80,6 +77,15 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     logger: deps.logger,
     now: () => new Date(),
   });
+
+  deps.sweepSchedulerControls = {
+    getLastSweep: () => worktreeSweepScheduler.getLastSweep(),
+    getNextSweepEta: () => worktreeSweepScheduler.getNextSweepEta(),
+    runSweepNow: () => worktreeSweepScheduler.runSweepNow(),
+  };
+
+  const app = await buildServer(deps);
+  const port = options.portOverride ?? config.server.port;
 
   const supervisorGateway = new SupervisorCliGateway({
     probe: createDefaultSupervisorProbe(),

@@ -1378,6 +1378,11 @@ algoliasearch@^5.14.2:
     "@algolia/requester-fetch" "5.48.1"
     "@algolia/requester-node-http" "5.48.1"
 
+animejs@^4:
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/animejs/-/animejs-4.4.1.tgz#72339e06524ac809a4045351941a6972551a3c52"
+  integrity sha512-XimhJw4vPb6tAd6Zaoa6BaspJ8UteQMKvL7Pvrt6MW/6u2UvJs0TB/LLqR1sigaiYvpVPC3Tokr9emcCMhWFhw==
+
 ansi-regex@^6.0.1:
   version "6.2.2"
   resolved "https://registry.npmjs.org/ansi-regex/-/ansi-regex-6.2.2.tgz"

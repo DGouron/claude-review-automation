@@ -4107,3 +4107,315 @@ input:focus-visible,
 .budget-slider-status { font-size: 0.8rem; min-width: 7rem; }
 .budget-slider-status--ok { color: #16a34a; }
 .budget-slider-status--error { color: #dc2626; }
+
+/* ============================================================
+   SPEC-173 — Worktree Pool ("Agentic OS" visual DNA)
+   Scoped: all rules target #worktree-section so the theme stays
+   contained — no leak into the surrounding dashboard.
+   Reference: project_agentic_os_design_dna.md.
+   ============================================================ */
+
+#worktree-section {
+  --worktree-bg: #0a0908;
+  --worktree-bg-elevated: #13110f;
+  --worktree-border-faint: rgba(255, 180, 100, 0.12);
+  --worktree-border-active: rgba(255, 138, 61, 0.65);
+  --worktree-accent: #ff8a3d;
+  --worktree-accent-dim: #a85a25;
+  --worktree-success: #5ce28b;
+  --worktree-warn: #f3c969;
+  --worktree-text-primary: #f3eee8;
+  --worktree-text-muted: #7a716a;
+  --worktree-glow-active: 0 0 12px rgba(255, 138, 61, 0.55);
+  --worktree-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Berkeley Mono", monospace;
+
+  display: block;
+  margin: 24px 0;
+  font-family: var(--worktree-mono);
+  color: var(--worktree-text-primary);
+}
+
+#worktree-section .worktree-panel {
+  position: relative;
+  background: var(--worktree-bg);
+  border: 1px solid var(--worktree-border-faint);
+  padding: 18px 20px 16px;
+  animation: worktree-reveal 250ms ease-out;
+}
+
+#worktree-section .worktree-panel::before,
+#worktree-section .worktree-panel::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+#worktree-section .worktree-panel::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--worktree-border-active);
+  border-left: 2px solid var(--worktree-border-active);
+}
+#worktree-section .worktree-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--worktree-border-active);
+  border-right: 2px solid var(--worktree-border-active);
+}
+
+@keyframes worktree-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#worktree-section .worktree-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+#worktree-section .worktree-panel-title {
+  font-family: var(--worktree-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--worktree-accent);
+  text-transform: none;
+}
+
+#worktree-section .worktree-sweep-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--worktree-accent);
+  border: 1px solid var(--worktree-border-active);
+  padding: 6px 12px;
+  font-family: var(--worktree-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+#worktree-section .worktree-sweep-button:hover {
+  background: rgba(255, 138, 61, 0.08);
+}
+#worktree-section .worktree-sweep-button:active {
+  background: rgba(255, 138, 61, 0.18);
+}
+#worktree-section .worktree-sweep-pending {
+  border-color: var(--worktree-warn);
+  color: var(--worktree-warn);
+}
+#worktree-section .worktree-sweep-conflict {
+  border-color: var(--worktree-warn);
+  color: var(--worktree-warn);
+}
+#worktree-section .worktree-sweep-error {
+  border-color: #ff5252;
+  color: #ff5252;
+}
+#worktree-section .worktree-sweep-broom {
+  display: inline-block;
+}
+
+#worktree-section .worktree-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  padding: 12px 0 14px;
+  border-bottom: 1px dashed var(--worktree-border-faint);
+}
+#worktree-section .worktree-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#worktree-section .worktree-metric-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--worktree-text-muted);
+  text-transform: uppercase;
+}
+#worktree-section .worktree-metric-value {
+  font-family: var(--worktree-mono);
+  font-size: 26px;
+  color: var(--worktree-text-primary);
+  font-weight: 500;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+#worktree-section .worktree-table-wrapper {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+#worktree-section .worktree-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--worktree-mono);
+  font-size: 12px;
+  background: var(--worktree-bg);
+}
+#worktree-section .worktree-th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--worktree-text-muted);
+  text-transform: uppercase;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--worktree-border-faint);
+  font-weight: normal;
+}
+#worktree-section .worktree-row {
+  position: relative;
+  background: var(--worktree-bg-elevated);
+  transition: background-color 120ms ease-out;
+}
+#worktree-section .worktree-row:hover {
+  background: rgba(255, 138, 61, 0.04);
+}
+#worktree-section .worktree-row + .worktree-row > .worktree-cell {
+  border-top: 1px solid var(--worktree-border-faint);
+}
+#worktree-section .worktree-cell {
+  padding: 10px 10px;
+  vertical-align: middle;
+  color: var(--worktree-text-primary);
+}
+#worktree-section .worktree-cell-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#worktree-section .worktree-project {
+  font-family: var(--worktree-mono);
+  font-size: 12px;
+  color: var(--worktree-text-primary);
+}
+#worktree-section .worktree-mr {
+  font-family: var(--worktree-mono);
+  font-size: 11px;
+  color: var(--worktree-text-muted);
+}
+#worktree-section .worktree-cell-path,
+#worktree-section .worktree-cell-age,
+#worktree-section .worktree-cell-size,
+#worktree-section .worktree-cell-mtime {
+  font-family: var(--worktree-mono);
+  font-size: 12px;
+  color: var(--worktree-text-muted);
+}
+#worktree-section .worktree-cell-path > span {
+  cursor: help;
+}
+
+#worktree-section .worktree-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--worktree-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+#worktree-section .worktree-status-glyph {
+  font-size: 11px;
+  line-height: 1;
+}
+#worktree-section .worktree-status-active {
+  color: var(--worktree-accent);
+}
+#worktree-section .worktree-status-active .worktree-status-glyph {
+  text-shadow: var(--worktree-glow-active);
+  animation: worktree-pulse 1.4s ease-in-out infinite;
+}
+#worktree-section .worktree-status-idle {
+  color: var(--worktree-accent-dim);
+  opacity: 0.85;
+}
+#worktree-section .worktree-status-stale {
+  color: var(--worktree-warn);
+}
+@keyframes worktree-pulse {
+  0%, 100% { opacity: 0.75; text-shadow: 0 0 8px rgba(255, 138, 61, 0.45); }
+  50%      { opacity: 1;    text-shadow: 0 0 14px rgba(255, 138, 61, 0.7); }
+}
+
+#worktree-section .worktree-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px 24px;
+  gap: 12px;
+  color: var(--worktree-text-muted);
+}
+#worktree-section .worktree-empty-illustration {
+  color: var(--worktree-accent-dim);
+}
+#worktree-section .worktree-empty-leaf {
+  animation: worktree-leaf 2s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes worktree-leaf {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+#worktree-section .worktree-empty-title {
+  font-family: var(--worktree-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--worktree-accent);
+}
+#worktree-section .worktree-empty-subtitle {
+  font-family: var(--worktree-mono);
+  font-size: 11px;
+  color: var(--worktree-text-muted);
+  max-width: 360px;
+  text-align: center;
+}
+
+#worktree-section .worktree-panel-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--worktree-border-faint);
+  font-family: var(--worktree-mono);
+  font-size: 11px;
+}
+#worktree-section .worktree-footer-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#worktree-section .worktree-footer-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--worktree-text-muted);
+}
+#worktree-section .worktree-lastsweep-value,
+#worktree-section .worktree-nextsweep-value {
+  color: var(--worktree-text-primary);
+}
+#worktree-section .worktree-footer-next {
+  text-align: right;
+}
+
+#worktree-section .worktree-panel-error {
+  font-family: var(--worktree-mono);
+  font-size: 12px;
+  color: var(--worktree-warn);
+  padding: 14px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #worktree-section .worktree-panel,
+  #worktree-section .worktree-status-active .worktree-status-glyph,
+  #worktree-section .worktree-empty-leaf {
+    animation: none !important;
+  }
+}

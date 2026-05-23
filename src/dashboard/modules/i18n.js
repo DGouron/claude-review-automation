@@ -386,6 +386,21 @@ const translations = {
     'version.commandCopied': 'Command copied!',
     'version.sourceCheckoutTooltip': 'Source-checkout install. Click to see the manual update command.',
     'version.sourceCheckoutNotice': 'This daemon runs from a source checkout. Run this command manually to update:',
+
+    // Worktree panel (SPEC-173)
+    'worktree.section.title': 'Worktree pool',
+    'worktree.empty.title': 'Pool empty',
+    'worktree.empty.subtitle': 'No worktree on disk. The next scheduled review will materialize one.',
+    'worktree.button.sweepNow': 'Sweep now',
+    'worktree.button.sweeping': 'Sweeping…',
+    'worktree.status.active': 'Active',
+    'worktree.status.idle': 'Idle',
+    'worktree.status.stale': 'Stale',
+    'worktree.lastSweep.label': 'Last sweep',
+    'worktree.lastSweep.never': 'Never',
+    'worktree.nextSweep.label': 'Next sweep',
+    'worktree.sweep.conflict': 'A sweep is already running.',
+    'worktree.sweep.error': 'Sweep failed.',
   },
   fr: {
     // Time
@@ -771,6 +786,21 @@ const translations = {
     'version.commandCopied': 'Commande copiée !',
     'version.sourceCheckoutTooltip': "Installation depuis le code source. Cliquez pour voir la commande de mise à jour manuelle.",
     'version.sourceCheckoutNotice': 'Ce daemon tourne depuis un checkout du code source. Exécutez cette commande manuellement pour mettre à jour :',
+
+    // Worktree panel (SPEC-173)
+    'worktree.section.title': 'Pool des worktrees',
+    'worktree.empty.title': 'Pool vide',
+    'worktree.empty.subtitle': 'Aucun worktree sur disque. La prochaine review en créera un.',
+    'worktree.button.sweepNow': 'Nettoyer maintenant',
+    'worktree.button.sweeping': 'Nettoyage…',
+    'worktree.status.active': 'Actif',
+    'worktree.status.idle': 'Inactif',
+    'worktree.status.stale': 'Périmé',
+    'worktree.lastSweep.label': 'Dernier nettoyage',
+    'worktree.lastSweep.never': 'Jamais',
+    'worktree.nextSweep.label': 'Prochain nettoyage',
+    'worktree.sweep.conflict': 'Un nettoyage est déjà en cours.',
+    'worktree.sweep.error': 'Le nettoyage a échoué.',
   },
 };
 
