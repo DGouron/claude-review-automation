@@ -4,10 +4,11 @@
  * Spec: docs/specs/170-prebuilt-worktree-lifecycle.md
  * Plan: docs/plans/170-prebuilt-worktree-lifecycle.plan.md
  *
- * Outer-loop acceptance test (SDD): scaffold mirrors the 11 scenarios
- * defined in the spec's `## Scenarios` block. Each scenario starts as
- * `it.todo` and is converted to an active test as its layer reaches
- * GREEN per the plan's §7 implementation order.
+ * Outer-loop acceptance test (SDD): mirrors the 11 scenarios defined in
+ * the spec's `## Scenarios` block. All scenarios assert at the use-case
+ * boundary (ensureWorktree / removeWorktree / sweepStaleWorktrees) using
+ * `StubGitCommandExecutor`, matching the shape of scenario 9 already
+ * shipped in PR #175.
  */
 
 import { vi } from 'vitest';
@@ -45,9 +46,95 @@ const sourceCheckoutPath = '/home/user/projects/test-project';
 
 describe('Acceptance — SPEC-170: Pre-built Worktree Lifecycle', () => {
   describe('Feature: Worktree ensure-or-reuse on review dispatch', () => {
-    it.todo('Scenario 1 — first review on new MR: webhook(open) + branch + worktree absent → create worktree + dispatch from worktree');
+    it('Scenario 1 — first review on new MR: ensureWorktree prunes + fetches branch + worktree-add + writes settings; returns created', async () => {
+      const executor = new StubGitCommandExecutor();
+      const writeSettingsCalls: WorktreePath[] = [];
 
-    it.todo('Scenario 2 — followup on existing MR: webhook(push) + branch + worktree present → fast-forward + dispatch from worktree');
+      const result = await ensureWorktree(
+        {
+          identity: baseIdentity,
+          sourceBranch: 'feat/x',
+          source: { kind: 'origin' },
+          sourceCheckoutPath,
+        },
+        {
+          executor,
+          worktreeExists: async () => false,
+          writeWorktreeSettings: async path => {
+            writeSettingsCalls.push(path);
+            return { status: 'ok' };
+          },
+        },
+      );
+
+      const expectedPath = deriveWorktreePath(baseIdentity);
+
+      expect(result).toEqual({
+        status: 'created',
+        path: expectedPath,
+        settingsWarning: null,
+      });
+
+      const pruneCalls = executor.callsOfKind('worktree-prune');
+      expect(pruneCalls).toHaveLength(1);
+      expect(pruneCalls[0]?.cwd).toBe(sourceCheckoutPath);
+
+      const fetchCalls = executor.callsOfKind('fetch');
+      expect(fetchCalls).toHaveLength(1);
+      expect(fetchCalls[0]?.args).toEqual(['fetch', 'origin', 'feat/x']);
+      expect(fetchCalls[0]?.cwd).toBe(sourceCheckoutPath);
+
+      const addCalls = executor.callsOfKind('worktree-add');
+      expect(addCalls).toHaveLength(1);
+      expect(addCalls[0]?.args).toEqual(['worktree', 'add', expectedPath, 'origin/feat/x']);
+      expect(addCalls[0]?.cwd).toBe(sourceCheckoutPath);
+
+      expect(executor.callsOfKind('reset-hard')).toHaveLength(0);
+      expect(writeSettingsCalls).toEqual([expectedPath]);
+    });
+
+    it('Scenario 2 — followup on existing MR: ensureWorktree prunes + fetches inside worktree + reset --hard (no worktree-add, no settings rewrite); returns reused', async () => {
+      const executor = new StubGitCommandExecutor();
+      const writeSettingsCalls: WorktreePath[] = [];
+
+      const result = await ensureWorktree(
+        {
+          identity: baseIdentity,
+          sourceBranch: 'feat/x',
+          source: { kind: 'origin' },
+          sourceCheckoutPath,
+        },
+        {
+          executor,
+          worktreeExists: async () => true,
+          writeWorktreeSettings: async path => {
+            writeSettingsCalls.push(path);
+            return { status: 'ok' };
+          },
+        },
+      );
+
+      const expectedPath = deriveWorktreePath(baseIdentity);
+
+      expect(result).toEqual({ status: 'reused', path: expectedPath });
+
+      const pruneCalls = executor.callsOfKind('worktree-prune');
+      expect(pruneCalls).toHaveLength(1);
+      expect(pruneCalls[0]?.cwd).toBe(sourceCheckoutPath);
+
+      const fetchCalls = executor.callsOfKind('fetch');
+      expect(fetchCalls).toHaveLength(1);
+      expect(fetchCalls[0]?.args).toEqual(['fetch', 'origin', 'feat/x']);
+      expect(fetchCalls[0]?.cwd).toBe(expectedPath);
+
+      const resetCalls = executor.callsOfKind('reset-hard');
+      expect(resetCalls).toHaveLength(1);
+      expect(resetCalls[0]?.args).toEqual(['reset', '--hard', 'origin/feat/x']);
+      expect(resetCalls[0]?.cwd).toBe(expectedPath);
+
+      expect(executor.callsOfKind('worktree-add')).toHaveLength(0);
+      expect(writeSettingsCalls).toEqual([]);
+    });
   });
 
   describe('Feature: Worktree cleanup on MR close', () => {

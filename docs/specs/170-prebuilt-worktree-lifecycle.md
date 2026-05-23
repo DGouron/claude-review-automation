@@ -2,15 +2,15 @@
 title: "SPEC-170: Pre-built Worktree Lifecycle Managed by ReviewFlow"
 labels: enhancement, P2-important, worktree, webhook
 milestone: June 15 Migration
-status: implementing
+status: implemented
 blocked-by: SPEC-169
 ---
 
 # SPEC-170: Pre-built Worktree Lifecycle Managed by ReviewFlow
 
-## Status: implementing
+## Status: implemented
 
-All 9 functional requirements shipped across 2 PRs. Acceptance file 9/11 GREEN; scenarios 1 + 2 remain `it.todo` pending a separate end-to-end webhook → enqueueReview → claudeInvoker → ensureWorktree harness ticket.
+All 9 functional requirements shipped across 2 PRs. Acceptance file **11/11 GREEN**. AC-11 (manual one-time sweep of pre-SPEC-170 worktrees on prod) remains a deploy-runbook task, not a code item.
 
 ## Implementation
 
@@ -30,6 +30,10 @@ Shipped across two PRs.
 - `src/main/dependencies.ts` + `src/main/routes.ts` — `worktreeGateway` + `gitCommandExecutor` promoted to `Dependencies` (single executor instance shared by routes, scheduler, gateway)
 - 4 acceptance scenarios GREEN (6, 7, 8, 9)
 
+**Acceptance close-out — same PR**
+
+- `src/tests/acceptance/170-prebuilt-worktree-lifecycle.acceptance.test.ts` — scenarios 1 + 2 converted from `it.todo` to active tests at the `ensureWorktree` boundary (same assertion shape as scenario 9). Acceptance file now **11/11 GREEN**.
+
 **Architectural decisions taken**
 
 | Decision | Choice |
@@ -40,10 +44,9 @@ Shipped across two PRs.
 | Single `GitCommandExecutor` instance | Avoids `.git/worktree.lock` contention between sweep + close-branch action |
 | Fork auth | Operator-managed (cached HTTPS creds or SSH key); failure surfaces as `branch-not-found` |
 
-**Deferred to a separate follow-up**
+**Deferred (deploy-runbook task, not code)**
 
-- Acceptance scenarios 1 + 2 — require full webhook E2E harness
-- AC-11 — manual one-time sweep of pre-SPEC-170 worktrees on prod
+- AC-11 — manual one-time sweep of pre-SPEC-170 worktrees on the operator's prod server
 
 ## Context
 

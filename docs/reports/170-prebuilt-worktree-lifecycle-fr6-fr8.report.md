@@ -6,7 +6,7 @@
 **Predecessor PR**: #175 (FRs 1, 2, 3, 4, 5, 7, 9)
 **Predecessor report**: `docs/reports/170-prebuilt-worktree-lifecycle.report.md`
 **Branch**: `worktree-spec-170-fr6-fr8-followup`
-**Status**: complete — FR-6 + FR-8 shipped; acceptance scenarios 6, 7, 8, 9 GREEN.
+**Status**: complete — FR-6 + FR-8 shipped; acceptance scenarios 6, 7, 8, 9 GREEN; scenarios 1 + 2 also converted to active GREEN tests at the `ensureWorktree` boundary (acceptance file now 11/11 GREEN).
 
 ## Files Created (2)
 
@@ -27,12 +27,12 @@
 | `src/tests/units/interface-adapters/controllers/webhook/github.controller.test.ts` | Three new tests: fresh-review cross-fork populates `sourceForkCloneUrl`, same-repo leaves it undefined, followup-on-synchronize cross-fork propagates the field. |
 | `docs/feature-tracker.md` | New row for the FR-6/FR-8 follow-up pointing at this report. SPEC-170 base row stays `implementing` (scenarios 1+2 acceptance still deferred per plan). |
 
-## Acceptance Scenario Status (9 / 11 GREEN)
+## Acceptance Scenario Status (11 / 11 GREEN)
 
 | # | Scenario | Status | Source PR |
 |---|----------|--------|-----------|
-| 1 | first review creates worktree on source branch + dispatches from worktree | `it.todo` (deferred — needs E2E harness) | — |
-| 2 | followup reuses worktree with fetch + reset --hard | `it.todo` (deferred — needs E2E harness) | — |
+| 1 | first review creates worktree on source branch + dispatches from worktree | **GREEN — this PR** | this |
+| 2 | followup reuses worktree with fetch + reset --hard | **GREEN — this PR** | this |
 | 3 | merge cleanup → remove worktree | GREEN | #175 |
 | 4 | close cleanup → remove worktree | GREEN | #175 |
 | 5 | merge with worktree absent → log warning, no failure | GREEN | #175 |
@@ -43,7 +43,7 @@
 | 10 | concurrent followups on same MR serialize via MR-key chain | GREEN | #175 |
 | 11 | system prompt no longer contains UNRELIABLE / FORBIDDEN / glab mr diff / gh pr diff | GREEN | #175 |
 
-Final acceptance file state: **9 active GREEN tests + 2 `it.todo`** = 11 spec scenarios accounted for. The two `it.todo` remain explicitly deferred to a separate follow-up (full webhook → enqueueReview → claudeInvoker → ensureWorktree harness).
+Final acceptance file state: **11 active GREEN tests** = 11 spec scenarios accounted for. Scenarios 1 + 2 were initially deferred pending a full webhook E2E harness; the close-out converted them to active tests at the `ensureWorktree` boundary, matching scenario 9's shape (`StubGitCommandExecutor` + assertion on `callsOfKind`). The webhook E2E harness is a separate concern — these acceptance tests assert the use-case contract directly.
 
 ## Self-Review Iterations
 
@@ -76,8 +76,8 @@ Final acceptance file state: **9 active GREEN tests + 2 `it.todo`** = 11 spec sc
 $ yarn verify
 ✓ typecheck OK (tsc --noEmit clean)
 ✓ lint OK (Biome, all files)
-✓ tests OK — 244 test files / 1730 passing / 2 todo
-  - Acceptance: 9 active GREEN + 2 it.todo (scenarios 1, 2)
+✓ tests OK — 244 test files / 1732 passing / 0 todo
+  - Acceptance: 11 active GREEN, 0 it.todo
   - Unit + integration: 1721 passing, no regressions
 ```
 
@@ -88,6 +88,5 @@ Total controller tests added: 3 (fresh cross-fork, fresh same-repo, followup cro
 
 ## Follow-ups
 
-1. **Acceptance scenarios 1 + 2** — still `it.todo`. Requires an end-to-end webhook → enqueueReview → claudeInvoker → ensureWorktree → dispatch harness. Ticket out scoped separately per the original predecessor report §Follow-ups #3.
-2. **Pre-SPEC-170 worktree sweep on prod** — one-time manual cleanup of `.claude/worktrees/` under the operator's home; documented in deploy runbook (predecessor report §Follow-ups #4).
-3. **Operator documentation for GitHub fork authentication** — short HARNESS-ONBOARDING entry confirming that cross-fork PRs require git credentials cached on the operator's machine (HTTPS creds or SSH key). No code change.
+1. **Pre-SPEC-170 worktree sweep on prod** — one-time manual cleanup of `.claude/worktrees/` under the operator's home; documented in deploy runbook (predecessor report §Follow-ups #4).
+2. **Operator documentation for GitHub fork authentication** — short HARNESS-ONBOARDING entry confirming that cross-fork PRs require git credentials cached on the operator's machine (HTTPS creds or SSH key). No code change.
