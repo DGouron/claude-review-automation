@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.17.0...reviewflow-v3.17.1) (2026-05-23)
+
+
+### Fixed
+
+* [#171](https://github.com/DGouron/review-flow/issues/171) trigger followup review on push to reviewed branch ([#190](https://github.com/DGouron/review-flow/issues/190)) ([340da66](https://github.com/DGouron/review-flow/commit/340da665b556e434d70bf4c9cf0ee756f8346bea))
+
 ## [3.17.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.16.0...reviewflow-v3.17.0) (2026-05-23)
 
 
