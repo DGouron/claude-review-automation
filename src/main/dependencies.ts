@@ -20,6 +20,10 @@ import {
   createDefaultClaudeInvocationDeps,
   type ClaudeInvocationDeps,
 } from '@/frameworks/claude/claudeInvoker.js';
+import { GitCommandCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/gitCommand.cli.gateway.js';
+import { WorktreeFileSystemGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktree.fileSystem.gateway.js';
+import type { GitCommandExecutor } from '@/modules/worktree-management/entities/gitCommand/gitCommand.gateway.js';
+import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
 import { pino, type Logger, type LoggerOptions } from 'pino';
 import { mkdirSync } from 'node:fs';
 import { LOG_DIR, LOG_FILE_PATH } from '../shared/services/daemonPaths.js';
@@ -35,6 +39,8 @@ export interface Dependencies {
   progressPresenter: ReviewContextProgressPresenter;
   claudeInvocationDeps: ClaudeInvocationDeps;
   supervisorStatusStore: SupervisorStatusStore;
+  gitCommandExecutor: GitCommandExecutor;
+  worktreeGateway: WorktreeGateway;
   logger: Logger;
   config: Config;
 }
@@ -72,6 +78,8 @@ export function createDependencies(config: Config): Dependencies {
   const logger = createLogger();
 
   const reviewContextGateway = new ReviewContextFileSystemGateway();
+  const gitCommandExecutor = new GitCommandCliGateway();
+  const worktreeGateway = new WorktreeFileSystemGateway({ executor: gitCommandExecutor });
 
   return {
     reviewRequestTrackingGateway: new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator()),
@@ -84,6 +92,8 @@ export function createDependencies(config: Config): Dependencies {
     progressPresenter: new ReviewContextProgressPresenter(),
     claudeInvocationDeps: createDefaultClaudeInvocationDeps(),
     supervisorStatusStore: new InMemorySupervisorStatusStore(),
+    gitCommandExecutor,
+    worktreeGateway,
     logger,
     config,
   };

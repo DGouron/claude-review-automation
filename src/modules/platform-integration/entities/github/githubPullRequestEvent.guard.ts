@@ -11,8 +11,19 @@ const gitHubPullRequestEventSchema = z.object({
     state: z.enum(['open', 'closed']),
     draft: z.boolean(),
     html_url: z.string(),
-    head: z.object({ ref: z.string() }),
-    base: z.object({ ref: z.string() }),
+    head: z.object({
+      ref: z.string(),
+      repo: z.object({
+        full_name: z.string(),
+        clone_url: z.string(),
+      }).optional(),
+    }),
+    base: z.object({
+      ref: z.string(),
+      repo: z.object({
+        full_name: z.string(),
+      }).optional(),
+    }),
     requested_reviewers: z.array(z.object({ login: z.string() })),
     assignees: z.array(z.object({ login: z.string() })).optional(),
   }),

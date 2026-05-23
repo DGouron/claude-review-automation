@@ -633,6 +633,89 @@ describe('handleGitHubWebhook', () => {
     });
   });
 
+  describe('cross-fork PR detection (FR-8)', () => {
+    it('populates ReviewJob.sourceForkCloneUrl on a fresh review when head.repo differs from base.repo', async () => {
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      (event.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'contributor/test-repo',
+        clone_url: 'https://github.com/contributor/test-repo.git',
+      };
+      (event.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      };
+
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(enqueueReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobType: 'review',
+          sourceForkCloneUrl: 'https://github.com/contributor/test-repo.git',
+        }),
+        expect.any(Function),
+      );
+    });
+
+    it('leaves ReviewJob.sourceForkCloneUrl undefined for a same-repo review', async () => {
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      (event.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+        clone_url: 'https://github.com/test-owner/test-repo.git',
+      };
+      (event.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      };
+
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(enqueueReview).toHaveBeenCalled();
+      const enqueuedJob = vi.mocked(enqueueReview).mock.calls[0][0];
+      expect(enqueuedJob.sourceForkCloneUrl).toBeUndefined();
+    });
+
+    it('propagates sourceForkCloneUrl to the followup job on cross-fork synchronize', async () => {
+      const deps = createMockDeps();
+      const trackedMr = TrackedMrFactory.create({
+        id: 'github-test-owner/test-repo-123',
+        mrNumber: 123,
+        platform: 'github',
+        project: 'test-owner/test-repo',
+        state: 'pending-fix',
+        openThreads: 3,
+        totalThreads: 3,
+        lastPushAt: '2026-05-20T12:00:00Z',
+        lastReviewAt: '2026-05-20T10:00:00Z',
+        autoFollowup: true,
+      });
+      (deps.recordPush.execute as ReturnType<typeof vi.fn>).mockReturnValue(trackedMr);
+      (deps.checkFollowupNeeded.execute as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      const event = GitHubEventFactory.createSynchronizePr();
+      (event.pull_request.head as Record<string, unknown>).repo = {
+        full_name: 'contributor/test-repo',
+        clone_url: 'https://github.com/contributor/test-repo.git',
+      };
+      (event.pull_request.base as Record<string, unknown>).repo = {
+        full_name: 'test-owner/test-repo',
+      };
+
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobType: 'followup',
+          sourceForkCloneUrl: 'https://github.com/contributor/test-repo.git',
+        }),
+        expect.any(Function),
+      );
+    });
+  });
+
   describe('worktree cleanup on close', () => {
     it('calls removeWorktree on PR close with github identity (covers both closed and merged)', async () => {
       const removeWorktree = vi.fn(async () => ({ status: 'removed' as const }));

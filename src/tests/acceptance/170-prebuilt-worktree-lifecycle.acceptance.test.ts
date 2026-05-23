@@ -18,13 +18,23 @@ vi.mock('@/frameworks/config/configLoader.js', () => ({
   })),
 }));
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { removeWorktree } from '@/modules/worktree-management/usecases/removeWorktree.usecase.js';
 import { StubGitCommandExecutor } from '@/tests/stubs/gitCommandExecutor.stub.js';
-import type { WorktreeIdentity, WorktreePath } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+import type {
+  RemoveResult,
+  WorktreeEntry,
+  WorktreeIdentity,
+  WorktreePath,
+} from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
+import { deriveWorktreePath } from '@/modules/worktree-management/entities/worktree/worktree.js';
 import { enqueueReview, initQueue, type ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { buildMcpSystemPrompt } from '@/frameworks/claude/claudeInvoker.js';
+import { startWorktreeSweepScheduler } from '@/frameworks/scheduler/worktreeSweepScheduler.js';
+import { ensureWorktree } from '@/modules/worktree-management/usecases/ensureWorktree.usecase.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 
 const baseIdentity: WorktreeIdentity = {
   platform: 'gitlab',
@@ -94,15 +104,208 @@ describe('Acceptance — SPEC-170: Pre-built Worktree Lifecycle', () => {
   });
 
   describe('Feature: Daily safety-net sweep', () => {
-    it.todo('Scenario 6 — closed MR over 24h: worktree present + tracker state "merged 48h ago" → remove worktree');
+    const sweepRepository = { localPath: '/repos/test-project', enabled: true };
+    const sweepNow = new Date('2026-05-23T12:00:00Z');
 
-    it.todo('Scenario 7 — orphan: worktree present + no tracked MR → remove worktree + warning log');
+    function buildTrackedMrFixture(overrides: Partial<TrackedMr>): TrackedMr {
+      return {
+        id: overrides.id ?? 'gitlab-test-org/test-project-1',
+        mrNumber: overrides.mrNumber ?? 1,
+        title: 'title',
+        url: 'http://example.com',
+        project: overrides.project ?? 'test-org/test-project',
+        platform: overrides.platform ?? 'gitlab',
+        sourceBranch: 'feat/x',
+        targetBranch: 'master',
+        assignment: { username: 'user', assignedAt: '2026-05-01T00:00:00Z' },
+        state: overrides.state ?? 'pending-review',
+        openThreads: 0,
+        totalThreads: 0,
+        createdAt: '2026-05-01T00:00:00Z',
+        lastReviewAt: null,
+        lastPushAt: null,
+        approvedAt: null,
+        mergedAt: overrides.mergedAt ?? null,
+        reviews: [],
+        totalReviews: 0,
+        totalFollowups: 0,
+        totalBlocking: 0,
+        totalWarnings: 0,
+        totalSuggestions: 0,
+        totalDurationMs: 0,
+        latestScore: null,
+        autoFollowup: true,
+      };
+    }
 
-    it.todo('Scenario 8 — stale active MR: worktree mtime 8 days + tracker state "pending-review" → remove + warning + next review recreates fresh');
+    function buildSweepStubGateway(entries: WorktreeEntry[]): {
+      gateway: WorktreeGateway;
+      readonly removed: WorktreeIdentity[];
+    } {
+      let liveEntries = [...entries];
+      const removed: WorktreeIdentity[] = [];
+      const gateway: WorktreeGateway = {
+        list: async () => liveEntries,
+        remove: async request => {
+          removed.push(request.identity);
+          liveEntries = liveEntries.filter(
+            entry => deriveWorktreePath(entry.identity) !== deriveWorktreePath(request.identity),
+          );
+          return { status: 'removed' } satisfies RemoveResult;
+        },
+        ensure: async () => ({ status: 'failed', reason: 'not-used-in-sweep' }),
+        exists: async () => false,
+      };
+      return {
+        gateway,
+        get removed() {
+          return removed;
+        },
+      };
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(sweepNow);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('Scenario 6 — closed MR over 24h: worktree present + tracker merged 48h ago → remove worktree', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'test-org/test-project', mrNumber: 1 };
+      const entry: WorktreeEntry = {
+        identity,
+        path: deriveWorktreePath(identity),
+        mtime: new Date('2026-05-21T00:00:00Z'),
+      };
+      const stub = buildSweepStubGateway([entry]);
+      const mrId = `${identity.platform}-${identity.projectPath}-${identity.mrNumber}`;
+      const tracked = buildTrackedMrFixture({
+        id: mrId,
+        state: 'merged',
+        mergedAt: '2026-05-21T00:00:00Z',
+      });
+
+      const handle = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: {
+          getById: (projectPath, requestedId) =>
+            projectPath === sweepRepository.localPath && requestedId === mrId ? tracked : null,
+        },
+        getRepositories: () => [sweepRepository],
+        logger: createStubLogger(),
+        now: () => sweepNow,
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+      handle.stop();
+
+      expect(stub.removed).toEqual([identity]);
+    });
+
+    it('Scenario 7 — orphan: worktree present + no tracked MR → remove worktree', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'test-org/test-project', mrNumber: 2 };
+      const entry: WorktreeEntry = {
+        identity,
+        path: deriveWorktreePath(identity),
+        mtime: new Date('2026-05-23T11:00:00Z'),
+      };
+      const stub = buildSweepStubGateway([entry]);
+
+      const handle = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: { getById: () => null },
+        getRepositories: () => [sweepRepository],
+        logger: createStubLogger(),
+        now: () => sweepNow,
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+      handle.stop();
+
+      expect(stub.removed).toEqual([identity]);
+    });
+
+    it('Scenario 8 — stale active MR: worktree mtime 8 days old + tracker pending-review → remove worktree', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'test-org/test-project', mrNumber: 3 };
+      const eightDaysAgo = new Date(sweepNow.getTime() - 8 * 24 * 60 * 60 * 1000);
+      const entry: WorktreeEntry = {
+        identity,
+        path: deriveWorktreePath(identity),
+        mtime: eightDaysAgo,
+      };
+      const stub = buildSweepStubGateway([entry]);
+      const mrId = `${identity.platform}-${identity.projectPath}-${identity.mrNumber}`;
+      const tracked = buildTrackedMrFixture({
+        id: mrId,
+        mrNumber: identity.mrNumber,
+        state: 'pending-review',
+      });
+
+      const handle = startWorktreeSweepScheduler({
+        worktreeGateway: stub.gateway,
+        trackingGateway: {
+          getById: (projectPath, requestedId) =>
+            projectPath === sweepRepository.localPath && requestedId === mrId ? tracked : null,
+        },
+        getRepositories: () => [sweepRepository],
+        logger: createStubLogger(),
+        now: () => sweepNow,
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+      handle.stop();
+
+      expect(stub.removed).toEqual([identity]);
+    });
   });
 
   describe('Feature: GitHub cross-fork PR handling', () => {
-    it.todo('Scenario 9 — cross-fork PR: platform=github, head.repo=contributor/fork, source=patch-1 → fetch from fork URL + worktree add from refs/remotes/pr-N/head');
+    it('Scenario 9 — cross-fork PR: ensureWorktree fetches from fork URL with refspec patch-1:refs/remotes/pr-N/head and worktree-add from refs/remotes/pr-N/head', async () => {
+      const forkCloneUrl = 'https://github.com/contributor/test-repo.git';
+      const identity: WorktreeIdentity = {
+        platform: 'github',
+        projectPath: 'test-owner/test-repo',
+        mrNumber: 77,
+      };
+      const sourceBranch = 'patch-1';
+      const executor = new StubGitCommandExecutor();
+
+      const result = await ensureWorktree(
+        {
+          identity,
+          sourceBranch,
+          source: { kind: 'fork', cloneUrl: forkCloneUrl },
+          sourceCheckoutPath: '/home/user/projects/test-repo',
+        },
+        {
+          executor,
+          worktreeExists: async () => false,
+          writeWorktreeSettings: async () => ({ status: 'ok' }),
+        },
+      );
+
+      expect(result.status).toBe('created');
+
+      const fetchCalls = executor.callsOfKind('fetch');
+      expect(fetchCalls).toHaveLength(1);
+      expect(fetchCalls[0]?.args).toEqual([
+        'fetch',
+        forkCloneUrl,
+        `${sourceBranch}:refs/remotes/pr-${identity.mrNumber}/head`,
+      ]);
+
+      const addCalls = executor.callsOfKind('worktree-add');
+      expect(addCalls).toHaveLength(1);
+      expect(addCalls[0]?.args).toEqual([
+        'worktree',
+        'add',
+        deriveWorktreePath(identity),
+        `refs/remotes/pr-${identity.mrNumber}/head`,
+      ]);
+    });
   });
 
   describe('Feature: Per-MR serialization of concurrent operations', () => {
