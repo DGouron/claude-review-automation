@@ -63,6 +63,19 @@ function broadcastStateChange(): void {
   }
 }
 
+export function broadcastPendingChanged(): void {
+  const message = JSON.stringify({
+    type: 'pending-changed',
+    timestamp: new Date().toISOString(),
+  });
+
+  for (const client of wsClients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
+  }
+}
+
 export function broadcastBackfillProgress(progress: BackfillProgress): void {
   const messageType = progress.status === 'completed' ? 'backfill-complete' : 'backfill-progress';
   const message = JSON.stringify({

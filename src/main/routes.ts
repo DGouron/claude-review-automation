@@ -19,7 +19,7 @@ import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
-import { cancelJob, getJobStatus } from '@/frameworks/queue/pQueueAdapter.js';
+import { cancelJob, getJobStatus, enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
@@ -44,7 +44,14 @@ import { UpdateBudgetUseCase } from '@/modules/token-accounting/usecases/updateB
 import { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
 import { BudgetStatusPresenter } from '@/modules/token-accounting/interface-adapters/presenters/budgetStatus.presenter.js';
 import { BUDGET_DEFAULT_USD } from '@/modules/token-accounting/entities/budget/budgetConfig.schema.js';
-import { broadcastBudgetExceeded, broadcastBudgetStatus } from '@/main/websocket.js';
+import { broadcastBudgetExceeded, broadcastBudgetStatus, broadcastPendingChanged } from '@/main/websocket.js';
+import { PendingReviewRequestFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/pendingReviewRequest.fileSystem.gateway.js';
+import { ListPendingReviewsUseCase } from '@/modules/review-execution/usecases/listPendingReviews.usecase.js';
+import { ConfirmPendingReviewUseCase } from '@/modules/review-execution/usecases/confirmPendingReview.usecase.js';
+import { DismissPendingReviewUseCase } from '@/modules/review-execution/usecases/dismissPendingReview.usecase.js';
+import { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
+import { PendingReviewPresenter } from '@/modules/review-execution/interface-adapters/presenters/pendingReview.presenter.js';
+import { pendingReviewsRoutes } from '@/modules/review-execution/interface-adapters/controllers/http/pendingReviews.routes.js';
 import {
   createDefaultClaudeInvokerDependencies,
   type ClaudeInvokerDependencies,
@@ -141,6 +148,55 @@ export async function registerRoutes(
     getRepositories: () => deps.config.repositories,
   });
 
+  const pendingReviewRequestGateway = new PendingReviewRequestFileSystemGateway();
+  const listPendingReviews = new ListPendingReviewsUseCase({ pendingReviewRequestGateway });
+  const confirmPendingReview = new ConfirmPendingReviewUseCase({
+    pendingReviewRequestGateway,
+    queuePort: {
+      hasActiveJob: (jobId: string) => {
+        const status = getJobStatus(jobId);
+        return status === 'queued' || status === 'running';
+      },
+      getJobStatus,
+    },
+    enqueue: enqueueReview,
+    // The persisted ReviewJob snapshot lets us re-enqueue with the SAME inline
+    // processor used at webhook time (rehydrated on confirm). No registry is
+    // needed in V0 because all pending requests are confirmed by the SAME
+    // running process; surviving restart simply means the user must re-trigger
+    // the webhook after a restart if they want the original processor closure.
+    resolveProcessor: () => async () => {
+      deps.logger.warn(
+        'Pending review confirmed across processor rehydration — Claude invocation skipped (V0 limitation).',
+      );
+    },
+    logger: deps.logger,
+  });
+  const dismissPendingReview = new DismissPendingReviewUseCase({
+    pendingReviewRequestGateway,
+    queuePort: {
+      hasActiveJob: (jobId: string) => {
+        const status = getJobStatus(jobId);
+        return status === 'queued' || status === 'running';
+      },
+    },
+    logger: deps.logger,
+  });
+  const gateClaudeInvocation = new GateClaudeInvocationUseCase({
+    triggerMode: deps.config.triggerMode,
+    pendingReviewRequestGateway,
+    enqueue: enqueueReview,
+    broadcastPendingChanged: () => broadcastPendingChanged(),
+    logger: deps.logger,
+  });
+
+  await app.register(pendingReviewsRoutes, {
+    listPendingReviews,
+    confirmPendingReview,
+    dismissPendingReview,
+    presenter: new PendingReviewPresenter(),
+  });
+
   const claudeInvokerDeps: ClaudeInvokerDependencies = {
     ...createDefaultClaudeInvokerDependencies(),
     getBudgetStatus,
@@ -176,6 +232,7 @@ export async function registerRoutes(
     enforceBudget,
     broadcastBudgetExceeded,
     claudeInvokerDeps,
+    gateClaudeInvocation,
     logger: deps.logger,
   });
 
@@ -241,6 +298,7 @@ export async function registerRoutes(
       broadcastBudgetExceeded,
       getRepositories: () => deps.config.repositories,
       claudeInvokerDeps,
+      gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
     });
   });
@@ -263,6 +321,7 @@ export async function registerRoutes(
       broadcastBudgetExceeded,
       getRepositories: () => deps.config.repositories,
       claudeInvokerDeps,
+      gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
     });
   });

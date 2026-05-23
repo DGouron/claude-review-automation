@@ -13,6 +13,7 @@ import {
 } from '@/frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
+import type { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
 import type { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
@@ -73,6 +74,7 @@ export interface GitLabWebhookDependencies {
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
   getRepositories: () => RepositoryConfig[];
   claudeInvokerDeps?: ClaudeInvokerDependencies;
+  gateClaudeInvocation?: GateClaudeInvocationUseCase;
   removeWorktree: RemoveWorktreeAction;
 }
 
@@ -333,7 +335,7 @@ export async function handleGitLabWebhook(
             return;
           }
 
-          enqueueReview(followupJob, async (j, signal) => {
+          const followupProcessor = async (j: ReviewJob, signal: AbortSignal): Promise<void> => {
             sendNotification('Review followup démarrée', `MR !${j.mrNumber} - ${j.projectPath}`, logger);
 
             // Create review context file with pre-fetched threads and diff metadata
@@ -488,7 +490,25 @@ export async function handleGitLabWebhook(
                 result.stderr?.trim() || `Followup review failed with exit code ${result.exitCode}`
               );
             }
-          });
+          };
+
+          if (deps.gateClaudeInvocation) {
+            const gateResult = await deps.gateClaudeInvocation.execute({
+              job: followupJob,
+              triggerSource: 'webhook-followup',
+              processor: followupProcessor,
+            });
+            if (gateResult.status === 'pending') {
+              reply.status(202).send({
+                status: 'pending-confirmation',
+                pendingId: gateResult.pendingId,
+                mrNumber: updateResult.mergeRequestNumber,
+              });
+              return;
+            }
+          } else {
+            enqueueReview(followupJob, followupProcessor);
+          }
 
           reply.status(202).send({
             status: 'followup-queued',
@@ -589,7 +609,7 @@ export async function handleGitLabWebhook(
     return;
   }
 
-  const enqueued = await enqueueReview(job, async (j, signal) => {
+  const reviewProcessor = async (j: ReviewJob, signal: AbortSignal): Promise<void> => {
     // Send start notification
     sendNotification(
       'Review démarrée',
@@ -756,7 +776,39 @@ export async function handleGitLabWebhook(
         result.stderr?.trim() || `Review failed with exit code ${result.exitCode}`
       );
     }
-  });
+  };
+
+  if (deps.gateClaudeInvocation) {
+    const gateResult = await deps.gateClaudeInvocation.execute({
+      job,
+      triggerSource: 'webhook-initial',
+      processor: reviewProcessor,
+    });
+    if (gateResult.status === 'pending') {
+      reply.status(202).send({
+        status: 'pending-confirmation',
+        pendingId: gateResult.pendingId,
+        mrNumber: filterResult.mergeRequestNumber,
+      });
+      return;
+    }
+    if (gateResult.status === 'enqueued') {
+      reply.status(202).send({
+        status: 'queued',
+        jobId,
+        mrNumber: filterResult.mergeRequestNumber,
+      });
+      return;
+    }
+    reply.status(200).send({
+      status: 'deduplicated',
+      jobId,
+      reason: 'Review already in progress or recently completed',
+    });
+    return;
+  }
+
+  const enqueued = await enqueueReview(job, reviewProcessor);
 
   if (enqueued) {
     reply.status(202).send({

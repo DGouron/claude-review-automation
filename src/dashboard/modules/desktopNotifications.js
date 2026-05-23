@@ -24,6 +24,7 @@ export function getDesktopNotificationPayload(notification, translate) {
     reviewCompleted: 'notify.reviewCompleted',
     followupCompleted: 'notify.followupCompleted',
     reviewFailed: 'notify.reviewFailed',
+    reviewPendingConfirmation: 'notify.reviewPendingConfirmation',
   };
 
   const messageKey = messageKeyByKind[notification.kind];

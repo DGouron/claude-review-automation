@@ -1,7 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { RepositoryConfig } from '@/config/loader.js';
 import { logInfo, logError } from '@/frameworks/logging/logBuffer.js';
-import { enqueueReview, createJobId, updateJobProgress } from '@/frameworks/queue/pQueueAdapter.js';
+import { enqueueReview, createJobId, updateJobProgress, type ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
+import type { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
 import { loadProjectConfig, getFollowupAgents } from '@/config/projectConfig.js';
 import { DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
@@ -44,6 +45,7 @@ export interface MrTrackingAdvancedRoutesOptions {
   enforceBudget: Pick<EnforceBudgetUseCase, 'execute'>;
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
   claudeInvokerDeps?: ClaudeInvokerDependencies;
+  gateClaudeInvocation?: GateClaudeInvocationUseCase;
   logger: Logger;
 }
 
@@ -76,6 +78,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     enforceBudget,
     broadcastBudgetExceeded,
     claudeInvokerDeps,
+    gateClaudeInvocation,
     logger,
   } = opts;
 
@@ -150,7 +153,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
       return { status: 'rejected', reason: 'budget-exceeded' };
     }
 
-    const enqueued = await enqueueReview({
+    const manualFollowupJob: ReviewJob = {
       id: jobId,
       platform: platform as 'gitlab' | 'github',
       projectPath: gitProjectPath,
@@ -161,7 +164,9 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
       sourceBranch: 'unknown',
       targetBranch: 'unknown',
       jobType: 'followup',
-    }, async (job, signal) => {
+    };
+
+    const manualFollowupProcessor = async (job: ReviewJob, signal: AbortSignal): Promise<void> => {
       sendNotification('Review followup started', `MR !${job.mrNumber}`, logger);
 
       // Use injected gateways to fetch threads + diff metadata.
@@ -306,7 +311,26 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
       } else if (!result.cancelled) {
         sendNotification('Review followup failed', `MR !${job.mrNumber}`, logger);
       }
-    });
+    };
+
+    if (gateClaudeInvocation) {
+      const gateResult = await gateClaudeInvocation.execute({
+        job: manualFollowupJob,
+        triggerSource: 'dashboard-manual',
+        processor: manualFollowupProcessor,
+      });
+      if (gateResult.status === 'pending') {
+        logInfo('Manual followup parked for human confirmation', { mrId, mrNumber, pendingId: gateResult.pendingId });
+        return { success: true, status: 'pending-confirmation', pendingId: gateResult.pendingId };
+      }
+      if (gateResult.status === 'rejected') {
+        return { success: false, error: 'Review already in progress or recently performed' };
+      }
+      logInfo('Followup triggered manually', { mrId, mrNumber, skill });
+      return { success: true, jobId, message: 'Followup review in progress' };
+    }
+
+    const enqueued = await enqueueReview(manualFollowupJob, manualFollowupProcessor);
 
     if (!enqueued) {
       return { success: false, error: 'Review already in progress or recently performed' };

@@ -67,6 +67,7 @@ const translations = {
     'notify.followupCompleted': 'Follow-up completed for !{{mrNumber}}',
     'notify.reviewFailed': 'Review failed for !{{mrNumber}}',
     'notify.followupRequested': 'Follow-up requested for !{{mrNumber}}',
+    'notify.reviewPendingConfirmation': 'Review awaiting your confirmation for !{{mrNumber}}',
     'notify.desktopTitle': 'Reviewflow alert',
 
     // Loading
@@ -452,6 +453,7 @@ const translations = {
     'notify.followupCompleted': 'Follow-up terminé pour !{{mrNumber}}',
     'notify.reviewFailed': 'Review en échec pour !{{mrNumber}}',
     'notify.followupRequested': 'Follow-up demandé pour !{{mrNumber}}',
+    'notify.reviewPendingConfirmation': 'Review en attente de votre confirmation pour !{{mrNumber}}',
     'notify.desktopTitle': 'Alerte Reviewflow',
 
     // Loading
