@@ -140,6 +140,7 @@ const translations = {
     // Sections
     'section.logs': 'Recent logs',
     'section.stats': 'Project statistics',
+    'section.pendingReviews': 'Pending reviews',
     'section.activeReviews': 'Active reviews',
     'section.activeFollowups': 'Active followups',
     'section.pendingFix': 'Pending fix',
@@ -159,6 +160,7 @@ const translations = {
     'empty.logs': 'No logs',
     'empty.stats': 'Load a project to see stats',
     'empty.statsNoData': 'No statistics available',
+    'empty.pendingReviews': 'No reviews waiting for confirmation',
     'empty.activeReviews': 'No active reviews',
     'empty.activeFollowups': 'No follow-up in progress',
     'empty.pendingFix': 'No MR pending fix',
@@ -541,6 +543,7 @@ const translations = {
     // Sections
     'section.logs': 'Logs récents',
     'section.stats': 'Statistiques du projet',
+    'section.pendingReviews': 'Reviews en attente',
     'section.activeReviews': 'Reviews actives',
     'section.activeFollowups': 'Followups actifs',
     'section.pendingFix': 'En attente de correctif',
@@ -560,6 +563,7 @@ const translations = {
     'empty.logs': 'Aucun log',
     'empty.stats': 'Charger un projet pour voir les stats',
     'empty.statsNoData': 'Aucune statistique disponible',
+    'empty.pendingReviews': 'Aucune review en attente de confirmation',
     'empty.activeReviews': 'Aucune review en cours',
     'empty.activeFollowups': 'Aucun follow-up en cours',
     'empty.pendingFix': 'Aucune MR en attente de correctif',
