@@ -2,11 +2,45 @@
 title: "SPEC-171: Re-enable Token Usage Tracking in --bg Mode"
 labels: enhancement, P2-important, observability, claude-invocation
 milestone: June 15 Migration
-status: DRAFT
+status: IMPLEMENTED
 blocked-by: SPEC-169
 ---
 
 # SPEC-171: Re-enable Token Usage Tracking in --bg Mode
+
+## Status: implemented
+
+Shipped 2026-05-23. See `docs/reports/171-bg-token-usage-tracking.report.md` for the implementation report.
+
+## Implementation
+
+### Artefacts
+
+- **Entity (new)**: `src/modules/token-accounting/entities/modelPricing/modelPricing.ts` — pure function `computeCostUsd(model, tokens)` + hardcoded Anthropic pricing table (refresh on model family bumps).
+- **Entity (new)**: `src/modules/claude-invocation/entities/claudeSession/sessionUsage.schema.ts` — `SessionUsageSnapshot` zod schema (carrier type, no logic).
+- **Gateway contract (extended)**: `ClaudeSessionGateway.getSessionUsage(sessionId, cwd)` added at `src/modules/claude-invocation/entities/claudeSession/claudeSession.gateway.ts`.
+- **Gateway impl (extended)**: `ClaudeSessionCliGateway.getSessionUsage` reads JSONL transcript at `~/.claude/projects/<cwdSlug>/<sessionId>.jsonl`, sums assistant-turn usage, picks model from last turn (R4), computes cost via `modelPricing`. Source: `src/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.ts`. Hermetic-test seam: `homeDir` constructor option.
+- **Use case (extended)**: `runClaudeReviewJob.usecase.ts` `RunClaudeReviewJobResult.completed` now carries `usage: SessionUsageSnapshot | null`. Usage extracted between `awaitSessionCompletion` and `cleanupClaudeSession` (R1).
+- **Integration (rewired)**: `invokeViaBackgroundSession` in `src/frameworks/claude/claudeInvoker.ts` replaces the disabled-comment block with `trackTokenUsage.execute` + `broadcastBudgetAfterUsage`. R5/R7 wrap both in try/catch. R6 honored by being inside the `completed` branch only. R8 honored — followups tracked identically.
+
+### Endpoints
+
+N/A — no new HTTP/MCP/CLI surface. Internal wiring change only.
+
+### Architectural decisions taken
+
+- **Hardcoded pricing table** (not dynamic). JSDoc points to Anthropic's pricing page. Refresh on model bumps. Anti-overengineering: no HTTP fetch, no override config (YAGNI for this spec).
+- **Unknown-model fallback = opus rates**. Never under-reports cost (per `Scenarios.unknown-model`).
+- **Cross-context isolation**: `SessionUsageSnapshot` lives in `claude-invocation` (local carrier shape); the caller maps to `TokenUsageRecord`. `claude-invocation` does not import from `token-accounting`.
+- **`getSessionUsage` added to existing gateway** (not a new one) — the JSONL is part of the same CLI surface; SRP not violated for a single read operation.
+- **No composition root change**: `broadcastBudgetStatus`, `getBudgetStatus`, `budgetStatusPresenter`, `getEnabledLocalPaths` were already wired in `src/main/routes.ts:148–158`.
+- **No `claudeInvoker.test.ts` integration test added** for the wired block — coverage is transitive via `runClaudeReviewJob.test.ts`, `broadcastBudgetAfterUsage.test.ts`, and the acceptance test. Adding a dedicated harness was out of scope.
+
+### Risk mitigations actually shipped
+
+- **Risk #1** (CLI surface uncertainty): mitigated by switching data source to the JSONL transcript instead of `claude logs <id>` (which emits unparseable ANSI). No CLI dependency beyond the on-disk file format.
+- **Risk #2** (fragile parsing): pinned fixture at `src/tests/fixtures/claudeCli/.claude/projects/-tmp-project-fixture/abc12345.jsonl` with mixed cache values, malformed line, non-assistant entries. Refresh on Claude CLI bump.
+- **Risk #3** (concurrent writes): existing `FilesystemTokenUsageGateway.record` uses `appendFileSync` — append-only semantics already safe under concurrency.
 
 ## Problem Statement
 
@@ -51,6 +85,27 @@ This is a load-bearing operational tool, not a "nice to have". The budget cap (S
 - [ ] AC-2: `BudgetStatusPresenter` returns a `currentSpendingUsd > 0` after at least one review since SPEC-171 ships
 - [ ] AC-3: A `--bg` session that completes without parseable usage logs a single warning and does NOT block the review pipeline
 - [ ] AC-4: Unit test asserts that `deps.trackTokenUsage` is called exactly once per successful review and zero times per failed/timeout review
+
+## Rules
+
+- R1: Token usage is extracted from the session's JSONL transcript at `~/.claude/projects/<cwdSlug>/<sessionId>.jsonl` after `awaitSessionCompletion` settles with `outcome: 'completed'` and BEFORE `cleanupClaudeSession` runs.
+- R2: Total session usage is the **sum** of `message.usage.{input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens}` across every `type:"assistant"` line in the JSONL.
+- R3: `costUsd` is **computed** from token counts using a per-model pricing table (Anthropic public pricing per 1M tokens). The JSONL does NOT carry cost — the legacy CLI `result.total_cost_usd` field is unavailable in `--bg`.
+- R4: The dominant model recorded in the `TokenUsageRecord.model` field is the model from the last assistant message of the session (matches Anthropic's billing-attribution behaviour).
+- R5: If the JSONL file is missing, unreadable, or every assistant line fails to parse, the extractor returns `null`. The pipeline logs a single warning and continues without crashing the review.
+- R6: Failed reviews (`status !== 'completed'`), timeouts, and rate-limit retries do NOT invoke `trackTokenUsage` and do NOT broadcast budget.
+- R7: After a successful `trackTokenUsage.execute`, `broadcastBudgetAfterUsage` is invoked once with the project's `localPath`. A broadcast failure is non-fatal (logged warning, does not affect the review).
+- R8: Followup reviews (`jobType === 'followup'`) are tracked identically to standard reviews — the legacy stats path skipped followups but token accounting must not.
+
+## Scenarios
+
+- successful-review: {jobType: 'review', jsonl: present with 3 assistant turns} → trackTokenUsage called 1×, broadcastBudget called 1×, summed usage recorded with computed costUsd
+- successful-followup: {jobType: 'followup', jsonl: present with 1 assistant turn} → trackTokenUsage called 1×, broadcastBudget called 1×
+- missing-jsonl: {outcome: 'completed', jsonl: missing} → warning logged, trackTokenUsage NOT called, pipeline returns success
+- unparseable-jsonl: {outcome: 'completed', jsonl: malformed} → warning logged with raw snippet, trackTokenUsage NOT called, pipeline returns success
+- failed-review: {outcome: 'failed'} → trackTokenUsage NOT called, broadcastBudget NOT called
+- timeout-review: {outcome: 'timeout'} → trackTokenUsage NOT called, broadcastBudget NOT called
+- unknown-model: {assistant.message.model: 'mystery-model-x'} → cost computed with fallback pricing (matches highest-tier so we never under-report), warning logged once
 
 ## Risks & Mitigations
 

@@ -1,9 +1,21 @@
 import { describe, it, expect } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   ClaudeSessionCliGateway,
   type ClaudeProcessRunner,
   type ClaudeProcessRunResult,
 } from '@/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.js';
+import { parseSessionId } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
+import { computeCostUsd } from '@/modules/token-accounting/entities/modelPricing/modelPricing.js';
+
+const FIXTURE_ROOT = fileURLToPath(new URL('../../../../../fixtures/claudeCli/', import.meta.url));
+
+function noopRunner(): ClaudeProcessRunner {
+  return async () => ({ stdout: '', stderr: '', exitCode: 0 });
+}
 
 function createRunner(scripted: ClaudeProcessRunResult[]): {
   runner: ClaudeProcessRunner;
@@ -243,5 +255,144 @@ describe('ClaudeSessionCliGateway.daemonStatus and usage', () => {
     await gateway.usage();
 
     expect(calls[0]?.args).not.toContain('/usage');
+  });
+});
+
+describe('ClaudeSessionCliGateway.getSessionUsage', () => {
+  it('aggregates assistant tokens, picks the last model, and computes costUsd from the pinned fixture', async () => {
+    const gateway = new ClaudeSessionCliGateway(noopRunner(), { homeDir: FIXTURE_ROOT });
+
+    const snapshot = await gateway.getSessionUsage(
+      parseSessionId('abc12345'),
+      '/tmp/project-fixture',
+    );
+
+    expect(snapshot).not.toBeNull();
+    if (snapshot === null) return;
+    expect(snapshot.model).toBe('claude-opus-4-7');
+    expect(snapshot.usage.inputTokens).toBe(3000);
+    expect(snapshot.usage.outputTokens).toBe(550);
+    expect(snapshot.usage.cacheCreationInputTokens).toBe(50);
+    expect(snapshot.usage.cacheReadInputTokens).toBe(2000);
+    expect(snapshot.usage.costUsd).toBe(
+      computeCostUsd('claude-opus-4-7', {
+        inputTokens: 3000,
+        outputTokens: 550,
+        cacheCreationInputTokens: 50,
+        cacheReadInputTokens: 2000,
+        costUsd: 0,
+      }),
+    );
+  });
+
+  it('returns null when the JSONL file is missing', async () => {
+    const gateway = new ClaudeSessionCliGateway(noopRunner(), { homeDir: FIXTURE_ROOT });
+
+    const snapshot = await gateway.getSessionUsage(
+      parseSessionId('missing0'),
+      '/tmp/project-fixture',
+    );
+
+    expect(snapshot).toBeNull();
+  });
+
+  it('returns null when the entire file is empty', async () => {
+    const tempHome = mkdtempSync(join(tmpdir(), 'rf-session-usage-'));
+    const sessionDir = join(tempHome, '.claude', 'projects', '-tmp-empty');
+    mkdirSync(sessionDir, { recursive: true });
+    writeFileSync(join(sessionDir, 'empty001.jsonl'), '');
+
+    try {
+      const gateway = new ClaudeSessionCliGateway(noopRunner(), { homeDir: tempHome });
+      const snapshot = await gateway.getSessionUsage(
+        parseSessionId('empty001'),
+        '/tmp/empty',
+      );
+      expect(snapshot).toBeNull();
+    } finally {
+      rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  it('returns null when every line is malformed JSON', async () => {
+    const tempHome = mkdtempSync(join(tmpdir(), 'rf-session-usage-'));
+    const sessionDir = join(tempHome, '.claude', 'projects', '-tmp-bad');
+    mkdirSync(sessionDir, { recursive: true });
+    writeFileSync(
+      join(sessionDir, 'bad00001.jsonl'),
+      'not-json\n{also not json\n{"missing":"closing"\n',
+    );
+
+    try {
+      const gateway = new ClaudeSessionCliGateway(noopRunner(), { homeDir: tempHome });
+      const snapshot = await gateway.getSessionUsage(
+        parseSessionId('bad00001'),
+        '/tmp/bad',
+      );
+      expect(snapshot).toBeNull();
+    } finally {
+      rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores non-assistant lines (user, system, tool_use)', async () => {
+    const tempHome = mkdtempSync(join(tmpdir(), 'rf-session-usage-'));
+    const sessionDir = join(tempHome, '.claude', 'projects', '-tmp-mixed');
+    mkdirSync(sessionDir, { recursive: true });
+    const lines = [
+      JSON.stringify({ type: 'user', message: { content: 'hi' } }),
+      JSON.stringify({ type: 'system', message: { content: 'sysinfo' } }),
+      JSON.stringify({
+        type: 'assistant',
+        message: {
+          model: 'claude-sonnet-4-5',
+          usage: {
+            input_tokens: 10,
+            output_tokens: 20,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+          },
+        },
+      }),
+      JSON.stringify({ type: 'tool_use', payload: {} }),
+    ];
+    writeFileSync(join(sessionDir, 'mix00001.jsonl'), `${lines.join('\n')}\n`);
+
+    try {
+      const gateway = new ClaudeSessionCliGateway(noopRunner(), { homeDir: tempHome });
+      const snapshot = await gateway.getSessionUsage(
+        parseSessionId('mix00001'),
+        '/tmp/mixed',
+      );
+      expect(snapshot).not.toBeNull();
+      if (snapshot === null) return;
+      expect(snapshot.model).toBe('claude-sonnet-4-5');
+      expect(snapshot.usage.inputTokens).toBe(10);
+      expect(snapshot.usage.outputTokens).toBe(20);
+    } finally {
+      rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  it('returns null when assistant lines exist but none carry a parseable usage object', async () => {
+    const tempHome = mkdtempSync(join(tmpdir(), 'rf-session-usage-'));
+    const sessionDir = join(tempHome, '.claude', 'projects', '-tmp-no-usage');
+    mkdirSync(sessionDir, { recursive: true });
+    const lines = [
+      JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-4-7' } }),
+      JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-4-7', usage: null } }),
+    ];
+    writeFileSync(join(sessionDir, 'nou00001.jsonl'), `${lines.join('\n')}\n`);
+
+    try {
+      const gateway = new ClaudeSessionCliGateway(noopRunner(), { homeDir: tempHome });
+      const snapshot = await gateway.getSessionUsage(
+        parseSessionId('nou00001'),
+        '/tmp/no-usage',
+      );
+      expect(snapshot).toBeNull();
+    } finally {
+      rmSync(tempHome, { recursive: true, force: true });
+    }
   });
 });

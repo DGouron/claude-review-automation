@@ -2,6 +2,7 @@ import type {
   ClaudeSessionJobType,
   SessionId,
 } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
+import type { SessionUsageSnapshot } from '@/modules/claude-invocation/entities/claudeSession/sessionUsage.schema.js';
 
 export interface ClaudeDispatchFlags {
   model: string;
@@ -59,4 +60,5 @@ export interface ClaudeSessionGateway {
   listAgents(): Promise<AgentStatusEntry[]>;
   daemonStatus(): Promise<DaemonStatus>;
   usage(): Promise<UsageReport>;
+  getSessionUsage(sessionId: SessionId, cwd: string): Promise<SessionUsageSnapshot | null>;
 }

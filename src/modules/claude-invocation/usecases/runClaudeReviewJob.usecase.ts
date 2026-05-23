@@ -5,6 +5,7 @@ import type {
   ClaudeSessionGateway,
 } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.gateway.js';
 import type { ClaudeSessionJobType } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
+import type { SessionUsageSnapshot } from '@/modules/claude-invocation/entities/claudeSession/sessionUsage.schema.js';
 import type { McpCompletionBridge } from '@/modules/claude-invocation/entities/sessionCompletion/mcpCompletion.gateway.js';
 import type { SessionCompletion } from '@/modules/claude-invocation/entities/sessionCompletion/sessionCompletion.schema.js';
 import type { ReviewReportGateway } from '@/modules/claude-invocation/entities/sessionCompletion/reviewReport.gateway.js';
@@ -38,7 +39,12 @@ export interface RunClaudeReviewJobDependencies {
 }
 
 export type RunClaudeReviewJobResult =
-  | { status: 'completed'; reportPath: string; content: string }
+  | {
+      status: 'completed';
+      reportPath: string;
+      content: string;
+      usage: SessionUsageSnapshot | null;
+    }
   | { status: 'failed'; reason: string }
   | { status: 'retry'; delayMs: number; attempt: number };
 
@@ -124,6 +130,11 @@ export async function runClaudeReviewJob(
     }
   }
 
+  const usage =
+    completion.source !== 'timeout' && completion.outcome === 'completed'
+      ? await deps.sessionGateway.getSessionUsage(session.sessionId, input.localPath)
+      : null;
+
   await cleanupClaudeSession(
     { sessionId: session.sessionId },
     { sessionGateway: deps.sessionGateway },
@@ -151,5 +162,10 @@ export async function runClaudeReviewJob(
     return { status: 'failed', reason: 'report-missing' };
   }
 
-  return { status: 'completed', reportPath: report.path, content: report.content };
+  return {
+    status: 'completed',
+    reportPath: report.path,
+    content: report.content,
+    usage,
+  };
 }
