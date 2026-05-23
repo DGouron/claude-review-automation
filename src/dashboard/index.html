@@ -66,62 +66,67 @@
           </select>
         </div>
       </div>
-      <div class="card">
-        <div class="card-label" id="i18n-card-language"></div>
-        <div class="card-model">
+    </div>
+
+    <div class="dashboard-layout">
+      <aside class="dashboard-sidebar" aria-label="Project tools">
+        <div class="sidebar-language">
+          <label class="sidebar-language-label" for="language-select" id="i18n-card-language"></label>
           <select id="language-select" class="model-select" onchange="changeLanguage(this.value)">
             <option value="en">English</option>
             <option value="fr">Français</option>
           </select>
         </div>
-      </div>
-    </div>
 
-    <div class="focus-strip">
-      <div class="focus-chip focus-now">
-        <div class="focus-copy">
-          <span class="focus-label" id="i18n-strip-now"></span>
-          <span class="focus-meta" id="i18n-strip-now-meta"></span>
+        <div class="project-loader">
+          <select id="project-select" class="project-input" onchange="onProjectSelect(this.value)">
+            <option value="" id="i18n-project-placeholder"></option>
+          </select>
+          <input type="text" id="project-path-input" class="project-input" value="">
+          <button class="btn btn-primary" onclick="loadProjectConfig()">
+            <i data-lucide="folder-open"></i> <span id="i18n-project-load"></span>
+          </button>
+          <button id="remove-project-btn" class="btn btn-secondary" onclick="removeCurrentProject()">
+            <i data-lucide="trash-2"></i>
+          </button>
+          <span id="config-status" class="config-status hidden"></span>
         </div>
-        <span class="focus-value" id="focus-now-count">-</span>
-      </div>
-      <div class="focus-chip focus-next">
-        <div class="focus-copy">
-          <span class="focus-label" id="i18n-strip-next"></span>
-          <span class="focus-meta" id="i18n-strip-next-meta"></span>
-        </div>
-        <span class="focus-value" id="focus-next-count">-</span>
-      </div>
-      <div class="focus-chip focus-blocked">
-        <div class="focus-copy">
-          <span class="focus-label" id="i18n-strip-blocked"></span>
-          <span class="focus-meta" id="i18n-strip-blocked-meta"></span>
-        </div>
-        <span class="focus-value" id="focus-blocked-count">-</span>
-      </div>
-      <button id="focus-strip-toggle" class="focus-toggle-btn" onclick="toggleFocusStripMode()"></button>
-    </div>
 
-    <div id="data-loading-state" class="data-loading hidden" role="status" aria-live="polite">
-      <i data-lucide="loader-circle"></i>
-      <span id="i18n-loading-data"></span>
-    </div>
+        <div class="focus-strip">
+          <div class="focus-chip focus-now">
+            <div class="focus-copy">
+              <span class="focus-label" id="i18n-strip-now"></span>
+              <span class="focus-meta" id="i18n-strip-now-meta"></span>
+            </div>
+            <span class="focus-value" id="focus-now-count">-</span>
+          </div>
+          <div class="focus-chip focus-next">
+            <div class="focus-copy">
+              <span class="focus-label" id="i18n-strip-next"></span>
+              <span class="focus-meta" id="i18n-strip-next-meta"></span>
+            </div>
+            <span class="focus-value" id="focus-next-count">-</span>
+          </div>
+          <div class="focus-chip focus-blocked">
+            <div class="focus-copy">
+              <span class="focus-label" id="i18n-strip-blocked"></span>
+              <span class="focus-meta" id="i18n-strip-blocked-meta"></span>
+            </div>
+            <span class="focus-value" id="focus-blocked-count">-</span>
+          </div>
+          <button id="focus-strip-toggle" class="focus-toggle-btn" onclick="toggleFocusStripMode()"></button>
+        </div>
 
-    <div class="project-loader">
-      <select id="project-select" class="project-input" style="min-width: 350px;" onchange="onProjectSelect(this.value)">
-        <option value="" id="i18n-project-placeholder"></option>
-      </select>
-      <input type="text" id="project-path-input" class="project-input" style="min-width: 250px;"
-             value="">
-      <button class="btn btn-primary" onclick="loadProjectConfig()">
-        <i data-lucide="folder-open"></i> <span id="i18n-project-load"></span>
-      </button>
-      <button id="remove-project-btn" class="btn btn-secondary" onclick="removeCurrentProject()">
-        <i data-lucide="trash-2"></i>
-      </button>
-      <span id="config-status" class="config-status hidden"></span>
-    </div>
-    <div id="config-info" class="config-info hidden"></div>
+        <section id="worktree-section" aria-label="Worktree pool"></section>
+      </aside>
+
+      <main class="dashboard-main">
+        <div id="data-loading-state" class="data-loading hidden" role="status" aria-live="polite">
+          <i data-lucide="loader-circle"></i>
+          <span id="i18n-loading-data"></span>
+        </div>
+
+        <div id="config-info" class="config-info hidden"></div>
 
     <div id="claude-login-section" class="login-instructions hidden">
       <strong><i data-lucide="alert-triangle"></i> <span id="i18n-claude-login-title"></span></strong>
@@ -170,28 +175,36 @@
       </div>
     </div>
 
-    <div id="token-usage-section" class="section hidden">
-      <div class="section-header">
-        <i data-lucide="coins"></i> <span>Claude token usage</span>
+    <div id="claude-economics-section" class="section">
+      <div class="section-header clickable" onclick="toggleSection('claude-economics-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+        <i data-lucide="circuit-board"></i> <span id="i18n-section-claude-economics"></span>
+        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
       </div>
-      <div id="token-usage-content" class="section-content">
-        <div class="empty-state">Loading…</div>
-      </div>
-    </div>
-
-    <div id="budget-section" class="section">
-      <div class="section-header">
-        <i data-lucide="wallet"></i> <span>Monthly Claude budget</span>
-      </div>
-      <div class="section-content">
-        <div id="budget-tile">
-          <div class="empty-state">Loading…</div>
+      <div class="section-content economics-content hidden">
+        <div class="economics-panel">
+          <div class="economics-panel-header">
+            <span class="economics-panel-title" id="i18n-economics-token-usage"></span>
+          </div>
+          <div class="economics-panel-body" id="token-usage-content">
+            <div class="empty-state">Loading…</div>
+          </div>
         </div>
-        <div class="budget-slider-row">
-          <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
-          <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
-          <button id="budget-slider-submit" type="button">Apply</button>
-          <span id="budget-slider-status" class="budget-slider-status"></span>
+
+        <div class="economics-panel">
+          <div class="economics-panel-header">
+            <span class="economics-panel-title" id="i18n-economics-monthly-budget"></span>
+          </div>
+          <div class="economics-panel-body">
+            <div id="budget-tile">
+              <div class="empty-state">Loading…</div>
+            </div>
+            <div class="budget-slider-row">
+              <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
+              <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
+              <button id="budget-slider-submit" type="button">Apply</button>
+              <span id="budget-slider-status" class="budget-slider-status"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -258,12 +271,12 @@
       <div class="section-content" id="cleanup-content"></div>
     </div>
 
-    <section id="worktree-section" aria-label="Worktree pool"></section>
-
-    <div class="refresh-info">
-      <span id="connection-mode"></span> • <span id="i18n-connection-fallback"></span>
-      <span class="refresh-separator"> • </span>
-      <span id="session-metrics"></span>
+        <div class="refresh-info">
+          <span id="connection-mode"></span> • <span id="i18n-connection-fallback"></span>
+          <span class="refresh-separator"> • </span>
+          <span id="session-metrics"></span>
+        </div>
+      </main>
     </div>
   </div>
 
@@ -348,7 +361,7 @@
     let currentInsightsData = null;
     const loadingState = { status: 0, reviewFiles: 0, stats: 0, mrTracking: 0 };
     let hasLoadedStatusOnce = false;
-    const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section'];
+    const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section', 'claude-economics-section'];
     const sectionExpandedState = Object.fromEntries(secondarySections.map((sectionIdentifier) => [sectionIdentifier, false]));
     const quietRefreshSections = [
       'active-reviews-section',
@@ -2273,7 +2286,6 @@
 
           document.getElementById('stats-section').classList.remove('hidden');
           document.getElementById('team-section').classList.remove('hidden');
-          document.getElementById('token-usage-section').classList.remove('hidden');
 
           const platformIcon = activePlatform === 'gitlab' ? '<i data-lucide="gitlab"></i> GitLab' : '<i data-lucide="github"></i> GitHub';
           info.innerHTML = `
@@ -2551,6 +2563,15 @@
 
       const sectionCompletedReviews = document.getElementById('i18n-section-completed-reviews');
       if (sectionCompletedReviews) sectionCompletedReviews.textContent = t('section.completedReviews');
+
+      const sectionClaudeEconomics = document.getElementById('i18n-section-claude-economics');
+      if (sectionClaudeEconomics) sectionClaudeEconomics.textContent = t('section.claudeEconomics');
+
+      const economicsTokenUsage = document.getElementById('i18n-economics-token-usage');
+      if (economicsTokenUsage) economicsTokenUsage.textContent = t('economics.tokenUsage');
+
+      const economicsMonthlyBudget = document.getElementById('i18n-economics-monthly-budget');
+      if (economicsMonthlyBudget) economicsMonthlyBudget.textContent = t('economics.monthlyBudget');
 
       // Empty states
       const emptyLogs = document.getElementById('i18n-empty-logs');

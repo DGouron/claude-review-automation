@@ -145,6 +145,9 @@ const translations = {
     'section.pendingApproval': 'Pending approval',
     'section.queueLanes': 'Priority lanes',
     'section.completedReviews': 'Completed reviews',
+    'section.claudeEconomics': 'Claude economics',
+    'economics.tokenUsage': '// TOKEN USAGE',
+    'economics.monthlyBudget': '// MONTHLY BUDGET',
 
     // Queue lanes
     'queueLane.now': 'Handle now',
@@ -545,6 +548,9 @@ const translations = {
     'section.pendingApproval': "En attente d'approbation",
     'section.queueLanes': 'Priorité',
     'section.completedReviews': 'Reviews terminées',
+    'section.claudeEconomics': 'Économie Claude',
+    'economics.tokenUsage': '// CONSOMMATION TOKENS',
+    'economics.monthlyBudget': '// BUDGET MENSUEL',
 
     // Queue lanes
     'queueLane.now': 'À traiter maintenant',

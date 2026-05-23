@@ -65,7 +65,6 @@ export function renderBudgetTile(viewModel) {
   return `
     <div class="budget-tile">
       <div class="budget-tile-header">
-        <span class="budget-tile-title">Monthly Claude budget</span>
         ${exceededBadge}
       </div>
       <div class="budget-tile-figures">
