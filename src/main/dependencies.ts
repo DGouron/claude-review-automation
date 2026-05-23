@@ -22,8 +22,12 @@ import {
 } from '@/frameworks/claude/claudeInvoker.js';
 import { GitCommandCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/gitCommand.cli.gateway.js';
 import { WorktreeFileSystemGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktree.fileSystem.gateway.js';
+import { WorktreeSizeProbeCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktreeSizeProbe.cli.gateway.js';
+import { WorktreePanelPresenter } from '@/modules/worktree-management/interface-adapters/presenters/worktreePanel.presenter.js';
 import type { GitCommandExecutor } from '@/modules/worktree-management/entities/gitCommand/gitCommand.gateway.js';
 import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
+import type { WorktreeSizeProbeGateway } from '@/modules/worktree-management/entities/worktree/worktreeSizeProbe.gateway.js';
+import type { WorktreeSchedulerControls } from '@/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.js';
 import { pino, type Logger, type LoggerOptions } from 'pino';
 import { mkdirSync } from 'node:fs';
 import { LOG_DIR, LOG_FILE_PATH } from '../shared/services/daemonPaths.js';
@@ -41,6 +45,9 @@ export interface Dependencies {
   supervisorStatusStore: SupervisorStatusStore;
   gitCommandExecutor: GitCommandExecutor;
   worktreeGateway: WorktreeGateway;
+  worktreeSizeProbeGateway: WorktreeSizeProbeGateway;
+  worktreePanelPresenter: WorktreePanelPresenter;
+  sweepSchedulerControls: WorktreeSchedulerControls | null;
   logger: Logger;
   config: Config;
 }
@@ -80,6 +87,10 @@ export function createDependencies(config: Config): Dependencies {
   const reviewContextGateway = new ReviewContextFileSystemGateway();
   const gitCommandExecutor = new GitCommandCliGateway();
   const worktreeGateway = new WorktreeFileSystemGateway({ executor: gitCommandExecutor });
+  const worktreeSizeProbeGateway = new WorktreeSizeProbeCliGateway();
+  const worktreePanelPresenter = new WorktreePanelPresenter({
+    sizeProbe: worktreeSizeProbeGateway,
+  });
 
   return {
     reviewRequestTrackingGateway: new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator()),
@@ -94,6 +105,9 @@ export function createDependencies(config: Config): Dependencies {
     supervisorStatusStore: new InMemorySupervisorStatusStore(),
     gitCommandExecutor,
     worktreeGateway,
+    worktreeSizeProbeGateway,
+    worktreePanelPresenter,
+    sweepSchedulerControls: null,
     logger,
     config,
   };

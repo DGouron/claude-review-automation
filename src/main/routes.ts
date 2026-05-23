@@ -34,6 +34,7 @@ import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { tokenUsageRoutes } from '@/modules/token-accounting/interface-adapters/controllers/http/tokenUsage.routes.js';
+import { worktreeOverviewRoutes } from '@/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.js';
 import { SummarizeTokenUsageUseCase } from '@/modules/token-accounting/usecases/summarizeTokenUsage/summarizeTokenUsage.usecase.js';
 import { TokenUsageSummaryPresenter } from '@/modules/token-accounting/interface-adapters/presenters/tokenUsageSummary.presenter.js';
 import { FilesystemTokenUsageGateway } from '@/modules/token-accounting/interface-adapters/gateways/tokenUsage/tokenUsage.filesystem.gateway.js';
@@ -122,6 +123,13 @@ export async function registerRoutes(
   await app.register(tokenUsageRoutes, {
     summarizeTokenUsage: new SummarizeTokenUsageUseCase(tokenUsageGateway),
     presenter: new TokenUsageSummaryPresenter(),
+  });
+
+  await app.register(worktreeOverviewRoutes, {
+    worktreeGateway: deps.worktreeGateway,
+    presenter: deps.worktreePanelPresenter,
+    schedulerControls: deps.sweepSchedulerControls,
+    logger: deps.logger,
   });
 
   const budgetGateway = new FilesystemBudgetGateway();
