@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.17.1...reviewflow-v3.18.0) (2026-05-23)
+
+
+### Added
+
+* **dashboard:** sidebar layout + Claude economics accordion ([#191](https://github.com/DGouron/review-flow/issues/191)) ([73f8b29](https://github.com/DGouron/review-flow/commit/73f8b29ce2678a6d67b78ee6da9ebbc72e95f402))
+* **review-focus:** implement SPEC-48 (front/back/fullstack/doc) ([#189](https://github.com/DGouron/review-flow/issues/189)) ([d494b8f](https://github.com/DGouron/review-flow/commit/d494b8fcb3cb6046525a8232ae362a8013c7e916))
+
 ## [3.17.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.17.0...reviewflow-v3.17.1) (2026-05-23)
 
 
