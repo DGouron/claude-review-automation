@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { WORKTREE_BASE_DIR } from '@/shared/services/daemonPaths.js';
 import {
+  createWorktreePath,
   deriveWorktreePath,
   parseWorktreeDirectoryName,
 } from '@/modules/worktree-management/entities/worktree/worktree.js';
@@ -16,7 +17,6 @@ import type {
   RemoveResult,
   WorktreeEntry,
   WorktreeIdentity,
-  WorktreePath,
 } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
 import { ensureWorktree } from '@/modules/worktree-management/usecases/ensureWorktree.usecase.js';
 import { removeWorktree } from '@/modules/worktree-management/usecases/removeWorktree.usecase.js';
@@ -83,7 +83,7 @@ export class WorktreeFileSystemGateway implements WorktreeGateway {
       if (!dirent.isDirectory()) continue;
       const identity = parseWorktreeDirectoryName(dirent.name);
       if (identity === null) continue;
-      const path = join(this.baseDirectory, dirent.name) as WorktreePath;
+      const path = createWorktreePath(join(this.baseDirectory, dirent.name));
       try {
         const stats = statSync(path);
         entries.push({ identity, path, mtime: stats.mtime });

@@ -569,6 +569,13 @@ async function invokeViaBackgroundSession(
     };
   }
 
+  if (ensureResult.status === 'created' && ensureResult.settingsWarning !== null) {
+    logger.warn(
+      { jobId: job.id, warning: ensureResult.settingsWarning },
+      'Worktree created but settings write produced a warning (FR-4 bgIsolation may not be applied)'
+    );
+  }
+
   const worktreePath = ensureResult.path;
   // attempt counter is reserved for the queue layer to re-enqueue with backoff
   // when status === 'retry' is returned. Until that wiring exists, every

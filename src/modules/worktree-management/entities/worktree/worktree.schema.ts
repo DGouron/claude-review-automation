@@ -29,7 +29,7 @@ export interface WorktreeEntry {
 }
 
 export type EnsureResult =
-  | { status: 'created'; path: WorktreePath }
+  | { status: 'created'; path: WorktreePath; settingsWarning: string | null }
   | { status: 'reused'; path: WorktreePath }
   | { status: 'failed'; reason: string };
 

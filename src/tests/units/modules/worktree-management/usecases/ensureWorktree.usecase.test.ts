@@ -47,7 +47,7 @@ describe('ensureWorktree use case', () => {
       },
     );
 
-    expect(result).toEqual({ status: 'created', path: expectedPath });
+    expect(result).toEqual({ status: 'created', path: expectedPath, settingsWarning: null });
     const kinds = executor.calls.map(c => c.kind);
     expect(kinds).toEqual(['worktree-prune', 'fetch', 'worktree-add']);
     expect(executor.callsOfKind('worktree-add')[0]?.args).toContain(expectedPath);
@@ -126,7 +126,7 @@ describe('ensureWorktree use case', () => {
     expect(executor.callsOfKind('worktree-add')).toHaveLength(0);
   });
 
-  it('still returns created when settings write fails (no rollback)', async () => {
+  it('still returns created when settings write fails (no rollback) and surfaces the warning', async () => {
     const result = await ensureWorktree(
       {
         identity,
@@ -142,5 +142,8 @@ describe('ensureWorktree use case', () => {
     );
 
     expect(result.status).toBe('created');
+    if (result.status === 'created') {
+      expect(result.settingsWarning).toBe('disk-full');
+    }
   });
 });

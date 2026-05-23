@@ -87,7 +87,9 @@ export async function ensureWorktree(
     return { status: 'failed', reason: 'worktree-add-failed' };
   }
 
-  await deps.writeWorktreeSettings(targetPath);
+  const settingsResult = await deps.writeWorktreeSettings(targetPath);
+  const settingsWarning =
+    settingsResult.status === 'failed' ? settingsResult.reason ?? 'unknown' : null;
 
-  return { status: 'created', path: targetPath };
+  return { status: 'created', path: targetPath, settingsWarning };
 }

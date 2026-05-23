@@ -259,16 +259,14 @@ export async function enqueueReview(
 
   mrChains.set(mrKey, newTail);
 
-  newTail
-    .catch(error => {
-      log.error({ jobId: job.id, error }, 'Job échoué');
-    })
-    .finally(() => {
-      // Only clear the entry if no one else has chained behind us (R4 leak fix).
-      if (mrChains.get(mrKey) === newTail) {
-        mrChains.delete(mrKey);
-      }
-    });
+  // The inner try/catch/finally swallows processor errors (jobStatus is set to
+  // 'failed' and logged there), so newTail never rejects. We only need finally
+  // to release the MR chain entry (R4 leak fix).
+  newTail.finally(() => {
+    if (mrChains.get(mrKey) === newTail) {
+      mrChains.delete(mrKey);
+    }
+  });
 
   return true;
 }

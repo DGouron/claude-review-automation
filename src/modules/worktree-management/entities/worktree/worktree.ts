@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { WORKTREE_BASE_DIR } from '@/shared/services/daemonPaths.js';
 import type {
   FetchRef,
@@ -6,6 +6,19 @@ import type {
   WorktreeIdentity,
   WorktreePath,
 } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+
+/**
+ * Single chokepoint constructor for the WorktreePath branded type. Any
+ * other call site that needs a WorktreePath must go through this factory
+ * rather than casting a raw string. Validates absoluteness so accidental
+ * relative paths are caught at the boundary.
+ */
+export function createWorktreePath(value: string): WorktreePath {
+  if (value.length === 0 || !isAbsolute(value)) {
+    throw new Error(`Invalid worktree path (must be absolute, non-empty): ${value}`);
+  }
+  return value as WorktreePath;
+}
 
 export function deriveWorktreeSlug(projectPath: string): string {
   return projectPath.replace(/\//g, '-');
@@ -17,7 +30,7 @@ export function deriveWorktreeDirectoryName(identity: WorktreeIdentity): string 
 }
 
 export function deriveWorktreePath(identity: WorktreeIdentity): WorktreePath {
-  return join(WORKTREE_BASE_DIR, deriveWorktreeDirectoryName(identity)) as WorktreePath;
+  return createWorktreePath(join(WORKTREE_BASE_DIR, deriveWorktreeDirectoryName(identity)));
 }
 
 export function deriveFetchRef(source: MrSource, sourceBranch: string, mrNumber: number): FetchRef {
