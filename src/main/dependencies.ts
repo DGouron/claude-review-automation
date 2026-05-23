@@ -5,6 +5,8 @@ import type { ReviewFileGateway } from '@/modules/review-execution/interface-ada
 import type { ReviewLogFileGateway } from '@/modules/data-lifecycle/interface-adapters/gateways/reviewLogFile.gateway.js';
 import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
 import type { InsightsGateway } from '@/modules/statistics-insights/entities/insight/insights.gateway.js';
+import type { SupervisorStatusStore } from '@/modules/supervisor-management/entities/supervisor/supervisorStatusStore.gateway.js';
+import { InMemorySupervisorStatusStore } from '@/modules/supervisor-management/interface-adapters/gateways/supervisorStatusStore.memory.gateway.js';
 import { FileSystemReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { FileSystemStatsGateway } from '@/modules/statistics-insights/interface-adapters/gateways/fileSystem/stats.fileSystem.js';
 import { FileSystemInsightsGateway } from '@/modules/statistics-insights/interface-adapters/gateways/fileSystem/insights.fileSystem.js';
@@ -32,6 +34,7 @@ export interface Dependencies {
   reviewContextWatcher: ReviewContextWatcherService;
   progressPresenter: ReviewContextProgressPresenter;
   claudeInvocationDeps: ClaudeInvocationDeps;
+  supervisorStatusStore: SupervisorStatusStore;
   logger: Logger;
   config: Config;
 }
@@ -80,6 +83,7 @@ export function createDependencies(config: Config): Dependencies {
     reviewContextWatcher: new ReviewContextWatcherService(reviewContextGateway),
     progressPresenter: new ReviewContextProgressPresenter(),
     claudeInvocationDeps: createDefaultClaudeInvocationDeps(),
+    supervisorStatusStore: new InMemorySupervisorStatusStore(),
     logger,
     config,
   };
