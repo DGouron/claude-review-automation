@@ -9,7 +9,7 @@ export interface ClaudeDispatchFlags {
   systemPrompt: string;
   allowedTools: string;
   disallowedTools: string;
-  permissionMode: 'bypassPermissions';
+  permissionMode: 'auto';
 }
 
 export interface DispatchInput {
