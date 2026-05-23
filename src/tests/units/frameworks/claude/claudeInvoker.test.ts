@@ -19,57 +19,50 @@ function buildJob(overrides: Partial<ReviewJob>): ReviewJob {
 }
 
 describe('buildMcpSystemPrompt', () => {
-  describe('when platform is github', () => {
-    it('references gh pr diff as the diff source of truth', () => {
-      const job = buildJob({ platform: 'github', mrNumber: 100 });
+  describe('SPEC-170 FR-7 — local state is no longer disclaimed', () => {
+    it('does not contain the UNRELIABLE warning anymore', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ platform: 'gitlab', mrNumber: 7 }));
 
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).toContain('gh pr diff 100');
+      expect(prompt).not.toContain('UNRELIABLE');
     });
 
-    it('references gh pr view as the metadata source of truth', () => {
-      const job = buildJob({ platform: 'github', mrNumber: 100 });
+    it('does not contain the FORBIDDEN keyword anymore', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ platform: 'gitlab', mrNumber: 7 }));
 
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).toContain('gh pr view 100');
+      expect(prompt).not.toContain('FORBIDDEN');
     });
 
-    it('does not reference glab commands when platform is github', () => {
-      const job = buildJob({ platform: 'github', mrNumber: 100 });
-
-      const prompt = buildMcpSystemPrompt(job);
+    it('does not recommend glab mr diff anymore', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ platform: 'gitlab', mrNumber: 7 }));
 
       expect(prompt).not.toContain('glab mr diff');
+    });
+
+    it('does not recommend gh pr diff anymore', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ platform: 'github', mrNumber: 100 }));
+
+      expect(prompt).not.toContain('gh pr diff');
+    });
+
+    it('does not recommend glab mr view anymore', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ platform: 'gitlab', mrNumber: 7 }));
+
       expect(prompt).not.toContain('glab mr view');
+    });
+
+    it('does not recommend gh pr view anymore', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ platform: 'github', mrNumber: 100 }));
+
+      expect(prompt).not.toContain('gh pr view');
     });
   });
 
-  describe('when platform is gitlab', () => {
-    it('references glab mr diff as the diff source of truth', () => {
-      const job = buildJob({ platform: 'gitlab', mrNumber: 7 });
+  describe('still keeps the MCP get_threads tool reference', () => {
+    it('mentions get_threads MCP tool with the job id', () => {
+      const prompt = buildMcpSystemPrompt(buildJob({ id: 'job-xyz' }));
 
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).toContain('glab mr diff 7');
-    });
-
-    it('references glab mr view as the metadata source of truth', () => {
-      const job = buildJob({ platform: 'gitlab', mrNumber: 7 });
-
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).toContain('glab mr view 7');
-    });
-
-    it('does not reference gh commands when platform is gitlab', () => {
-      const job = buildJob({ platform: 'gitlab', mrNumber: 7 });
-
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).not.toContain('gh pr diff');
-      expect(prompt).not.toContain('gh pr view');
+      expect(prompt).toContain('get_threads');
+      expect(prompt).toContain('job-xyz');
     });
   });
 });

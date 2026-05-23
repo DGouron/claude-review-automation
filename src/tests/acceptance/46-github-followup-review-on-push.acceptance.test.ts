@@ -63,8 +63,6 @@ import { GitHubEventFactory } from '@/tests/factories/gitHubEvent.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
 import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
-import { buildMcpSystemPrompt } from '@/frameworks/claude/claudeInvoker.js';
-import type { ReviewJob } from '@/frameworks/queue/pQueueAdapter.js';
 
 function createSynchronizePr() {
   return GitHubEventFactory.createPullRequestEvent({
@@ -287,43 +285,9 @@ describe('Acceptance — Spec #46: GitHub Followup Review on Push', () => {
     });
   });
 
-  describe('Feature: Platform-aware MCP system prompt', () => {
-    function buildJob(overrides: Partial<ReviewJob>): ReviewJob {
-      return {
-        id: 'job-1',
-        platform: 'gitlab',
-        projectPath: 'group/project',
-        localPath: '/tmp/project',
-        mrNumber: 42,
-        skill: 'review-followup',
-        mrUrl: 'https://example.com/mr/42',
-        sourceBranch: 'feat/x',
-        targetBranch: 'main',
-        jobType: 'followup',
-        ...overrides,
-      };
-    }
-
-    it('Platform-specific CLI commands in system prompt: GitHub uses gh pr diff and gh pr view', () => {
-      const job = buildJob({ platform: 'github', mrNumber: 42 });
-
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).toContain('gh pr diff 42');
-      expect(prompt).toContain('gh pr view 42');
-      expect(prompt).not.toContain('glab mr diff');
-      expect(prompt).not.toContain('glab mr view');
-    });
-
-    it('Manual followup on GitLab MR still works: GitLab uses glab mr diff and glab mr view', () => {
-      const job = buildJob({ platform: 'gitlab', mrNumber: 99 });
-
-      const prompt = buildMcpSystemPrompt(job);
-
-      expect(prompt).toContain('glab mr diff 99');
-      expect(prompt).toContain('glab mr view 99');
-      expect(prompt).not.toContain('gh pr diff');
-      expect(prompt).not.toContain('gh pr view');
-    });
-  });
+  // The "Platform-aware MCP system prompt" suite was removed in SPEC-170:
+  // FR-7 deletes the "UNRELIABLE / FORBIDDEN" disclaimer block and the
+  // glab/gh CLI command interpolation from buildMcpSystemPrompt. The new
+  // contract ("prompt no longer disclaims local state") is asserted by the
+  // SPEC-170 acceptance test, scenario 11.
 });

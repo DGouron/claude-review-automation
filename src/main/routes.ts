@@ -58,6 +58,14 @@ import { InstallTypeDetectorFsGateway } from '@/modules/cli-configuration/interf
 import { broadcastBackfillProgress } from '@/main/websocket.js';
 import { createClaudeInsightsInvoker } from '@/frameworks/claude/claudeInsightsInvoker.js';
 import { getDefaultLanguage } from '@/frameworks/settings/runtimeSettings.js';
+import { existsSync } from 'node:fs';
+import { GitCommandCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/gitCommand.cli.gateway.js';
+import { removeWorktree } from '@/modules/worktree-management/usecases/removeWorktree.usecase.js';
+import type {
+  RemoveResult,
+  WorktreeIdentity,
+  WorktreePath,
+} from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -211,6 +219,16 @@ export async function registerRoutes(
   const trackingGw = deps.reviewRequestTrackingGateway;
   const threadFetchGw = new GitLabThreadFetchGateway(defaultGitLabExecutor);
 
+  const gitCommandExecutor = new GitCommandCliGateway();
+  const removeWorktreeAction = (input: {
+    identity: WorktreeIdentity;
+    sourceCheckoutPath: string;
+  }): Promise<RemoveResult> =>
+    removeWorktree(input, {
+      executor: gitCommandExecutor,
+      worktreeExists: async (path: WorktreePath): Promise<boolean> => existsSync(path),
+    });
+
   app.post('/webhooks/gitlab', async (request, reply) => {
     await handleGitLabWebhook(request, reply, deps.logger, trackingGw, {
       reviewContextGateway: deps.reviewContextGateway,
@@ -227,6 +245,7 @@ export async function registerRoutes(
       broadcastBudgetExceeded,
       getRepositories: () => deps.config.repositories,
       claudeInvokerDeps,
+      removeWorktree: removeWorktreeAction,
     });
   });
 
@@ -248,6 +267,7 @@ export async function registerRoutes(
       broadcastBudgetExceeded,
       getRepositories: () => deps.config.repositories,
       claudeInvokerDeps,
+      removeWorktree: removeWorktreeAction,
     });
   });
 

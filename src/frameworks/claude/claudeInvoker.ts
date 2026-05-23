@@ -42,6 +42,10 @@ import type { McpCompletionBridge } from '@/modules/claude-invocation/entities/s
 import type { ReviewReportGateway } from '@/modules/claude-invocation/entities/sessionCompletion/reviewReport.gateway.js';
 import type { BillingStateGateway } from '@/modules/claude-invocation/entities/billingState/billingState.gateway.js';
 import type { EnvironmentGateway } from '@/modules/claude-invocation/entities/billingState/environment.gateway.js';
+import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
+import type { MrSource } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+import { WorktreeFileSystemGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktree.fileSystem.gateway.js';
+import { GitCommandCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/gitCommand.cli.gateway.js';
 
 /**
  * Bundle of gateways needed by runClaudeReviewJob. Built in the composition
@@ -76,6 +80,7 @@ export interface ClaudeInvokerDependencies {
   broadcastBudgetStatus: (viewModel: BudgetStatusViewModel) => void;
   getEnabledLocalPaths?: () => string[];
   invocation: ClaudeInvocationDeps;
+  worktreeGateway: WorktreeGateway;
 }
 
 /**
@@ -166,6 +171,7 @@ export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependenc
     budgetStatusPresenter: new BudgetStatusPresenter(),
     broadcastBudgetStatus: () => {},
     invocation: createDefaultClaudeInvocationDeps(),
+    worktreeGateway: new WorktreeFileSystemGateway({ executor: new GitCommandCliGateway() }),
   };
 }
 
@@ -307,10 +313,6 @@ export type ProgressCallback = (progress: ReviewProgress, event?: ProgressEvent)
  * This instruction is AUTHORITATIVE and forces Claude to use MCP tools
  */
 export function buildMcpSystemPrompt(job: ReviewJob): string {
-  const isGitHub = job.platform === 'github';
-  const diffSourceCommand = isGitHub ? `gh pr diff ${job.mrNumber}` : `glab mr diff ${job.mrNumber}`;
-  const metadataSourceCommand = isGitHub ? `gh pr view ${job.mrNumber}` : `glab mr view ${job.mrNumber}`;
-
   return `
 # AUTOMATED REVIEW MODE - EXECUTE IMMEDIATELY
 
@@ -342,22 +344,9 @@ These rules are about WRITING production code. You are in **READ-ONLY review mod
 - **Source Branch**: ${job.sourceBranch || 'unknown'}
 - **Target Branch**: ${job.targetBranch || 'unknown'}
 
-## ⛔ CRITICAL: Data Source Rules
-
-The local repository at \`${job.localPath}\` may be checked out on a DIFFERENT branch than MR !${job.mrNumber}.
-Multiple reviews can run concurrently on the same repo. The local state is UNRELIABLE.
-
-**SOURCE OF TRUTH for the MR diff**: \`${diffSourceCommand}\` — use this, NEVER \`git diff\`.
-**SOURCE OF TRUTH for MR metadata**: \`${metadataSourceCommand}\` — use this for branch names, title, description.
-**SOURCE OF TRUTH for threads**: \`get_threads({ jobId: "${job.id}" })\` — MCP tool.
-
-**FORBIDDEN — these reflect LOCAL state, not the MR:**
-- \`git diff\`, \`git log\`, \`git branch\`, \`git status\`
-- Reading local files as source of truth for what the MR changes
-- Assuming the local branch matches the MR being reviewed
-
-**ALLOWED — local repo for conflict detection only:**
-- Reading local files to check if they conflict with MR changes (advisory only)
+The current working directory is the dedicated worktree for this MR. The branch is already
+checked out and up to date — \`git diff\`, \`git log\`, and local file reads reflect MR state.
+For thread metadata always use the MCP tool: \`get_threads({ jobId: "${job.id}" })\`.
 
 ## MANDATORY MCP Tools Usage
 
@@ -453,7 +442,7 @@ export async function invokeClaudeReview(
   const args = [
     '--bg',
     '--model', model,
-    '--permission-mode', 'bypassPermissions',
+    '--permission-mode', 'auto',
     '--append-system-prompt', mcpSystemPrompt,
     '--mcp-config', mcpConfigJson,
     '--strict-mcp-config',
@@ -532,6 +521,13 @@ interface BackgroundDispatchContext {
   signal?: AbortSignal;
 }
 
+function deriveMrSourceFromJob(job: ReviewJob): MrSource {
+  if (job.sourceForkCloneUrl) {
+    return { kind: 'fork', cloneUrl: job.sourceForkCloneUrl };
+  }
+  return { kind: 'origin' };
+}
+
 async function invokeViaBackgroundSession(
   context: BackgroundDispatchContext,
   logger: Logger,
@@ -542,6 +538,45 @@ async function invokeViaBackgroundSession(
   const invocation = deps.invocation;
   const mergeRequestId = `${job.platform}-${job.projectPath}-${job.mrNumber}`;
   const jobType = job.jobType === 'followup' ? 'followup' : 'review';
+
+  const ensureStart = Date.now();
+  const ensureResult = await deps.worktreeGateway.ensure({
+    identity: {
+      platform: job.platform,
+      projectPath: job.projectPath,
+      mrNumber: job.mrNumber,
+    },
+    sourceBranch: job.sourceBranch,
+    source: deriveMrSourceFromJob(job),
+    sourceCheckoutPath: job.localPath,
+  });
+  const ensureDurationMs = Date.now() - ensureStart;
+  logger.info(
+    { jobId: job.id, ensureDurationMs, status: ensureResult.status },
+    'ensureWorktree completed'
+  );
+
+  if (ensureResult.status === 'failed') {
+    cleanupMcpContext(job.id);
+    logError('Préparation worktree échouée', { jobId: job.id, reason: ensureResult.reason });
+    return {
+      success: false,
+      exitCode: null,
+      stdout: '',
+      stderr: `ensureWorktree failed: ${ensureResult.reason}`,
+      durationMs: Date.now() - startTime,
+      selectedModel: model,
+    };
+  }
+
+  if (ensureResult.status === 'created' && ensureResult.settingsWarning !== null) {
+    logger.warn(
+      { jobId: job.id, warning: ensureResult.settingsWarning },
+      'Worktree created but settings write produced a warning (FR-4 bgIsolation may not be applied)'
+    );
+  }
+
+  const worktreePath = ensureResult.path;
   // attempt counter is reserved for the queue layer to re-enqueue with backoff
   // when status === 'retry' is returned. Until that wiring exists, every
   // invocation is treated as attempt 0 and a single retry signal surfaces back
@@ -554,7 +589,7 @@ async function invokeViaBackgroundSession(
     systemPrompt: mcpSystemPrompt,
     allowedTools: 'Read,Glob,Grep,Bash,Edit,Task,Skill,Write,LSP,mcp__review-progress__*',
     disallowedTools: 'EnterPlanMode,AskUserQuestion',
-    permissionMode: 'bypassPermissions' as const,
+    permissionMode: 'auto' as const,
   };
 
   let result: Awaited<ReturnType<typeof runClaudeReviewJob>>;
@@ -565,7 +600,7 @@ async function invokeViaBackgroundSession(
         jobType,
         prompt,
         flags,
-        localPath: job.localPath,
+        localPath: worktreePath,
         mergeRequestId,
         mergeRequestNumber: job.mrNumber,
         attempt,

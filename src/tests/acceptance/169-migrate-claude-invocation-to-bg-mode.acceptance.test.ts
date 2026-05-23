@@ -59,7 +59,7 @@ const baseInput = {
     systemPrompt: 'system',
     allowedTools: 'Read,Bash',
     disallowedTools: 'EnterPlanMode',
-    permissionMode: 'bypassPermissions' as const,
+    permissionMode: 'auto' as const,
   },
   localPath: '/tmp/project',
   mergeRequestId: 'gitlab-owner/repo-42',
@@ -94,7 +94,7 @@ describe('SPEC-169: Migrate Claude invocation to --bg mode (acceptance)', () => 
       expect(result.status).toBe('completed');
       const calls = context.sessionGateway.dispatchCalls;
       expect(calls).toHaveLength(1);
-      expect(calls[0]?.flags.permissionMode).toBe('bypassPermissions');
+      expect(calls[0]?.flags.permissionMode).toBe('auto');
       expect(JSON.stringify(calls[0])).not.toContain('-p ');
       expect(JSON.stringify(calls[0])).not.toContain('--print');
     });

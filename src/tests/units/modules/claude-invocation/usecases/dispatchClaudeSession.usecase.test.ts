@@ -14,7 +14,7 @@ const baseInput = {
     systemPrompt: 'system',
     allowedTools: 'Read,Bash',
     disallowedTools: 'EnterPlanMode',
-    permissionMode: 'bypassPermissions' as const,
+    permissionMode: 'auto' as const,
   },
   localPath: '/tmp/project',
   mergeRequestId: 'gitlab-owner/repo-42',

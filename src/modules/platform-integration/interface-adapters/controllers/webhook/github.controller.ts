@@ -33,6 +33,12 @@ import type { DiffMetadataFetchGateway } from '@/modules/platform-integration/en
 import type { DiffStatsFetchGateway } from '@/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.js';
 import type { EnforceBudgetUseCase } from '@/modules/token-accounting/usecases/enforceBudget/enforceBudget.usecase.js';
 import type { BudgetExceededPayload } from '@/main/websocket.js';
+import type { RemoveResult, WorktreeIdentity } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+
+export type RemoveWorktreeAction = (input: {
+  identity: WorktreeIdentity;
+  sourceCheckoutPath: string;
+}) => Promise<RemoveResult>;
 
 export interface GitHubWebhookDependencies {
   reviewContextGateway: ReviewContextGateway;
@@ -49,6 +55,7 @@ export interface GitHubWebhookDependencies {
   broadcastBudgetExceeded: (payload: BudgetExceededPayload) => void;
   getRepositories: () => RepositoryConfig[];
   claudeInvokerDeps?: ClaudeInvokerDependencies;
+  removeWorktree: RemoveWorktreeAction;
 }
 
 function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): string[] {
@@ -109,6 +116,28 @@ export async function handleGitHubWebhook(
 
       // Delete review context file
       const contextDeleted = deps.reviewContextGateway.delete(repoConfig.localPath, mrId);
+
+      try {
+        const worktreeRemoval = await deps.removeWorktree({
+          identity: { platform: 'github', projectPath, mrNumber: prNumber },
+          sourceCheckoutPath: repoConfig.localPath,
+        });
+        if (worktreeRemoval.status === 'failed') {
+          logger.warn(
+            { prNumber, repo: projectPath, warning: worktreeRemoval.warning },
+            'removeWorktree failed on close'
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          {
+            prNumber,
+            repo: projectPath,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          'removeWorktree threw on close'
+        );
+      }
 
       logger.info(
         {

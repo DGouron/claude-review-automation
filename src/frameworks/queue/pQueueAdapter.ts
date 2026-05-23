@@ -28,6 +28,9 @@ export interface ReviewJob {
     username: string;
     displayName?: string;
   };
+  // SPEC-170 FR-8: clone URL of the source fork for cross-fork PRs (GitHub).
+  // null/undefined means the MR/PR source is the same repository as the base.
+  sourceForkCloneUrl?: string;
 }
 
 // Deduplication tracking
@@ -61,6 +64,20 @@ let stateChangeCallback: StateChangeCallback | null = null;
 const activeJobs = new Map<string, JobStatus>();
 const completedJobs: JobStatus[] = []; // Keep last 20
 const MAX_COMPLETED_JOBS = 20;
+
+// SPEC-170 FR-9: MR-scoped chain so fresh + followup on the same MR serialize.
+// Key format: <platform>:<projectPath>:<mrNumber>  (jobType prefix stripped).
+// Value: the tail promise of the chain for that MR. New enqueues await it
+// before adding their processor to PQueue.
+const mrChains = new Map<string, Promise<void>>();
+
+export function __getMrChainsSize(): number {
+  return mrChains.size;
+}
+
+function createMrConcurrencyKey(platform: string, projectPath: string, mrNumber: number): string {
+  return `${platform}:${projectPath}:${mrNumber}`;
+}
 
 let queue: PQueue | null = null;
 let logger: Logger | null = null;
@@ -188,52 +205,67 @@ export async function enqueueReview(
     'Job ajouté à la queue'
   );
 
-  // Add to queue
-  q.add(async () => {
-    jobStatus.status = 'running';
-    jobStatus.startedAt = new Date();
-    log.info({ jobId: job.id }, 'Début du traitement');
+  // SPEC-170 FR-9: MR-scoped serialization. fresh + followup on the same MR
+  // queue behind each other; different MRs still run in parallel within PQueue
+  // concurrency.
+  const mrKey = createMrConcurrencyKey(job.platform, job.projectPath, job.mrNumber);
+  const previousTail = mrChains.get(mrKey) ?? Promise.resolve();
 
-    // Notify state change (job started)
-    stateChangeCallback?.();
+  const newTail: Promise<void> = previousTail.then(() =>
+    q.add(async () => {
+      jobStatus.status = 'running';
+      jobStatus.startedAt = new Date();
+      log.info({ jobId: job.id }, 'Début du traitement');
 
-    try {
-      await processor(job, abortController.signal);
-      jobStatus.status = abortController.signal.aborted ? 'failed' : 'completed';
-      jobStatus.completedAt = new Date();
-      if (abortController.signal.aborted) {
-        jobStatus.error = 'Annulé par utilisateur';
-        // Clear deduplication on cancel to allow retry
-        clearJobDeduplication(job.id);
-        log.info({ jobId: job.id }, 'Traitement annulé');
-      } else {
-        // Only mark as processed on SUCCESS (prevents failed jobs from blocking retries)
-        markJobProcessed(job.id);
-        log.info({ jobId: job.id }, 'Traitement terminé avec succès');
-      }
-    } catch (error) {
-      jobStatus.status = 'failed';
-      jobStatus.completedAt = new Date();
-      jobStatus.error = error instanceof Error ? error.message : String(error);
-      // Clear deduplication on failure to allow retry
-      clearJobDeduplication(job.id);
-      log.error({ jobId: job.id, error }, 'Erreur pendant le traitement');
-      throw error;
-    } finally {
-      // Cleanup abort controller
-      jobAbortControllers.delete(job.id);
-      // Move to completed jobs
-      activeJobs.delete(job.id);
-      completedJobs.unshift(jobStatus);
-      if (completedJobs.length > MAX_COMPLETED_JOBS) {
-        completedJobs.pop();
-      }
-
-      // Notify state change (job completed/failed)
+      // Notify state change (job started)
       stateChangeCallback?.();
+
+      try {
+        await processor(job, abortController.signal);
+        jobStatus.status = abortController.signal.aborted ? 'failed' : 'completed';
+        jobStatus.completedAt = new Date();
+        if (abortController.signal.aborted) {
+          jobStatus.error = 'Annulé par utilisateur';
+          // Clear deduplication on cancel to allow retry
+          clearJobDeduplication(job.id);
+          log.info({ jobId: job.id }, 'Traitement annulé');
+        } else {
+          // Only mark as processed on SUCCESS (prevents failed jobs from blocking retries)
+          markJobProcessed(job.id);
+          log.info({ jobId: job.id }, 'Traitement terminé avec succès');
+        }
+      } catch (error) {
+        jobStatus.status = 'failed';
+        jobStatus.completedAt = new Date();
+        jobStatus.error = error instanceof Error ? error.message : String(error);
+        // Clear deduplication on failure to allow retry
+        clearJobDeduplication(job.id);
+        log.error({ jobId: job.id, error }, 'Erreur pendant le traitement');
+      } finally {
+        // Cleanup abort controller
+        jobAbortControllers.delete(job.id);
+        // Move to completed jobs
+        activeJobs.delete(job.id);
+        completedJobs.unshift(jobStatus);
+        if (completedJobs.length > MAX_COMPLETED_JOBS) {
+          completedJobs.pop();
+        }
+
+        // Notify state change (job completed/failed)
+        stateChangeCallback?.();
+      }
+    }) as unknown as Promise<void>,
+  );
+
+  mrChains.set(mrKey, newTail);
+
+  // The inner try/catch/finally swallows processor errors (jobStatus is set to
+  // 'failed' and logged there), so newTail never rejects. We only need finally
+  // to release the MR chain entry (R4 leak fix).
+  newTail.finally(() => {
+    if (mrChains.get(mrKey) === newTail) {
+      mrChains.delete(mrKey);
     }
-  }).catch((error) => {
-    log.error({ jobId: job.id, error }, 'Job échoué');
   });
 
   return true;
