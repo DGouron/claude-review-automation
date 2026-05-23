@@ -61,12 +61,11 @@ export function renderBudgetTile(viewModel) {
     ? '<span class="budget-tile-badge budget-tile-badge--exceeded">Budget exceeded</span>'
     : '';
   const gaugeClass = viewModel.exceeded ? 'budget-gauge-fill budget-gauge-fill--exceeded' : 'budget-gauge-fill';
+  const headerSection = viewModel.exceeded ? `<div class="budget-tile-header">${exceededBadge}</div>` : '';
 
   return `
     <div class="budget-tile">
-      <div class="budget-tile-header">
-        ${exceededBadge}
-      </div>
+      ${headerSection}
       <div class="budget-tile-figures">
         <span class="budget-tile-consumed">${escapeHtml(viewModel.consumedUsdFormatted)}</span>
         <span class="budget-tile-separator">/</span>

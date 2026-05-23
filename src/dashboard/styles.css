@@ -114,7 +114,11 @@ body {
   padding: 1.5rem 0;
 }
 
-.container { margin: 68px; }
+.container { margin: 1rem; }
+
+@media (min-width: 1024px) {
+  .container { margin: 68px; }
+}
 
 .dashboard-layout {
   display: grid;
@@ -4115,11 +4119,10 @@ input:focus-visible,
 }
 .budget-tile-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   font-size: 0.875rem;
 }
-.budget-tile-title { font-weight: 600; color: var(--nsc-text-primary); }
 .budget-tile-badge {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;

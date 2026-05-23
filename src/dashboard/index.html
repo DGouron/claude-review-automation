@@ -128,148 +128,148 @@
 
         <div id="config-info" class="config-info hidden"></div>
 
-    <div id="claude-login-section" class="login-instructions hidden">
-      <strong><i data-lucide="alert-triangle"></i> <span id="i18n-claude-login-title"></span></strong>
-      <p style="margin-top: 0.5rem;" id="i18n-claude-login-instruction"></p>
-      <p style="margin-top: 0.5rem;"><code>claude login</code></p>
-      <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #a1a1aa;" id="i18n-claude-login-reload"></p>
-    </div>
+        <div id="claude-login-section" class="login-instructions hidden">
+          <strong><i data-lucide="alert-triangle"></i> <span id="i18n-claude-login-title"></span></strong>
+          <p style="margin-top: 0.5rem;" id="i18n-claude-login-instruction"></p>
+          <p style="margin-top: 0.5rem;"><code>claude login</code></p>
+          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #a1a1aa;" id="i18n-claude-login-reload"></p>
+        </div>
 
-    <div id="git-login-section" class="login-instructions hidden">
-      <strong id="git-login-title"><i data-lucide="alert-triangle"></i> <span id="i18n-git-login-title"></span></strong>
-      <div style="margin-top: 0.75rem;" id="git-login-instructions"></div>
-    </div>
+        <div id="git-login-section" class="login-instructions hidden">
+          <strong id="git-login-title"><i data-lucide="alert-triangle"></i> <span id="i18n-git-login-title"></span></strong>
+          <div style="margin-top: 0.75rem;" id="git-login-instructions"></div>
+        </div>
 
-    <div id="logs-section" class="section hidden">
-      <div class="section-header">
-        <i data-lucide="scroll-text"></i> <span id="i18n-section-logs"></span>
-        <span id="error-count" class="badge-count hidden"></span>
-      </div>
-      <div id="logs-content" class="section-content logs">
-        <div class="empty-state" id="i18n-empty-logs"></div>
-      </div>
-    </div>
-
-    <div id="stats-section" class="section hidden">
-      <div class="section-header clickable" onclick="toggleStats()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-        <i data-lucide="bar-chart-3"></i> <span id="i18n-section-stats"></span>
-        <span id="stats-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
-        <button id="recalculate-btn" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); recalculateStats()" style="margin-left: auto; font-size: 0.75rem; padding: 2px 8px;">
-          <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
-          <span id="recalculate-label"></span>
-        </button>
-        <span id="backfill-progress" class="badge-count hidden" style="margin-left: 4px;"></span>
-      </div>
-      <div id="project-stats" class="section-content stats-grid hidden">
-        <div class="empty-state" id="i18n-empty-stats"></div>
-      </div>
-    </div>
-
-    <div id="team-section" class="section hidden">
-      <div class="section-header clickable" onclick="toggleTeamSection()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-        <i data-lucide="users"></i> <span id="i18n-section-team"></span>
-        <span id="team-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
-      </div>
-      <div id="team-tab-content" class="section-content hidden">
-        <div class="empty-state" id="i18n-empty-team"></div>
-      </div>
-    </div>
-
-    <div id="claude-economics-section" class="section">
-      <div class="section-header clickable" onclick="toggleSection('claude-economics-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-        <i data-lucide="circuit-board"></i> <span id="i18n-section-claude-economics"></span>
-        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
-      </div>
-      <div class="section-content economics-content hidden">
-        <div class="economics-panel">
-          <div class="economics-panel-header">
-            <span class="economics-panel-title" id="i18n-economics-token-usage"></span>
+        <div id="logs-section" class="section hidden">
+          <div class="section-header">
+            <i data-lucide="scroll-text"></i> <span id="i18n-section-logs"></span>
+            <span id="error-count" class="badge-count hidden"></span>
           </div>
-          <div class="economics-panel-body" id="token-usage-content">
-            <div class="empty-state">Loading…</div>
+          <div id="logs-content" class="section-content logs">
+            <div class="empty-state" id="i18n-empty-logs"></div>
           </div>
         </div>
 
-        <div class="economics-panel">
-          <div class="economics-panel-header">
-            <span class="economics-panel-title" id="i18n-economics-monthly-budget"></span>
+        <div id="stats-section" class="section hidden">
+          <div class="section-header clickable" onclick="toggleStats()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="bar-chart-3"></i> <span id="i18n-section-stats"></span>
+            <span id="stats-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+            <button id="recalculate-btn" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); recalculateStats()" style="margin-left: auto; font-size: 0.75rem; padding: 2px 8px;">
+              <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+              <span id="recalculate-label"></span>
+            </button>
+            <span id="backfill-progress" class="badge-count hidden" style="margin-left: 4px;"></span>
           </div>
-          <div class="economics-panel-body">
-            <div id="budget-tile">
-              <div class="empty-state">Loading…</div>
+          <div id="project-stats" class="section-content stats-grid hidden">
+            <div class="empty-state" id="i18n-empty-stats"></div>
+          </div>
+        </div>
+
+        <div id="team-section" class="section hidden">
+          <div class="section-header clickable" onclick="toggleTeamSection()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="users"></i> <span id="i18n-section-team"></span>
+            <span id="team-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+          </div>
+          <div id="team-tab-content" class="section-content hidden">
+            <div class="empty-state" id="i18n-empty-team"></div>
+          </div>
+        </div>
+
+        <div id="claude-economics-section" class="section">
+          <div class="section-header clickable" onclick="toggleSection('claude-economics-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="circuit-board"></i> <span id="i18n-section-claude-economics"></span>
+            <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+          </div>
+          <div class="section-content economics-content hidden">
+            <div class="economics-panel">
+              <div class="economics-panel-header">
+                <span class="economics-panel-title" id="i18n-economics-token-usage"></span>
+              </div>
+              <div class="economics-panel-body" id="token-usage-content">
+                <div class="empty-state">Loading…</div>
+              </div>
             </div>
-            <div class="budget-slider-row">
-              <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
-              <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
-              <button id="budget-slider-submit" type="button">Apply</button>
-              <span id="budget-slider-status" class="budget-slider-status"></span>
+
+            <div class="economics-panel">
+              <div class="economics-panel-header">
+                <span class="economics-panel-title" id="i18n-economics-monthly-budget"></span>
+              </div>
+              <div class="economics-panel-body">
+                <div id="budget-tile">
+                  <div class="empty-state">Loading…</div>
+                </div>
+                <div class="budget-slider-row">
+                  <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
+                  <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
+                  <button id="budget-slider-submit" type="button">Apply</button>
+                  <span id="budget-slider-status" class="budget-slider-status"></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <div class="section" id="active-reviews-section">
-      <div class="section-header">
-        <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
-        <span id="active-reviews-count" class="badge-count hidden">0</span>
-      </div>
-      <div id="active-reviews" class="section-content">
-        <div class="empty-state" id="i18n-empty-active-reviews"></div>
-      </div>
-    </div>
+        <div class="section" id="active-reviews-section">
+          <div class="section-header">
+            <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
+            <span id="active-reviews-count" class="badge-count hidden">0</span>
+          </div>
+          <div id="active-reviews" class="section-content">
+            <div class="empty-state" id="i18n-empty-active-reviews"></div>
+          </div>
+        </div>
 
-    <div class="section hidden" id="active-followups-section">
-      <div class="section-header clickable" onclick="toggleSection('active-followups-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-        <i data-lucide="refresh-cw"></i> <span id="i18n-section-active-followups"></span>
-        <span id="active-followups-count" class="badge-count hidden">0</span>
-        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
-      </div>
-      <div id="active-followups" class="section-content">
-        <div class="empty-state" id="i18n-empty-active-followups"></div>
-      </div>
-    </div>
+        <div class="section hidden" id="active-followups-section">
+          <div class="section-header clickable" onclick="toggleSection('active-followups-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="refresh-cw"></i> <span id="i18n-section-active-followups"></span>
+            <span id="active-followups-count" class="badge-count hidden">0</span>
+            <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+          </div>
+          <div id="active-followups" class="section-content">
+            <div class="empty-state" id="i18n-empty-active-followups"></div>
+          </div>
+        </div>
 
-    <div class="section hidden" id="pending-fix-section">
-      <div class="section-header">
-        <i data-lucide="wrench"></i> <span id="i18n-section-pending-fix"></span>
-        <span id="pending-fix-count" class="badge-count hidden">0</span>
-        <button id="sync-threads-btn" class="btn-icon btn-sync" onclick="syncGitLabThreads()">
-          <i data-lucide="refresh-cw"></i>
-        </button>
-      </div>
-      <div id="pending-fix-reviews" class="section-content">
-        <div class="empty-state" id="i18n-empty-pending-fix"></div>
-      </div>
-    </div>
+        <div class="section hidden" id="pending-fix-section">
+          <div class="section-header">
+            <i data-lucide="wrench"></i> <span id="i18n-section-pending-fix"></span>
+            <span id="pending-fix-count" class="badge-count hidden">0</span>
+            <button id="sync-threads-btn" class="btn-icon btn-sync" onclick="syncGitLabThreads()">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <div id="pending-fix-reviews" class="section-content">
+            <div class="empty-state" id="i18n-empty-pending-fix"></div>
+          </div>
+        </div>
 
-    <div class="section hidden" id="pending-approval-section">
-      <div class="section-header clickable" onclick="toggleSection('pending-approval-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-        <i data-lucide="circle-check"></i> <span id="i18n-section-pending-approval"></span>
-        <span id="pending-approval-count" class="badge-count hidden">0</span>
-        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
-      </div>
-      <div id="pending-approval-reviews" class="section-content">
-        <div class="empty-state" id="i18n-empty-pending-approval"></div>
-      </div>
-    </div>
+        <div class="section hidden" id="pending-approval-section">
+          <div class="section-header clickable" onclick="toggleSection('pending-approval-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="circle-check"></i> <span id="i18n-section-pending-approval"></span>
+            <span id="pending-approval-count" class="badge-count hidden">0</span>
+            <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+          </div>
+          <div id="pending-approval-reviews" class="section-content">
+            <div class="empty-state" id="i18n-empty-pending-approval"></div>
+          </div>
+        </div>
 
-    <div class="section" id="completed-reviews-section">
-      <div class="section-header clickable" onclick="toggleSection('completed-reviews-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-        <i data-lucide="file-check"></i> <span id="i18n-section-completed-reviews"></span>
-        <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
-      </div>
-      <div id="recent-reviews" class="section-content">
-        <div class="empty-state" id="i18n-empty-loading"></div>
-      </div>
-    </div>
+        <div class="section" id="completed-reviews-section">
+          <div class="section-header clickable" onclick="toggleSection('completed-reviews-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="file-check"></i> <span id="i18n-section-completed-reviews"></span>
+            <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
+          </div>
+          <div id="recent-reviews" class="section-content">
+            <div class="empty-state" id="i18n-empty-loading"></div>
+          </div>
+        </div>
 
-    <div class="section" id="cleanup-section">
-      <div class="section-header">
-        <i data-lucide="trash-2"></i> <span>Nettoyage</span>
-      </div>
-      <div class="section-content" id="cleanup-content"></div>
-    </div>
+        <div class="section" id="cleanup-section">
+          <div class="section-header">
+            <i data-lucide="trash-2"></i> <span>Nettoyage</span>
+          </div>
+          <div class="section-content" id="cleanup-content"></div>
+        </div>
 
         <div class="refresh-info">
           <span id="connection-mode"></span> • <span id="i18n-connection-fallback"></span>
