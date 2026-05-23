@@ -1,6 +1,6 @@
 ---
 name: review-front
-description: Complete code review of a MR/PR with 6 sequential audits (Clean Architecture, DDD, TypeScript Best Practices, SOLID, Testing, Code Quality). An orchestrator runs each audit one by one to avoid memory spikes. Generates an .md report and posts it directly on the MR/PR. Direct mode with sourced lessons.
+description: Complete code review of a MR/PR with 7 sequential audits (Clean Architecture, DDD, TypeScript Best Practices, SOLID, Clean Code, Testing, Code Quality). An orchestrator runs each audit one by one to avoid memory spikes. Generates an .md report and posts it directly on the MR/PR. Direct mode with sourced lessons.
 ---
 
 # Code Review
@@ -117,7 +117,7 @@ This skill activates when the user requests:
 
 ## Sequential Architecture (Anti Memory-Leak)
 
-**CRITICAL**: To avoid memory explosion, the 6 audits are executed **ONE BY ONE** by an orchestrator.
+**CRITICAL**: To avoid memory explosion, the 7 audits are executed **ONE BY ONE** by an orchestrator.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -215,8 +215,9 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 | 2 | Strategic DDD | `/.claude/skills/ddd/SKILL.md` | Bounded Context, language |
 | 3 | TypeScript Best Practices | `/CLAUDE.md` | Types, async patterns, imports |
 | 4 | SOLID | `/.claude/skills/solid/SKILL.md` | 5 principles |
-| 5 | Testing | `/.claude/skills/tdd/SKILL.md` | Coverage, patterns |
-| 6 | Code Quality | `/CLAUDE.md` | Conventions, imports |
+| 5 | Clean Code | `/.claude/skills/clean-code/SKILL.md` | Readability, functions, smells, naming |
+| 6 | Testing | `/.claude/skills/tdd/SKILL.md` | Coverage, patterns |
+| 7 | Code Quality | `/CLAUDE.md` | Conventions, imports |
 
 ---
 
@@ -299,7 +300,29 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 ---
 
-#### Audit 5: Testing
+#### Audit 5: Clean Code
+
+**Call:** `start_agent(jobId, "clean-code")`
+
+**Read first**: `/.claude/skills/clean-code/SKILL.md`
+
+**Verify**:
+1. Naming: intention-revealing, no abbreviation, full words, distinguishable (`getActiveAccount` vs `getActiveAccounts` is a time bomb)?
+2. Functions: < 20 lines, 0-2 arguments, do one thing, one level of abstraction?
+3. Flag arguments: any boolean parameter that switches behavior? → split into 2 functions
+4. Comments: zero comments except workaround/non-obvious invariant (no journal, no closing comments, no commented-out code)?
+5. Code smells (chap. 17): G5 Duplication (3+), G15 Selector Arguments, G23 Switch on type, G28 Conditional encapsulation, G30 Function does X **and** Y, G35 Magic numbers?
+6. ReviewFlow heuristics: God Use Case (> 80 lines or 5+ deps), Floating Promise, business logic in Controllers, type assertions (`as`), `undefined` leakage in domain?
+7. Boy Scout Rule: does the diff leave touched files cleaner (in-scope only)?
+
+**For each violation**: cite the skill rule or Martin (Clean Code, 2008).
+**Give a score**: X/10 with justification.
+
+**Call:** `complete_agent(jobId, "clean-code", "success")`
+
+---
+
+#### Audit 6: Testing
 
 **Call:** `start_agent(jobId, "testing")`
 
@@ -319,7 +342,7 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 ---
 
-#### Audit 6: Code Quality
+#### Audit 7: Code Quality
 
 **Call:** `start_agent(jobId, "code-quality")`
 
@@ -345,9 +368,9 @@ complete_agent(jobId, "clean-architecture", "failed", "Error message") # Failure
 
 **Call:** `set_phase(jobId, "synthesizing")`
 
-After the 6 audits:
+After the 7 audits:
 
-1. **Overall score**: Weighted average of the 6 audits
+1. **Overall score**: Weighted average of the 7 audits
 2. **Summary table**: Score + Verdict per audit
 3. **Blocking corrections**: Issues preventing merge
 4. **Important corrections**: To be done this week
@@ -405,6 +428,7 @@ The report must follow this structure:
 | **Strategic DDD** | X/10 | [Short verdict] |
 | **TypeScript Best Practices** | X/10 | [Short verdict] |
 | **SOLID** | X/10 | [Short verdict] |
+| **Clean Code** | X/10 | [Short verdict] |
 | **Testing** | X/10 | [Short verdict] |
 | **Code Quality** | X/100 | [Short verdict] |
 
@@ -597,6 +621,7 @@ At the end of the report, recommend the appropriate skills based on detected iss
 | New component to create | `/architecture` | Clean Architecture structure |
 | Abstraction to challenge | `/anti-overengineering` | Validate YAGNI before extracting |
 | SOLID violation detected | `/solid` | Concrete principles and examples |
+| Readability / smells / long functions / poor naming | `/clean-code` | Naming, functions, smells, REFACTOR heuristics |
 | Massive refactoring | `/refactoring` | Mikado Graph, Strangler Fig |
 | Anemic model (DDD) | `/ddd` | Bounded Context, Rich Entities |
 | Potential secrets | `/security` | Scan before commit |

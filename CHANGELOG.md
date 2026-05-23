@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.16.0...reviewflow-v3.17.0) (2026-05-23)
+
+
+### Added
+
+* **dashboard:** implement spec-173 worktree panel ([#184](https://github.com/DGouron/review-flow/issues/184)) ([bcab671](https://github.com/DGouron/review-flow/commit/bcab671a6c0705d38be6468b3b4cb06d31c6d07f))
+* **review:** add Clean Code as 7th audit in review-front and follow-up ([#185](https://github.com/DGouron/review-flow/issues/185)) ([8f2e230](https://github.com/DGouron/review-flow/commit/8f2e230fbfc6b6a7d8ad04b2b8d59365a9e748b1))
+
+## [3.16.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.15.0...reviewflow-v3.16.0) (2026-05-23)
+
+
+### Added
+
+* **worktree-management:** implement SPEC-170 FR-6 daily sweep + FR-8 GitHub cross-fork PR ([#181](https://github.com/DGouron/review-flow/issues/181)) ([eecc12b](https://github.com/DGouron/review-flow/commit/eecc12b2a651394d3e8c63b0cf108c2dca358c31))
+
+
+### Fixed
+
+* **claude-invocation:** add -- terminator so variadic tool flags do not swallow the prompt arg ([#183](https://github.com/DGouron/review-flow/issues/183)) ([34f11fe](https://github.com/DGouron/review-flow/commit/34f11fe7b43d3c93da181d6315ac6403065038ba))
+
 ## [3.15.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.14.0...reviewflow-v3.15.0) (2026-05-23)
 
 

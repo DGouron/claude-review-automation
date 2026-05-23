@@ -5,6 +5,8 @@ import type {
   SweepTrackingGateway,
 } from '@/modules/worktree-management/usecases/sweepStaleWorktrees.usecase.js';
 import { sweepStaleWorktrees } from '@/modules/worktree-management/usecases/sweepStaleWorktrees.usecase.js';
+import type { LastSweepSummary } from '@/modules/worktree-management/entities/sweep/lastSweepSummary.schema.js';
+import type { RunSweepNowResult } from '@/modules/worktree-management/entities/sweep/runSweepResult.js';
 
 const TWENTY_FOUR_HOURS_IN_MILLISECONDS = 86_400_000;
 
@@ -16,12 +18,25 @@ export interface WorktreeSweepSchedulerDependencies {
   now: () => Date;
 }
 
+export interface WorktreeSweepSchedulerHandle {
+  stop: () => void;
+  getLastSweep: () => LastSweepSummary | null;
+  getNextSweepEta: () => Date;
+  runSweepNow: () => Promise<RunSweepNowResult>;
+}
+
 export function startWorktreeSweepScheduler(
   dependencies: WorktreeSweepSchedulerDependencies,
-): { stop: () => void } {
+): WorktreeSweepSchedulerHandle {
   const { worktreeGateway, trackingGateway, getRepositories, logger, now } = dependencies;
 
-  async function runSweep(): Promise<void> {
+  let lastSummary: LastSweepSummary | null = null;
+  let runningSince: Date | null = null;
+  const startedAt: Date = now();
+
+  async function runSweepInternal(): Promise<LastSweepSummary> {
+    const ranAt = now();
+    runningSince = ranAt;
     try {
       const summary = await sweepStaleWorktrees({
         listEntries: () => worktreeGateway.list(),
@@ -36,24 +51,52 @@ export function startWorktreeSweepScheduler(
         now,
       });
 
+      const result: LastSweepSummary = { ranAt, ...summary };
+      lastSummary = result;
+
       if (summary.removed > 0 || summary.failures > 0) {
-        logger.info(
-          { ...summary },
-          'Worktree sweep completed',
-        );
+        logger.info({ ...summary }, 'Worktree sweep completed');
       }
+
+      return result;
+    } finally {
+      runningSince = null;
+    }
+  }
+
+  async function runScheduledSweep(): Promise<void> {
+    try {
+      await runSweepInternal();
     } catch (error) {
       logger.error({ error }, 'Worktree sweep failed');
     }
   }
 
-  void runSweep();
+  void runScheduledSweep();
 
   const intervalId = setInterval(() => {
-    void runSweep();
+    void runScheduledSweep();
   }, TWENTY_FOUR_HOURS_IN_MILLISECONDS);
 
   return {
     stop: () => clearInterval(intervalId),
+    getLastSweep: () => lastSummary,
+    getNextSweepEta: () => {
+      const reference = lastSummary?.ranAt ?? startedAt;
+      return new Date(reference.getTime() + TWENTY_FOUR_HOURS_IN_MILLISECONDS);
+    },
+    runSweepNow: async (): Promise<RunSweepNowResult> => {
+      if (runningSince !== null) {
+        return { status: 'conflict', startedAt: runningSince };
+      }
+      try {
+        const summary = await runSweepInternal();
+        return { status: 'ok', summary };
+      } catch (error) {
+        logger.error({ error }, 'Manual worktree sweep failed');
+        const reason = error instanceof Error ? error.message : 'unknown';
+        return { status: 'error', reason };
+      }
+    },
   };
 }

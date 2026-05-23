@@ -26,7 +26,7 @@ export interface SweepStaleWorktreesDependencies {
 }
 
 export interface SweepSummary {
-  inspected: number;
+  scanned: number;
   removed: number;
   failures: number;
 }
@@ -94,7 +94,7 @@ export async function sweepStaleWorktrees(
   }
 
   return {
-    inspected: entries.length,
+    scanned: entries.length,
     removed: removedCount,
     failures,
   };
