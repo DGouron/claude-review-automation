@@ -18,7 +18,7 @@ function buildInput(overrides: Partial<Parameters<typeof runClaudeReviewJob>[0]>
       systemPrompt: 'system',
       allowedTools: 'Read,Bash',
       disallowedTools: 'EnterPlanMode',
-      permissionMode: 'bypassPermissions',
+      permissionMode: 'auto',
     },
     localPath: '/tmp/project',
     mergeRequestId: 'gitlab-owner/repo-42',

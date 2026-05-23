@@ -453,7 +453,7 @@ export async function invokeClaudeReview(
   const args = [
     '--bg',
     '--model', model,
-    '--permission-mode', 'bypassPermissions',
+    '--permission-mode', 'auto',
     '--append-system-prompt', mcpSystemPrompt,
     '--mcp-config', mcpConfigJson,
     '--strict-mcp-config',
@@ -554,7 +554,7 @@ async function invokeViaBackgroundSession(
     systemPrompt: mcpSystemPrompt,
     allowedTools: 'Read,Glob,Grep,Bash,Edit,Task,Skill,Write,LSP,mcp__review-progress__*',
     disallowedTools: 'EnterPlanMode,AskUserQuestion',
-    permissionMode: 'bypassPermissions' as const,
+    permissionMode: 'auto' as const,
   };
 
   let result: Awaited<ReturnType<typeof runClaudeReviewJob>>;
