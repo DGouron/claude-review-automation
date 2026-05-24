@@ -302,12 +302,16 @@ No new problems detected in the modifications.
 
 1. **Manage existing threads** via MCP tools (see Phase 4 section)
 
-2. **Post the report on the MR**:
+2. **Save the MD** in `/.claude/reviews/[YYYY-MM-DD]-MR-[ID]-followup.md`
+
+   Use the `Write` tool to persist the full follow-up report locally. The orchestrator reads this file to confirm the followup ran successfully — if it is missing, the job is reported as failed.
+
+3. **Post the report on the MR**:
    ```
    add_action({ jobId: JOB_ID, type: "POST_COMMENT", body: "<report content>" })
    ```
 
-3. **Inline comments** for new problems only (via `POST_INLINE_COMMENT`)
+4. **Inline comments** for new problems only (via `POST_INLINE_COMMENT`)
 
 ---
 

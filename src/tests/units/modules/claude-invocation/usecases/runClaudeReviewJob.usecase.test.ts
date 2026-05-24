@@ -80,7 +80,7 @@ describe('runClaudeReviewJob orchestrator', () => {
     expect(ctx.sessionGateway.removeCalls).toContain(parseSessionId('happy001'));
   });
 
-  it('returns "failed" with reason "report-missing" when the report file is absent', async () => {
+  it('returns "failed" with reason "report-missing" when the report file is absent for a review job', async () => {
     const ctx = buildDeps();
     ctx.sessionGateway.setDispatchResult({
       status: 'dispatched',
@@ -102,6 +102,29 @@ describe('runClaudeReviewJob orchestrator', () => {
       expect(result.reason).toBe('report-missing');
     }
     expect(ctx.sessionGateway.stopCalls).toContain(parseSessionId('miss0001'));
+  });
+
+  it('returns "completed" with empty content when the report file is absent for a followup job', async () => {
+    const ctx = buildDeps();
+    ctx.sessionGateway.setDispatchResult({
+      status: 'dispatched',
+      sessionId: parseSessionId('flwm0001'),
+    });
+    ctx.completionBridge.scheduleCompletion('gitlab:owner/repo:42', {
+      source: 'mcp',
+      outcome: 'completed',
+      reason: null,
+    });
+    ctx.reportGateway.setReport(null);
+
+    const runPromise = runClaudeReviewJob(buildInput({ jobType: 'followup' }), ctx.deps);
+    await vi.runAllTimersAsync();
+    const result = await runPromise;
+
+    expect(result.status).toBe('completed');
+    if (result.status === 'completed') {
+      expect(result.content).toBe('');
+    }
   });
 
   it('returns "retry" with backoff when the gateway reports a rate limit', async () => {

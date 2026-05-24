@@ -159,6 +159,14 @@ export async function runClaudeReviewJob(
   );
 
   if (report.status === 'missing') {
+    if (input.jobType === 'followup') {
+      return {
+        status: 'completed',
+        reportPath: report.expectedPath,
+        content: '',
+        usage,
+      };
+    }
     return { status: 'failed', reason: 'report-missing' };
   }
 
