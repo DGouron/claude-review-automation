@@ -14,12 +14,7 @@ export class CheckFollowupNeededUseCase implements UseCase<CheckFollowupNeededIn
     const mr = this.trackingGateway.getByNumber(input.projectPath, input.mrNumber, input.platform);
 
     if (!mr) return false;
-
-    const eligibleForFollowup =
-      mr.state === 'pending-fix' ||
-      (mr.state === 'pending-approval' && mr.totalWarnings > 0);
-
-    if (!eligibleForFollowup) return false;
+    if (mr.state === 'merged' || mr.state === 'closed') return false;
     if (!mr.lastPushAt || !mr.lastReviewAt) return false;
 
     return new Date(mr.lastPushAt).getTime() > new Date(mr.lastReviewAt).getTime();

@@ -26,7 +26,7 @@ import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import type { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
-import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
+import { loadProjectConfig, getProjectAgentsOrFocusDefaults, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js';
@@ -575,7 +575,7 @@ export async function handleGitHubWebhook(
           'Failed to fetch diff metadata, inline comments will be skipped'
         );
       }
-      const reviewAgentsList = getProjectAgents(j.localPath) ?? DEFAULT_AGENTS;
+      const reviewAgentsList = getProjectAgentsOrFocusDefaults(j.localPath) ?? DEFAULT_AGENTS;
       contextGateway.create({
         localPath: j.localPath,
         mergeRequestId,

@@ -4,7 +4,7 @@ import { InMemoryReviewRequestTrackingGateway } from '../../../stubs/reviewReque
 import { TrackedMrFactory } from '../../../factories/trackedMr.factory.js';
 
 describe('CheckFollowupNeededUseCase', () => {
-  it('should return true when a push happened after the last review', () => {
+  it('should return true when a push happened after the last review (pending-fix)', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({
       mrNumber: 42,
@@ -25,7 +25,29 @@ describe('CheckFollowupNeededUseCase', () => {
     expect(result).toBe(true);
   });
 
-  it('should return false when MR is not in an eligible state', () => {
+  it('should return true on push after a clean review (pending-approval, no warnings)', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({
+      mrNumber: 42,
+      platform: 'gitlab',
+      state: 'pending-approval',
+      totalWarnings: 0,
+      lastReviewAt: '2024-01-15T10:00:00Z',
+      lastPushAt: '2024-01-15T12:00:00Z',
+    });
+    gateway.create('/project', mr);
+    const useCase = new CheckFollowupNeededUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrNumber: 42,
+      platform: 'gitlab',
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it('should return true on push after approval (re-review of new commits)', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({
       mrNumber: 42,
@@ -43,7 +65,7 @@ describe('CheckFollowupNeededUseCase', () => {
       platform: 'gitlab',
     });
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
   });
 
   it('should return true when pending-approval MR has warnings and push after review', () => {
@@ -68,13 +90,12 @@ describe('CheckFollowupNeededUseCase', () => {
     expect(result).toBe(true);
   });
 
-  it('should return false when pending-approval MR has no warnings', () => {
+  it('should return false on push to a merged MR', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({
       mrNumber: 42,
       platform: 'gitlab',
-      state: 'pending-approval',
-      totalWarnings: 0,
+      state: 'merged',
       lastReviewAt: '2024-01-15T10:00:00Z',
       lastPushAt: '2024-01-15T12:00:00Z',
     });
@@ -90,15 +111,35 @@ describe('CheckFollowupNeededUseCase', () => {
     expect(result).toBe(false);
   });
 
-  it('should return false when pending-approval MR has warnings but no push after review', () => {
+  it('should return false on push to a closed MR', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({
       mrNumber: 42,
       platform: 'gitlab',
-      state: 'pending-approval',
-      totalWarnings: 2,
-      lastReviewAt: '2024-01-15T12:00:00Z',
-      lastPushAt: '2024-01-15T10:00:00Z',
+      state: 'closed',
+      lastReviewAt: '2024-01-15T10:00:00Z',
+      lastPushAt: '2024-01-15T12:00:00Z',
+    });
+    gateway.create('/project', mr);
+    const useCase = new CheckFollowupNeededUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrNumber: 42,
+      platform: 'gitlab',
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it('should return false when no review has happened yet', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({
+      mrNumber: 42,
+      platform: 'gitlab',
+      state: 'pending-review',
+      lastReviewAt: null,
+      lastPushAt: '2024-01-15T12:00:00Z',
     });
     gateway.create('/project', mr);
     const useCase = new CheckFollowupNeededUseCase(gateway);

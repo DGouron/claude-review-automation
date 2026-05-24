@@ -22,7 +22,7 @@ import type { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/rec
 import type { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
-import { loadProjectConfig, getProjectAgents, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
+import { loadProjectConfig, getProjectAgentsOrFocusDefaults, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
@@ -701,7 +701,7 @@ export function buildGitLabReviewProcessor(
             'Failed to fetch diff metadata, inline comments will be skipped'
           );
         }
-        const reviewAgentsList = getProjectAgents(j.localPath) ?? DEFAULT_AGENTS;
+        const reviewAgentsList = getProjectAgentsOrFocusDefaults(j.localPath) ?? DEFAULT_AGENTS;
         contextGateway.create({
           localPath: j.localPath,
           mergeRequestId,
