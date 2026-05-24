@@ -140,6 +140,16 @@
           <div style="margin-top: 0.75rem;" id="git-login-instructions"></div>
         </div>
 
+        <div class="section" id="pending-reviews-section">
+          <div class="section-header">
+            <i data-lucide="hourglass"></i> <span id="i18n-section-pending-reviews"></span>
+            <span id="pending-reviews-count" class="badge-count hidden">0</span>
+          </div>
+          <div id="pending-reviews" class="section-content">
+            <div class="empty-state" id="i18n-empty-pending-reviews"></div>
+          </div>
+        </div>
+
         <div id="logs-section" class="section hidden">
           <div class="section-header">
             <i data-lucide="scroll-text"></i> <span id="i18n-section-logs"></span>
@@ -326,6 +336,7 @@
     import { renderDeveloperSheetContent, drawRadarChart } from './modules/developerSheet.js';
     import { buildInsightsReport } from './modules/insightsReport.js';
     import { fetchTokenUsageSummary, renderTokenUsageTile } from './modules/tokenUsage.js';
+    import { buildPendingReviewsModel, renderPendingReviewsHtml } from './modules/pendingReviews.js';
     import {
       renderWorktreeSection,
       fetchWorktreeOverview,
@@ -350,7 +361,7 @@
     let reconnectAttempts = 0;
     let logsVisible = false;
 
-    let currentData = { activeReviews: [], recentReviews: [], logs: [], reviewFiles: [], pendingFix: [], pendingApproval: [] };
+    let currentData = { activeReviews: [], recentReviews: [], logs: [], reviewFiles: [], pendingFix: [], pendingApproval: [], pendingReviews: [] };
     const mrDataStore = new Map();
     let loadedReviews = {};
     let statsCollapsed = true;
@@ -1814,6 +1825,90 @@
       refreshIcons();
     }
 
+    async function fetchPendingReviews() {
+      try {
+        const response = await fetch(`${API_URL}/api/pending-reviews`);
+        const data = await response.json();
+        currentData.pendingReviews = Array.isArray(data?.pendingReviews) ? data.pendingReviews : [];
+        updatePendingReviewsUI();
+      } catch (error) {
+        console.error('Error fetching pending reviews:', error);
+      }
+    }
+
+    function updatePendingReviewsUI() {
+      const section = document.getElementById('pending-reviews-section');
+      const container = document.getElementById('pending-reviews');
+      const countBadge = document.getElementById('pending-reviews-count');
+      if (!container || !countBadge || !section) return;
+
+      const model = buildPendingReviewsModel(currentData.pendingReviews || []);
+      container.innerHTML = renderPendingReviewsHtml(model);
+
+      if (model.isEmpty) {
+        countBadge.classList.add('hidden');
+        countBadge.textContent = '0';
+      } else {
+        countBadge.textContent = String(model.count);
+        countBadge.classList.remove('hidden');
+      }
+
+      container.querySelectorAll('.btn-confirm-pending').forEach((btn) => {
+        const pendingId = btn.getAttribute('data-pending-id');
+        if (!pendingId) return;
+        btn.addEventListener('click', () => confirmPendingReview(pendingId), { once: true });
+      });
+      container.querySelectorAll('.btn-dismiss-pending').forEach((btn) => {
+        const pendingId = btn.getAttribute('data-pending-id');
+        if (!pendingId) return;
+        btn.addEventListener('click', () => dismissPendingReview(pendingId), { once: true });
+      });
+
+      refreshIcons();
+    }
+
+    async function confirmPendingReview(pendingId) {
+      try {
+        const response = await fetch(`${API_URL}/api/pending-reviews/${encodeURIComponent(pendingId)}/confirm`, {
+          method: 'POST',
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showToast('Review confirmée', 'info');
+        } else if (data?.message) {
+          showToast(data.message, 'error');
+        } else {
+          showToast('Erreur lors de la confirmation', 'error');
+        }
+      } catch (error) {
+        console.error('Error confirming pending review:', error);
+        showToast('Erreur lors de la confirmation', 'error');
+      } finally {
+        await fetchPendingReviews();
+      }
+    }
+
+    async function dismissPendingReview(pendingId) {
+      try {
+        const response = await fetch(`${API_URL}/api/pending-reviews/${encodeURIComponent(pendingId)}`, {
+          method: 'DELETE',
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showToast('Review ignorée', 'info');
+        } else if (data?.message) {
+          showToast(data.message, 'error');
+        } else {
+          showToast('Erreur lors du rejet', 'error');
+        }
+      } catch (error) {
+        console.error('Error dismissing pending review:', error);
+        showToast('Erreur lors du rejet', 'error');
+      } finally {
+        await fetchPendingReviews();
+      }
+    }
+
     async function fetchMrTracking() {
       setLoadingFlag('mrTracking', true);
       if (!currentProjectPath) {
@@ -2040,6 +2135,9 @@
                 }
                 break;
               }
+              case 'pending-changed':
+                fetchPendingReviews();
+                break;
               case 'pong':
                 break;
             }
@@ -2549,6 +2647,9 @@
       const sectionTeam = document.getElementById('i18n-section-team');
       if (sectionTeam) sectionTeam.textContent = t('team.title');
 
+      const sectionPendingReviews = document.getElementById('i18n-section-pending-reviews');
+      if (sectionPendingReviews) sectionPendingReviews.textContent = t('section.pendingReviews');
+
       const sectionActiveReviews = document.getElementById('i18n-section-active-reviews');
       if (sectionActiveReviews) sectionActiveReviews.textContent = t('section.activeReviews');
 
@@ -2579,6 +2680,9 @@
 
       const emptyStats = document.getElementById('i18n-empty-stats');
       if (emptyStats) emptyStats.textContent = t('empty.stats');
+
+      const emptyPendingReviews = document.getElementById('i18n-empty-pending-reviews');
+      if (emptyPendingReviews) emptyPendingReviews.textContent = t('empty.pendingReviews');
 
       const emptyActiveReviews = document.getElementById('i18n-empty-active-reviews');
       if (emptyActiveReviews) emptyActiveReviews.textContent = t('empty.activeReviews');
@@ -2834,8 +2938,11 @@
       fetchReviewFiles();
       fetchProjectStats();
       fetchMrTracking();
+      fetchPendingReviews();
       fetchTeamInsights();
     }, 30000);
+
+    fetchPendingReviews();
 
     setInterval(() => {
       document.querySelectorAll('.review-item').forEach(el => {

@@ -26,6 +26,7 @@ export function createTestConfig(overrides?: Partial<Config>): Config {
       deduplicationWindowMs: 60000,
     },
     repositories: [createTestRepository()],
+    triggerMode: 'full-auto',
     ...overrides,
   };
 }

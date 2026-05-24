@@ -40,3 +40,4 @@
 | Re-enable token usage tracking in --bg mode | [171-bg-token-usage-tracking](specs/171-bg-token-usage-tracking.md) | implemented | 2026-05-23 |
 | Claude agents supervisor lifecycle | [172-claude-agents-supervisor-lifecycle](specs/172-claude-agents-supervisor-lifecycle.md) | implemented | 2026-05-23 |
 | Dashboard worktree panel | [173-dashboard-worktree-panel](specs/173-dashboard-worktree-panel.md) — [plan](plans/173-dashboard-worktree-panel.plan.md) — [report](reports/173-dashboard-worktree-panel.report.md) | implemented | 2026-05-23 |
+| Semi-automatic review trigger mode | [174-semi-auto-review-trigger-mode](specs/174-semi-auto-review-trigger-mode.md) — [plan](plans/174-semi-auto-review-trigger-mode.plan.md) | implemented | 2026-05-23 |

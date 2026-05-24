@@ -49,11 +49,14 @@ export interface QueueConfig {
   deduplicationWindowMs: number;
 }
 
+export type TriggerMode = 'full-auto' | 'semi-auto';
+
 export interface Config {
   server: ServerConfig;
   user: UserConfig;
   queue: QueueConfig;
   repositories: RepositoryConfig[];
+  triggerMode: TriggerMode;
 }
 
 export interface EnvSecrets {
@@ -186,6 +189,17 @@ export function validateAndEnrichConfig(data: unknown): Config {
     throw new Error('Configuration invalide : deduplicationWindowMs invalide');
   }
 
+  // Validate triggerMode (optional, defaults to 'full-auto')
+  let triggerMode: TriggerMode = 'full-auto';
+  if (config.triggerMode !== undefined && config.triggerMode !== null) {
+    if (config.triggerMode !== 'full-auto' && config.triggerMode !== 'semi-auto') {
+      throw new Error(
+        'Mode de déclenchement invalide : valeurs autorisées « full-auto » ou « semi-auto »',
+      );
+    }
+    triggerMode = config.triggerMode;
+  }
+
   // Validate and enrich repositories
   if (!Array.isArray(config.repositories)) {
     throw new Error('Configuration invalide : repositories doit être un tableau');
@@ -232,6 +246,7 @@ export function validateAndEnrichConfig(data: unknown): Config {
       deduplicationWindowMs: queue.deduplicationWindowMs as number,
     },
     repositories: enrichedRepositories,
+    triggerMode,
   };
 }
 

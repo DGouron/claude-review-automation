@@ -114,6 +114,40 @@ describe('validateAndEnrichConfig', () => {
       )
     })
   })
+
+  describe('triggerMode validation (SPEC-174)', () => {
+    it('default mode when missing: falls back to full-auto', () => {
+      const config = createValidConfig()
+
+      const result = validateAndEnrichConfig(config)
+
+      expect(result.triggerMode).toBe('full-auto')
+    })
+
+    it('accepts triggerMode "full-auto"', () => {
+      const config = { ...createValidConfig(), triggerMode: 'full-auto' }
+
+      const result = validateAndEnrichConfig(config)
+
+      expect(result.triggerMode).toBe('full-auto')
+    })
+
+    it('accepts triggerMode "semi-auto"', () => {
+      const config = { ...createValidConfig(), triggerMode: 'semi-auto' }
+
+      const result = validateAndEnrichConfig(config)
+
+      expect(result.triggerMode).toBe('semi-auto')
+    })
+
+    it('rejects an unknown triggerMode value with the exact French error from the spec', () => {
+      const config = { ...createValidConfig(), triggerMode: 'unknown-value' }
+
+      expect(() => validateAndEnrichConfig(config)).toThrow(
+        'Mode de déclenchement invalide : valeurs autorisées « full-auto » ou « semi-auto »',
+      )
+    })
+  })
 })
 
 describe('enrichRepository — reviewFocus derivation', () => {

@@ -9,12 +9,13 @@ import {
 import { dedupAgents } from '@/modules/review-execution/entities/progress/reviewFocus.type.js';
 
 describe('DEFAULT_AGENTS (backward compatibility)', () => {
-  it('keeps the legacy React-centric default list unchanged', () => {
+  it('keeps the legacy React-centric default list with the Clean Code audit', () => {
     expect(DEFAULT_AGENTS.map(agent => agent.name)).toEqual([
       'clean-architecture',
       'ddd',
       'react-best-practices',
       'solid',
+      'clean-code',
       'testing',
       'code-quality',
       'threads',
