@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.2](https://github.com/DGouron/review-flow/compare/reviewflow-v3.19.1...reviewflow-v3.19.2) (2026-05-24)
+
+
+### Changed
+
+* **cli:** split SPEC-92 god file into per-command modules ([#198](https://github.com/DGouron/review-flow/issues/198)) ([3d3d8e8](https://github.com/DGouron/review-flow/commit/3d3d8e86da6a7d94d315bb503dd3b9e11c28e7cd))
+
 ## [3.19.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.19.0...reviewflow-v3.19.1) (2026-05-24)
 
 
