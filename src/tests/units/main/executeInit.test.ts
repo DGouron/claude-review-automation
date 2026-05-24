@@ -3,7 +3,7 @@ import {
   executeInit,
   type InitDependencies,
   type PlatformChoice,
-} from '@/main/cli.js';
+} from '@/main/commands/init.command.js';
 import type { DiscoveredRepository } from '@/modules/cli-configuration/usecases/cli/discoverRepositories.usecase.js';
 import type { ConfigureMcpResult } from '@/modules/cli-configuration/usecases/cli/configureMcp.usecase.js';
 
