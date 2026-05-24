@@ -4,6 +4,50 @@
 **Labels**: enhancement, P1-critical, dashboard
 **Milestone**: Dashboard Modularization
 **Date**: 2026-03-14
+**Status**: re-drafted (2026-05-24) — UI layer never delivered despite previous "implemented" mark
+
+---
+
+## Status Update — 2026-05-24
+
+This spec was marked `implemented` in the feature tracker, but a code audit (2026-05-24) revealed only the backend layer was shipped. The UI layer is entirely missing.
+
+### What was shipped (verified)
+
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| `GET /api/stats` multi-project mode | Done | `stats.routes.ts:50-64` returns all projects when no `path` param |
+| `GET /api/reviews` multi-project mode | Done | `reviews.routes.ts:41-46` returns all reviews when no `path` param |
+| WebSocket includes `projectPath` in state messages | Done | `websocket.ts:54` |
+| Job stores `projectPath` | Done | `pQueueAdapter.ts:11` |
+
+### What is missing (delta to deliver)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Tab bar UI replacing `<select>` dropdown | Missing | `index.html:82` still uses `<select id="project-select">` |
+| Overview tab module (`modules/overview.js`) | Missing | File not present |
+| 3 sections of Overview: Active Reviews, Project Cards, Recent Feed | Missing | No UI rendering |
+| SVG sparklines for last 10 scores per project | Missing | No sparkline utility |
+| Tab state persistence in localStorage | Missing | No client-side state management |
+| Click card → navigate to project tab | Missing | No navigation logic |
+
+### Re-scoped acceptance criteria (delta only)
+
+The 12 Gherkin scenarios below remain valid as the target end-state. To unblock implementation, the work is scoped to the UI layer only, leveraging the backend already in place.
+
+### INVEST re-evaluation (2026-05-24)
+
+| Criterion | Status | Note |
+|-----------|--------|------|
+| Independent | OK | Backend ready, no blocker |
+| Negotiable | OK | UI layout free within constraints |
+| Valuable | OK | Direct UX win for multi-project users |
+| Estimable | OK | Scoped to UI: ~2-3j IA |
+| Small | OK | <15 files: index.html, styles.css, ~3 new JS modules |
+| Testable | OK | 12 scenarios already defined |
+
+**Verdict**: READY — re-drafted, can be picked up by `/implement-feature`.
 
 ---
 
