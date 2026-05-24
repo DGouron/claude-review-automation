@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { executeLogs, type LogsDeps } from '../../../main/cli.js';
+import { executeLogs, type LogsDeps } from '@/main/commands/logs.command.js';
 import type { ReadLogsDependencies } from '@/modules/cli-configuration/usecases/cli/readLogs.usecase.js';
 
 function createFakeReadLogsDeps(

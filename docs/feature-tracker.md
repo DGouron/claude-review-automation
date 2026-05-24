@@ -29,7 +29,7 @@
 | EventBus queue state | [82-eventbus-queue-state](specs/82-eventbus-queue-state.md) | implemented | 2026-03-14 |
 | Delete services folder | [83-delete-services-folder](specs/83-delete-services-folder.md) | implemented | 2026-03-14 |
 | Dashboard multi-project overview | [91-dashboard-multi-project-overview](specs/91-dashboard-multi-project-overview.md) | implemented | 2026-03-14 |
-| Split CLI god file | [92-split-cli-god-file](specs/92-split-cli-god-file.md) | drafted | 2026-03-14 |
+| Split CLI god file | [92-split-cli-god-file](specs/92-split-cli-god-file.md) — [plan](plans/92-split-cli-god-file.plan.md) | implemented | 2026-05-24 |
 | Developer & team insights | [125-developer-team-insights](specs/125-developer-team-insights.md) | implemented | 2026-04-01 |
 | Hybrid model routing + token tracking | (no spec — see report) | implemented | 2026-05-14 |
 | Skill templates | [skill-templates](specs/skill-templates.md) | drafted | 2026-03-14 |

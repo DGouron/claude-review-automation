@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   executeDiscover,
   type DiscoverDependencies,
-} from '@/main/cli.js';
+} from '@/main/commands/discover.command.js';
 import type { DiscoveredRepository } from '@/modules/cli-configuration/usecases/cli/discoverRepositories.usecase.js';
 
 function createFakeDiscoverDeps(

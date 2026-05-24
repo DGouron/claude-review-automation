@@ -5,6 +5,37 @@
 **Milestone**: Architecture Cleanup
 **Date**: 2026-03-14
 
+## Status: implemented (2026-05-24)
+
+- Plan: `docs/plans/92-split-cli-god-file.plan.md`
+- `src/main/cli.ts`: **794 → 77 lines** (90% reduction, target was <120)
+- All 8 commands extracted to `src/main/commands/<name>.command.ts`
+- Shared helpers in `src/main/shared/cliConstants.ts`
+- `yarn verify` GREEN (265 test files, 1916 tests)
+
+## Implementation
+
+### Artefacts
+
+| Layer | Files |
+|-------|-------|
+| **Entry point** | `src/main/cli.ts` (parse + dispatch only, 77 lines) |
+| **Command modules** | `src/main/commands/{start,stop,status,logs,init,discover,validate,followupImportants}.command.ts` (8 files) |
+| **Shared helpers** | `src/main/shared/cliConstants.ts` (`readVersion`, `printHelp`, `DEFAULT_SCAN_PATHS`, `getGitRemoteUrl`) |
+
+### Architectural decisions
+
+- **`create*Dependencies()` factory per command** — each command module exposes a factory function that builds the default `Dependencies` object (wiring node:fs, console, process, use cases). Keeps `cli.ts` dispatch one-liners and respects "zero business logic in entry point".
+- **New `ValidateDependencies` and `FollowupImportantsDependencies` interfaces** — extracted inline `process.exit`/`console.*`/`existsSync`/`readFileSync` into injectable shapes following the `executeDiscover` pattern.
+- **`getGitRemoteUrl` moved to `shared/cliConstants.ts`** — deviation from spec (which said "keep in cli.ts"). Required to break circular import between cli.ts and the init/discover command modules. Pragmatic resolution; spec out-of-scope rule overridden by technical constraint.
+
+### Out-of-scope finds (pre-existing, not corrected by this refactor)
+
+- `start.command.ts:80` — `as Array<'gitlab' | 'github'>` type assertion (inherited from original cli.ts).
+- `stop.command.ts:33` — `signal as NodeJS.Signals` cast (inherited from original cli.ts).
+
+Both violate the project rule "no `as Type` assertions" and warrant a separate ticket.
+
 ---
 
 ## Problem Statement
