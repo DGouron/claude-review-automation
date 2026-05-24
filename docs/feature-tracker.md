@@ -5,7 +5,7 @@
 | Token budget cap with live indicator | [163-token-budget-cap](specs/163-token-budget-cap.md) | implemented | 2026-05-20 |
 | Token usage summary on dashboard | [126-token-usage-summary-dashboard](specs/126-token-usage-summary-dashboard.md) | implemented | 2026-05-20 |
 | Init project command | [30-init-project-command](specs/30-init-project-command.md) | drafted | 2026-03-14 |
-| Update README quickstart | [32-update-readme-quickstart](specs/32-update-readme-quickstart.md) | drafted | 2026-03-14 |
+| ~~Update README quickstart~~ | [32-update-readme-quickstart](specs/32-update-readme-quickstart.md) | obsolete (npm flow N/A — daemon local) | 2026-03-14 |
 | Zod guard GitLab webhook | [44-zod-guard-gitlab-webhook](specs/44-zod-guard-gitlab-webhook.md) | implemented | 2026-03-14 |
 | GitHub followup review on push | [46-github-followup-review-on-push](specs/46-github-followup-review-on-push.md) | implemented | 2026-05-20 |
 | Capture git diff stats | [47-capture-git-diff-stats](specs/47-capture-git-diff-stats.md) | drafted | 2026-03-14 |
@@ -28,11 +28,11 @@
 | Split stats service | [80-split-stats-service](specs/80-split-stats-service.md) | drafted | 2026-03-14 |
 | EventBus queue state | [82-eventbus-queue-state](specs/82-eventbus-queue-state.md) | implemented | 2026-03-14 |
 | Delete services folder | [83-delete-services-folder](specs/83-delete-services-folder.md) | implemented | 2026-03-14 |
-| Dashboard multi-project overview | [91-dashboard-multi-project-overview](specs/91-dashboard-multi-project-overview.md) | implemented | 2026-03-14 |
+| Dashboard multi-project overview | [91-dashboard-multi-project-overview](specs/91-dashboard-multi-project-overview.md) | re-drafted (UI gap) | 2026-05-24 |
 | Split CLI god file | [92-split-cli-god-file](specs/92-split-cli-god-file.md) | drafted | 2026-03-14 |
 | Developer & team insights | [125-developer-team-insights](specs/125-developer-team-insights.md) | implemented | 2026-04-01 |
 | Hybrid model routing + token tracking | (no spec — see report) | implemented | 2026-05-14 |
-| Skill templates | [skill-templates](specs/skill-templates.md) | drafted | 2026-03-14 |
+| ~~Skill templates~~ | [skill-templates](specs/skill-templates.md) | obsolete (superseded by SPEC-56) | 2026-03-14 |
 | Verify --bg subscription billing (post-deploy) | [168-validate-bg-subscription-billing](specs/168-validate-bg-subscription-billing.md) | verifying | 2026-05-22 |
 | Migrate Claude invocation -p → --bg | [169-migrate-claude-invocation-to-bg-mode](specs/169-migrate-claude-invocation-to-bg-mode.md) | implemented | 2026-05-22 |
 | Pre-built worktree lifecycle | [170-prebuilt-worktree-lifecycle](specs/170-prebuilt-worktree-lifecycle.md) | implemented | 2026-05-23 |
@@ -41,3 +41,5 @@
 | Claude agents supervisor lifecycle | [172-claude-agents-supervisor-lifecycle](specs/172-claude-agents-supervisor-lifecycle.md) | implemented | 2026-05-23 |
 | Dashboard worktree panel | [173-dashboard-worktree-panel](specs/173-dashboard-worktree-panel.md) — [plan](plans/173-dashboard-worktree-panel.plan.md) — [report](reports/173-dashboard-worktree-panel.report.md) | implemented | 2026-05-23 |
 | Semi-automatic review trigger mode | [174-semi-auto-review-trigger-mode](specs/174-semi-auto-review-trigger-mode.md) — [plan](plans/174-semi-auto-review-trigger-mode.plan.md) | implemented | 2026-05-23 |
+| Worktree failure visibility & force-cleanup | [175-worktree-failure-visibility](specs/175-worktree-failure-visibility.md) | drafted | 2026-05-24 |
+| Job history persistence | [176-job-history-persistence](specs/176-job-history-persistence.md) | drafted | 2026-05-24 |
