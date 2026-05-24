@@ -13,16 +13,16 @@ import { executeInit, createInitDependencies } from '@/main/commands/init.comman
 import { executeDiscover, createDiscoverDependencies } from '@/main/commands/discover.command.js';
 import { executeValidate, createValidateDependencies } from '@/main/commands/validate.command.js';
 import { readVersion, printHelp, getGitRemoteUrl } from '@/main/shared/cliConstants.js';
-import { readPidFile, writePidFile, removePidFile } from '@/shared/services/pidFileManager.js';
+import { readPidFile, writePidFile, removePidFile, type PidFileDeps } from '@/shared/services/pidFileManager.js';
 import { isProcessRunning } from '@/shared/services/processChecker.js';
 import { PID_FILE_PATH } from '@/shared/services/daemonPaths.js';
 
-function createPidFileDeps() {
+function createPidFileDeps(): PidFileDeps {
   return {
     readPidFile: () => readPidFile(PID_FILE_PATH),
-    writePidFile: (content: Parameters<typeof writePidFile>[1]) => writePidFile(PID_FILE_PATH, content),
+    writePidFile: (content) => writePidFile(PID_FILE_PATH, content),
     removePidFile: () => removePidFile(PID_FILE_PATH),
-    isProcessRunning: (pid: number) => isProcessRunning(pid),
+    isProcessRunning,
   };
 }
 

@@ -1,5 +1,5 @@
 import { StopDaemonUseCase, type StopDaemonDependencies } from '@/modules/cli-configuration/usecases/cli/stopDaemon.usecase.js';
-import type { PidFileContent } from '@/shared/services/pidFileManager.js';
+import type { PidFileDeps } from '@/shared/services/pidFileManager.js';
 import { green, red, yellow } from '@/shared/services/ansiColors.js';
 
 export interface StopDeps {
@@ -25,13 +25,6 @@ export function executeStop(force: boolean, deps: StopDeps): void {
       deps.exit(1);
       break;
   }
-}
-
-interface PidFileDeps {
-  readPidFile: () => PidFileContent | null;
-  writePidFile: (content: PidFileContent) => void;
-  removePidFile: () => void;
-  isProcessRunning: (pid: number) => boolean;
 }
 
 export function createStopDependencies(pidDeps: PidFileDeps): StopDeps {

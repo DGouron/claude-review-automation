@@ -1,5 +1,5 @@
 import { StartDaemonUseCase, type StartDaemonDependencies } from '@/modules/cli-configuration/usecases/cli/startDaemon.usecase.js';
-import type { PidFileContent } from '@/shared/services/pidFileManager.js';
+import type { PidFileDeps } from '@/shared/services/pidFileManager.js';
 import { yellow } from '@/shared/services/ansiColors.js';
 import { formatStartupBanner } from '@/cli/startupBanner.js';
 import { validateDependencies } from '@/shared/services/dependencyChecker.js';
@@ -83,13 +83,6 @@ export function executeStart(
     }
   };
   startForeground();
-}
-
-interface PidFileDeps {
-  readPidFile: () => PidFileContent | null;
-  writePidFile: (content: PidFileContent) => void;
-  removePidFile: () => void;
-  isProcessRunning: (pid: number) => boolean;
 }
 
 export function createStartDependencies(pidDeps: PidFileDeps): StartDependencies {

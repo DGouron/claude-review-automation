@@ -7,6 +7,13 @@ export interface PidFileContent {
   port: number;
 }
 
+export interface PidFileDeps {
+  readPidFile: () => PidFileContent | null;
+  writePidFile: (content: PidFileContent) => void;
+  removePidFile: () => void;
+  isProcessRunning: (pid: number) => boolean;
+}
+
 export interface PidFileManagerDependencies {
   readFileSync: (path: string, encoding: string) => string;
   writeFileSync: (path: string, data: string) => void;
