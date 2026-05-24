@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.18.0...reviewflow-v3.19.0) (2026-05-24)
+
+
+### Added
+
+* **review-execution:** add SPEC-174 semi-auto trigger mode ([#188](https://github.com/DGouron/review-flow/issues/188)) ([4971431](https://github.com/DGouron/review-flow/commit/497143115432a7be92d7bfd62fdf124e994d2875))
+
 ## [3.18.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.17.1...reviewflow-v3.18.0) (2026-05-23)
 
 
