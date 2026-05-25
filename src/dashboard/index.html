@@ -30,6 +30,20 @@
       </div>
     </header>
 
+    <div class="project-bar" role="region" aria-label="Project navigation">
+      <button type="button" id="manage-projects-toggle" class="manage-projects-toggle" aria-expanded="false" aria-controls="manage-panel">
+        <span class="manage-projects-toggle-label">// MANAGE PROJECTS</span>
+        <i data-lucide="chevron-down" class="manage-projects-toggle-icon"></i>
+      </button>
+      <section id="manage-panel" class="manage-panel" aria-label="Manage projects" data-open="false"></section>
+      <nav id="dashboard-tabs" class="dashboard-tab-bar-wrapper" aria-label="Project tabs"></nav>
+    </div>
+
+    <div id="cards-scope-marker" class="cards-scope-marker" data-scope-kind="overview">
+      <span class="cards-scope-prefix">// SCOPE</span>
+      <span class="cards-scope-label">TOUS LES PROJETS</span>
+    </div>
+
     <div class="cards">
       <div class="card card-priority">
         <div class="card-label" id="i18n-card-running"></div>
@@ -78,12 +92,6 @@
           </select>
         </div>
 
-        <button type="button" id="manage-projects-toggle" class="manage-projects-toggle" aria-expanded="false" aria-controls="manage-panel">
-          <span class="manage-projects-toggle-label">// MANAGE PROJECTS</span>
-          <i data-lucide="chevron-down" class="manage-projects-toggle-icon"></i>
-        </button>
-        <section id="manage-panel" class="manage-panel" aria-label="Manage projects" data-open="false"></section>
-        <nav id="dashboard-tabs" class="dashboard-tab-bar-wrapper" aria-label="Project tabs"></nav>
         <span id="config-status" class="config-status hidden"></span>
 
         <div class="focus-strip">
@@ -320,6 +328,7 @@
     import { renderOverviewHtml } from './modules/overview.js';
     import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
     import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
+    import { computeCardCounters } from './modules/cardCounters.js';
     import { collectReviewNotifications, createReviewNotificationState } from './modules/notifications.js';
     import { resolveReviewAssigneeDisplay } from './modules/assignee.js';
     import { buildQueueLanesModel } from './modules/queueLanes.js';
@@ -773,14 +782,12 @@
       const reviews = currentData.activeReviews.filter(r => r.jobType !== 'followup');
       const followups = currentData.activeReviews.filter(r => r.jobType === 'followup');
 
+      renderCardCounters();
+      const blocked = currentData.pendingFix.length;
       const running = currentData.activeReviews.filter(r => r.status === 'running').length;
       const queued = currentData.activeReviews.filter(r => r.status === 'queued').length;
-      const blocked = currentData.pendingFix.length;
       const nowCount = running + blocked;
       const nextCount = queued + currentData.pendingApproval.length;
-      document.getElementById('running-count').textContent = running;
-      document.getElementById('queued-count').textContent = queued;
-      document.getElementById('completed-count').textContent = currentData.reviewFiles.length;
       document.getElementById('focus-now-count').textContent = String(nowCount);
       document.getElementById('focus-next-count').textContent = String(nextCount);
       document.getElementById('focus-blocked-count').textContent = String(blocked);
@@ -2366,6 +2373,34 @@
       availableRepositories = Array.isArray(payload?.repositories) ? payload.repositories : [];
     }
 
+    function renderCardCounters() {
+      let scope;
+      if (activeTabId === 'overview') {
+        scope = { kind: 'overview' };
+      } else {
+        const repository = availableRepositories.find((r) => r.localPath === activeTabId);
+        const projectName = repository?.name ?? activeTabId.split('/').filter(Boolean).pop() ?? activeTabId;
+        scope = { kind: 'project', localPath: activeTabId, projectName };
+      }
+      const counters = computeCardCounters({
+        activeReviews: currentData.activeReviews,
+        reviewFiles: currentData.reviewFiles,
+        scope,
+      });
+      const runningEl = document.getElementById('running-count');
+      const queuedEl = document.getElementById('queued-count');
+      const completedEl = document.getElementById('completed-count');
+      if (runningEl) runningEl.textContent = counters.running;
+      if (queuedEl) queuedEl.textContent = counters.queued;
+      if (completedEl) completedEl.textContent = counters.completed;
+      const markerEl = document.getElementById('cards-scope-marker');
+      if (markerEl) {
+        markerEl.dataset.scopeKind = counters.markerKind;
+        const labelEl = markerEl.querySelector('.cards-scope-label');
+        if (labelEl) labelEl.textContent = counters.markerLabel;
+      }
+    }
+
     function renderDashboardTabs() {
       const container = document.getElementById('dashboard-tabs');
       if (!container) return;
@@ -2398,6 +2433,7 @@
       const overviewSection = document.getElementById('overview-section');
       if (overviewSection) overviewSection.classList.remove('hidden');
       renderDashboardTabs();
+      renderCardCounters();
       refreshOverviewSection();
     }
 
@@ -2408,6 +2444,7 @@
       const overviewSection = document.getElementById('overview-section');
       if (overviewSection) overviewSection.classList.add('hidden');
       renderDashboardTabs();
+      renderCardCounters();
       loadProjectConfigFromPath(projectPath);
     }
 

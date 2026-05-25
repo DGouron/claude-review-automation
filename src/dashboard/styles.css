@@ -5233,3 +5233,87 @@ body.overview-tab-active .dashboard-main > *:not(#overview-section) {
     box-shadow: none !important;
   }
 }
+
+/* SPEC-178 — Project bar (horizontal navigation above cards) */
+.project-bar {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: nowrap;
+  animation: project-bar-enter 250ms ease-out;
+}
+
+.project-bar > #manage-projects-toggle {
+  flex: 0 0 auto;
+}
+
+.project-bar > #manage-panel {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.project-bar > #dashboard-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/* SPEC-178 — Scope marker label above cards */
+.cards-scope-marker {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  transition: opacity 200ms ease-out;
+}
+
+.cards-scope-marker .cards-scope-prefix {
+  color: rgba(251, 191, 36, 0.55);
+}
+
+.cards-scope-marker .cards-scope-label {
+  color: rgba(251, 191, 36, 0.95);
+  font-weight: 600;
+}
+
+.cards-scope-marker[data-scope-kind="overview"] .cards-scope-label {
+  color: rgba(243, 238, 232, 0.9);
+}
+
+@keyframes project-bar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .project-bar {
+    flex-wrap: wrap;
+  }
+
+  .project-bar > #dashboard-tabs {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-bar {
+    animation: none !important;
+  }
+
+  .cards-scope-marker {
+    transition: none !important;
+  }
+}

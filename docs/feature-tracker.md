@@ -44,3 +44,4 @@
 | Worktree failure visibility & force-cleanup | [175-worktree-failure-visibility](specs/175-worktree-failure-visibility.md) | drafted | 2026-05-24 |
 | Job history persistence | [176-job-history-persistence](specs/176-job-history-persistence.md) | drafted | 2026-05-24 |
 | Dashboard project CRUD UI + animations | [177-dashboard-add-project-ui](specs/177-dashboard-add-project-ui.md) — [plan](plans/177-dashboard-add-project-ui.plan.md) — [report](reports/177-dashboard-add-project-ui.report.md) | implemented | 2026-05-25 |
+| Reposition project tabs above cards + contextual counters | [178-dashboard-tabs-reposition](specs/178-dashboard-tabs-reposition.md) — [plan](plans/178-dashboard-tabs-reposition.plan.md) — [report](reports/178-dashboard-tabs-reposition.report.md) | implemented | 2026-05-25 |
