@@ -5,6 +5,11 @@ import type { StatsGateway } from '@/modules/statistics-insights/entities/stats/
 import type { ReviewFileGateway, ReviewFileInfo } from '@/modules/review-execution/entities/review/reviewFile.gateway.js';
 import type { ProjectStats } from '@/modules/statistics-insights/entities/stats/projectStats.js';
 import type { OverviewViewModel } from '@/modules/statistics-insights/interface-adapters/presenters/overview.presenter.js';
+import type {
+  ProjectConfigGateway,
+  ProjectConfigReadResult,
+} from '@/modules/cli-configuration/entities/projectConfig/projectConfig.gateway.js';
+import type { ProjectConfig } from '@/config/projectConfig.js';
 import { RepositoryConfigFactory } from '@/tests/factories/repositoryConfig.factory.js';
 
 function makeStats(reviews: ProjectStats['reviews']): ProjectStats {
@@ -70,6 +75,17 @@ function stubReviewFileGateway(byPath: Record<string, ReviewFileInfo[]>): Review
   };
 }
 
+function stubProjectConfigGateway(byPath: Record<string, ProjectConfig>): ProjectConfigGateway {
+  return {
+    read: (path: string): ProjectConfigReadResult => {
+      const config = byPath[path];
+      if (!config) return { status: 'not-found' };
+      return { status: 'ok', config };
+    },
+    write: () => ({ ok: true }),
+  };
+}
+
 async function buildApp(options: {
   repositories: ReturnType<typeof RepositoryConfigFactory.create>[];
   activeJobs?: Array<{
@@ -83,6 +99,7 @@ async function buildApp(options: {
   }>;
   statsByPath?: Record<string, ProjectStats | null>;
   reviewsByPath?: Record<string, ReviewFileInfo[]>;
+  projectConfigsByPath?: Record<string, ProjectConfig>;
 }): Promise<FastifyInstance> {
   const app = Fastify();
   await app.register(overviewRoutes, {
@@ -90,8 +107,24 @@ async function buildApp(options: {
     getActiveJobs: () => options.activeJobs ?? [],
     statsGateway: stubStatsGateway(options.statsByPath ?? {}),
     reviewFileGateway: stubReviewFileGateway(options.reviewsByPath ?? {}),
+    projectConfigGateway: options.projectConfigsByPath
+      ? stubProjectConfigGateway(options.projectConfigsByPath)
+      : undefined,
   });
   return app;
+}
+
+function makeProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
+  return {
+    github: false,
+    gitlab: true,
+    defaultModel: 'sonnet',
+    reviewSkill: 'review-front',
+    reviewFollowupSkill: 'review-followup',
+    language: 'fr',
+    retentionDays: 14,
+    ...overrides,
+  };
 }
 
 describe('overviewRoutes — GET /api/overview', () => {
@@ -187,6 +220,28 @@ describe('overviewRoutes — GET /api/overview', () => {
     const body = response.json() as OverviewViewModel;
     expect(body.recentReviewsFeed.items).toHaveLength(0);
     expect(body.projectCards.items.find((card) => card.projectName === 'disabled')?.isEmptyHistory).toBe(true);
+
+    await app.close();
+  });
+
+  it('forwards externalLink from the projectConfigGateway into the project card (SPEC-179)', async () => {
+    const app = await buildApp({
+      repositories: [
+        RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab', enabled: true }),
+        RepositoryConfigFactory.create({ name: 'api', localPath: '/repos/api', platform: 'github', enabled: true }),
+      ],
+      projectConfigsByPath: {
+        '/repos/frontend': makeProjectConfig({ externalLink: 'https://notion.so/team/frontend' }),
+      },
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/overview' });
+
+    const body = response.json() as OverviewViewModel;
+    const frontendCard = body.projectCards.items.find((card) => card.projectName === 'frontend');
+    const apiCard = body.projectCards.items.find((card) => card.projectName === 'api');
+    expect(frontendCard?.externalLink).toBe('https://notion.so/team/frontend');
+    expect(apiCard?.externalLink).toBeUndefined();
 
     await app.close();
   });

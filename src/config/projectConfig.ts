@@ -24,6 +24,14 @@ export interface ProjectConfig {
   agents?: AgentDefinition[];
   followupAgents?: AgentDefinition[];
   routingPolicy?: RoutingPolicy;
+  externalLink?: string;
+}
+
+function parseExternalLink(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.length > 0) {
+    return value;
+  }
+  return undefined;
 }
 
 /**
@@ -171,6 +179,11 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
 
   if (reviewFocus !== undefined) {
     config.reviewFocus = reviewFocus;
+  }
+
+  const externalLink = parseExternalLink(parsed.externalLink);
+  if (externalLink !== undefined) {
+    config.externalLink = externalLink;
   }
 
   return config;

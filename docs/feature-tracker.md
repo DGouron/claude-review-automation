@@ -45,3 +45,4 @@
 | Job history persistence | [176-job-history-persistence](specs/176-job-history-persistence.md) | drafted | 2026-05-24 |
 | Dashboard project CRUD UI + animations | [177-dashboard-add-project-ui](specs/177-dashboard-add-project-ui.md) — [plan](plans/177-dashboard-add-project-ui.plan.md) — [report](reports/177-dashboard-add-project-ui.report.md) | implemented | 2026-05-25 |
 | Reposition project tabs above cards + contextual counters | [178-dashboard-tabs-reposition](specs/178-dashboard-tabs-reposition.md) — [plan](plans/178-dashboard-tabs-reposition.plan.md) — [report](reports/178-dashboard-tabs-reposition.report.md) | implemented | 2026-05-25 |
+| Configure project settings via a modal | [179-dashboard-project-settings-modal](specs/179-dashboard-project-settings-modal.md) — [plan](plans/179-dashboard-project-settings-modal.plan.md) — [report](reports/179-dashboard-project-settings-modal.report.md) | implemented | 2026-05-25 |

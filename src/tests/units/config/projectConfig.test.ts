@@ -347,6 +347,65 @@ describe('loadProjectConfig — reviewFocus derivation', () => {
   });
 });
 
+describe('loadProjectConfig — externalLink', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('preserves externalLink when set to an https url', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        externalLink: 'https://notion.so/team',
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.externalLink).toBe('https://notion.so/team');
+  });
+
+  it('exposes externalLink as undefined when the field is absent (legacy config)', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.externalLink).toBeUndefined();
+  });
+
+  it('treats an empty string externalLink as undefined', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        externalLink: '',
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.externalLink).toBeUndefined();
+  });
+});
+
 describe('getProjectAgentsOrFocusDefaults', () => {
   beforeEach(() => {
     vi.resetAllMocks();

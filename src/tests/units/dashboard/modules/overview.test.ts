@@ -152,6 +152,104 @@ describe('renderOverviewHtml', () => {
     expect(html).toContain('Score -');
   });
 
+  it('renders an external-link anchor on the project card when externalLink is an HTTPS url (SPEC-179)', () => {
+    const html = renderOverviewHtml({
+      activeReviews: { items: [], isEmpty: true, emptyMessage: 'Aucune review en cours' },
+      projectCards: {
+        items: [
+          {
+            projectName: 'frontend',
+            projectPath: '/repos/frontend',
+            platform: 'gitlab',
+            totalReviews: 1,
+            averageScoreLabel: '7.0',
+            sparklinePoints: [7],
+            isEmptyHistory: false,
+            externalLink: 'https://notion.so/team/projet',
+          },
+        ],
+        isEmpty: false,
+        emptyMessage: 'Aucun projet configuré',
+      },
+      recentReviewsFeed: { items: [], isEmpty: true, emptyMessage: 'Aucune review récente' },
+    });
+
+    expect(html).toContain('href="https://notion.so/team/projet"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain('project-card__external');
+  });
+
+  it('omits the external-link anchor when externalLink is missing or empty (SPEC-179)', () => {
+    const htmlMissing = renderOverviewHtml({
+      activeReviews: { items: [], isEmpty: true, emptyMessage: 'Aucune review en cours' },
+      projectCards: {
+        items: [
+          {
+            projectName: 'frontend',
+            projectPath: '/repos/frontend',
+            platform: 'gitlab',
+            totalReviews: 0,
+            averageScoreLabel: '-',
+            sparklinePoints: [],
+            isEmptyHistory: true,
+          },
+        ],
+        isEmpty: false,
+        emptyMessage: 'Aucun projet configuré',
+      },
+      recentReviewsFeed: { items: [], isEmpty: true, emptyMessage: 'Aucune review récente' },
+    });
+    expect(htmlMissing).not.toContain('project-card__external');
+
+    const htmlEmpty = renderOverviewHtml({
+      activeReviews: { items: [], isEmpty: true, emptyMessage: 'Aucune review en cours' },
+      projectCards: {
+        items: [
+          {
+            projectName: 'frontend',
+            projectPath: '/repos/frontend',
+            platform: 'gitlab',
+            totalReviews: 0,
+            averageScoreLabel: '-',
+            sparklinePoints: [],
+            isEmptyHistory: true,
+            externalLink: '',
+          },
+        ],
+        isEmpty: false,
+        emptyMessage: 'Aucun projet configuré',
+      },
+      recentReviewsFeed: { items: [], isEmpty: true, emptyMessage: 'Aucune review récente' },
+    });
+    expect(htmlEmpty).not.toContain('project-card__external');
+  });
+
+  it('strips javascript: scheme from externalLink even if it sneaks through the server (SPEC-179 defense in depth)', () => {
+    const html = renderOverviewHtml({
+      activeReviews: { items: [], isEmpty: true, emptyMessage: 'Aucune review en cours' },
+      projectCards: {
+        items: [
+          {
+            projectName: 'frontend',
+            projectPath: '/repos/frontend',
+            platform: 'gitlab',
+            totalReviews: 1,
+            averageScoreLabel: '5.0',
+            sparklinePoints: [5],
+            isEmptyHistory: false,
+            externalLink: 'javascript:alert(1)',
+          },
+        ],
+        isEmpty: false,
+        emptyMessage: 'Aucun projet configuré',
+      },
+      recentReviewsFeed: { items: [], isEmpty: true, emptyMessage: 'Aucune review récente' },
+    });
+
+    expect(html).not.toContain('javascript:');
+  });
+
   it('renders the recent reviews feed with project name, MR prefix and number', () => {
     const html = renderOverviewHtml({
       activeReviews: { items: [], isEmpty: true, emptyMessage: 'Aucune review en cours' },

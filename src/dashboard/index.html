@@ -120,6 +120,10 @@
         </div>
 
         <section id="worktree-section" aria-label="Worktree pool"></section>
+
+        <button type="button" id="open-settings-modal-btn" class="sidebar-settings-button" hidden>
+          <span class="sidebar-settings-button__prefix">// SETTINGS</span>
+        </button>
       </aside>
 
       <main class="dashboard-main">
@@ -317,6 +321,8 @@
     <div id="dev-sheet-content" class="sheet-content"></div>
   </div>
 
+  <dialog id="settings-modal" class="settings-modal" aria-labelledby="settings-modal-title"></dialog>
+
   <script type="module">
     import { t, setLanguage, getLanguage } from './modules/i18n.js';
     import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
@@ -360,6 +366,12 @@
       fetchBudgetStatus,
       submitBudget,
     } from './modules/budgetSettings.js';
+    import {
+      buildSettingsViewModel,
+      renderSettingsModalHtml,
+      validateExternalLink,
+      extractFormPayload,
+    } from './modules/settingsModal.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -2434,6 +2446,7 @@
       if (overviewSection) overviewSection.classList.remove('hidden');
       renderDashboardTabs();
       renderCardCounters();
+      syncSettingsButtonVisibility();
       refreshOverviewSection();
     }
 
@@ -2445,7 +2458,117 @@
       if (overviewSection) overviewSection.classList.add('hidden');
       renderDashboardTabs();
       renderCardCounters();
+      syncSettingsButtonVisibility();
       loadProjectConfigFromPath(projectPath);
+    }
+
+    function syncSettingsButtonVisibility() {
+      const button = document.getElementById('open-settings-modal-btn');
+      if (!button) return;
+      if (activeTabId === 'overview') {
+        button.hidden = true;
+      } else {
+        button.hidden = false;
+      }
+    }
+
+    function resolveActiveProjectName() {
+      if (activeTabId === 'overview') return '—';
+      const repository = availableRepositories.find((r) => r.localPath === activeTabId);
+      if (repository?.name) return repository.name;
+      return activeTabId.split('/').filter(Boolean).pop() ?? activeTabId;
+    }
+
+    async function openSettingsModal() {
+      if (activeTabId === 'overview') return;
+      const dialog = document.getElementById('settings-modal');
+      if (!dialog || typeof dialog.showModal !== 'function') return;
+      try {
+        const response = await fetch(
+          `${API_URL}/api/project-config?path=${encodeURIComponent(activeTabId)}`,
+        );
+        const payload = await response.json();
+        if (!payload?.success) {
+          dialog.innerHTML = `<form method="dialog" class="settings-modal__form"><p class="settings-modal__error">${escapeHtml(payload?.error || 'Configuration projet illisible')}</p><div class="settings-modal__actions"><button type="submit" class="settings-modal__cancel">Fermer</button></div></form>`;
+          dialog.showModal();
+          return;
+        }
+        const viewModel = buildSettingsViewModel({
+          config: payload.config,
+          projectName: resolveActiveProjectName(),
+        });
+        dialog.innerHTML = renderSettingsModalHtml(viewModel);
+        bindSettingsModalForm(dialog);
+        dialog.showModal();
+      } catch (error) {
+        showToast(t('toast.error') || 'Erreur', 'error');
+      }
+    }
+
+    function closeSettingsModal() {
+      const dialog = document.getElementById('settings-modal');
+      if (dialog && dialog.open) dialog.close();
+    }
+
+    function bindSettingsModalForm(dialog) {
+      const form = dialog.querySelector('form.settings-modal__form');
+      const cancelBtn = dialog.querySelector('.settings-modal__cancel');
+      const errorEl = dialog.querySelector('.settings-modal__error');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          closeSettingsModal();
+        });
+      }
+      if (!form) return;
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (errorEl) errorEl.textContent = '';
+        const formData = new FormData(form);
+        const payload = extractFormPayload(formData);
+        const linkValidation = validateExternalLink(payload.externalLink ?? '');
+        if (!linkValidation.ok) {
+          if (errorEl) errorEl.textContent = linkValidation.message;
+          return;
+        }
+        try {
+          const response = await fetch(
+            `${API_URL}/api/project-config?path=${encodeURIComponent(activeTabId)}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
+          );
+          if (!response.ok) {
+            const errorPayload = await response.json().catch(() => ({ error: 'Échec de la sauvegarde' }));
+            if (errorEl) errorEl.textContent = errorPayload?.error || 'Échec de la sauvegarde';
+            return;
+          }
+          closeSettingsModal();
+          refreshOverviewSection();
+        } catch {
+          if (errorEl) errorEl.textContent = 'Échec de la sauvegarde';
+        }
+      });
+    }
+
+    function bindSettingsModalDismissals() {
+      const dialog = document.getElementById('settings-modal');
+      if (!dialog) return;
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) {
+          closeSettingsModal();
+        }
+      });
+    }
+
+    function bindSettingsModalTrigger() {
+      const button = document.getElementById('open-settings-modal-btn');
+      if (!button) return;
+      button.addEventListener('click', () => {
+        openSettingsModal();
+      });
     }
 
     async function refreshOverviewSection() {
@@ -2471,6 +2594,8 @@
       await fetchAvailableRepositories();
       renderManagePanel();
       bindManagePanelToggle();
+      bindSettingsModalTrigger();
+      bindSettingsModalDismissals();
       const persistedTab = readActiveTab();
       const repositoryPaths = availableRepositories.map((repository) => repository.localPath);
       if (persistedTab && persistedTab !== 'overview' && repositoryPaths.includes(persistedTab)) {

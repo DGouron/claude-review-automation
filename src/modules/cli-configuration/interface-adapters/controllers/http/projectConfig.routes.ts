@@ -7,25 +7,46 @@ import {
   isReviewFocus,
   reviewSkillForFocus,
 } from '@/modules/review-execution/entities/progress/reviewFocus.type.js';
+import type {
+  UpdateProjectConfigUseCase,
+  ProjectConfigPatch,
+} from '@/modules/cli-configuration/usecases/projectConfig/updateProjectConfig.usecase.js';
+
+interface ProjectConfigRoutesOptions {
+  updateProjectConfig?: UpdateProjectConfigUseCase;
+}
 
 function formatReviewFocusValues(): string {
   return REVIEW_FOCUS_VALUES.map(value => `'${value}'`).join(', ');
 }
 
-export const projectConfigRoutes: FastifyPluginAsync = async (fastify) => {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateProjectPath(rawPath: string | undefined): { ok: true; path: string } | { ok: false; error: string } {
+  const projectPath = rawPath?.trim();
+  if (!projectPath) {
+    return { ok: false, error: 'Project path required' };
+  }
+  if (!projectPath.startsWith('/') || projectPath.includes('..')) {
+    return { ok: false, error: 'Invalid path (must be absolute without ..)' };
+  }
+  return { ok: true, path: projectPath };
+}
+
+export const projectConfigRoutes: FastifyPluginAsync<ProjectConfigRoutesOptions> = async (
+  fastify,
+  options,
+) => {
   fastify.get('/api/project-config', async (request, reply) => {
     const query = request.query as { path?: string };
-    const projectPath = query.path?.trim();
-
-    if (!projectPath) {
+    const validation = validateProjectPath(query.path);
+    if (!validation.ok) {
       reply.code(400);
-      return { success: false, error: 'Project path required' };
+      return { success: false, error: validation.error };
     }
-
-    if (!projectPath.startsWith('/') || projectPath.includes('..')) {
-      reply.code(400);
-      return { success: false, error: 'Invalid path (must be absolute without ..)' };
-    }
+    const projectPath = validation.path;
 
     const configPath = join(projectPath, '.claude', 'reviews', 'config.json');
 
@@ -108,5 +129,49 @@ export const projectConfigRoutes: FastifyPluginAsync = async (fastify) => {
       logError('Error reading project config', { projectPath, error: err.message });
       return { success: false, error: 'Read error: ' + err.message };
     }
+  });
+
+  fastify.patch('/api/project-config', async (request, reply) => {
+    const updateProjectConfig = options?.updateProjectConfig;
+    if (!updateProjectConfig) {
+      reply.code(501);
+      return { success: false, error: 'PATCH not configured' };
+    }
+
+    const query = request.query as { path?: string };
+    const validation = validateProjectPath(query.path);
+    if (!validation.ok) {
+      reply.code(400);
+      return { success: false, error: validation.error };
+    }
+
+    const body = request.body;
+    if (!isPlainObject(body)) {
+      reply.code(400);
+      return { success: false, error: 'Body must be a JSON object' };
+    }
+
+    const result = updateProjectConfig.execute({
+      path: validation.path,
+      patch: body as ProjectConfigPatch,
+    });
+
+    if (result.status === 'success') {
+      return { success: true, config: result.config };
+    }
+    if (result.status === 'invalid') {
+      reply.code(400);
+      return { success: false, error: result.reason };
+    }
+    if (result.status === 'not-found') {
+      reply.code(404);
+      return { success: false, error: 'Project config not found' };
+    }
+    if (result.status === 'malformed') {
+      reply.code(422);
+      return { success: false, error: 'Configuration projet illisible' };
+    }
+    reply.code(500);
+    return { success: false, error: 'Échec de la sauvegarde' };
   });
 };
