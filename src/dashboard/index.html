@@ -363,7 +363,7 @@
     import { renderOverviewHtml } from './modules/overview.js';
     import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
     import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
-    import { computeCardCounters } from './modules/cardCounters.js';
+    import { computeCardCounters, extractGithubSlug } from './modules/cardCounters.js';
     import { collectReviewNotifications, createReviewNotificationState } from './modules/notifications.js';
     import { resolveReviewAssigneeDisplay } from './modules/assignee.js';
     import { buildQueueLanesModel } from './modules/queueLanes.js';
@@ -2428,7 +2428,11 @@
       } else {
         const repository = availableRepositories.find((r) => r.localPath === activeTabId);
         const projectName = repository?.name ?? activeTabId.split('/').filter(Boolean).pop() ?? activeTabId;
-        scope = { kind: 'project', localPath: activeTabId, projectName };
+        const aliases = [];
+        const slug = extractGithubSlug(repository?.remoteUrl);
+        if (slug) aliases.push(slug);
+        if (repository?.name) aliases.push(repository.name);
+        scope = { kind: 'project', localPath: activeTabId, projectName, aliases };
       }
       const counters = computeCardCounters({
         activeReviews: currentData.activeReviews,
@@ -3438,7 +3442,7 @@
     }
 
     refreshWorktreeSection({ animate: true });
-    setInterval(() => refreshWorktreeSection({ animate: false }), 30000);
+    setInterval(() => refreshWorktreeSection({ animate: false }), 5000);
 
     // === Operator's Console boot animations ===
 

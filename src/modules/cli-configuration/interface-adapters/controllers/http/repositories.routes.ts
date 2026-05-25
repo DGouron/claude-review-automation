@@ -35,6 +35,7 @@ function projectRepositories(repositories: RepositoryConfig[]) {
     localPath: repository.localPath,
     platform: repository.platform,
     enabled: repository.enabled,
+    remoteUrl: repository.remoteUrl,
   }));
 }
 

@@ -121,3 +121,66 @@ describe('computeCardCounters', () => {
     });
   });
 });
+
+describe('extractGithubSlug', () => {
+  it('extracts owner/repo from an https GitHub URL with .git suffix', async () => {
+    const { extractGithubSlug } = await import('@/dashboard/modules/cardCounters.js');
+    expect(extractGithubSlug('https://github.com/DGouron/review-flow.git')).toBe('DGouron/review-flow');
+  });
+
+  it('extracts owner/repo from an https GitHub URL without .git suffix', async () => {
+    const { extractGithubSlug } = await import('@/dashboard/modules/cardCounters.js');
+    expect(extractGithubSlug('https://github.com/DGouron/review-flow')).toBe('DGouron/review-flow');
+  });
+
+  it('extracts owner/repo from an ssh GitHub URL', async () => {
+    const { extractGithubSlug } = await import('@/dashboard/modules/cardCounters.js');
+    expect(extractGithubSlug('git@github.com:DGouron/review-flow.git')).toBe('DGouron/review-flow');
+  });
+
+  it('returns null for a GitLab URL', async () => {
+    const { extractGithubSlug } = await import('@/dashboard/modules/cardCounters.js');
+    expect(extractGithubSlug('https://gitlab.com/team/project.git')).toBe(null);
+  });
+
+  it('returns null for empty or invalid input', async () => {
+    const { extractGithubSlug } = await import('@/dashboard/modules/cardCounters.js');
+    expect(extractGithubSlug('')).toBe(null);
+    expect(extractGithubSlug(undefined)).toBe(null);
+    expect(extractGithubSlug(null)).toBe(null);
+    expect(extractGithubSlug('not a url')).toBe(null);
+  });
+});
+
+describe('computeCardCounters — aliases', () => {
+  it('matches review.project against scope.localPath OR scope.aliases', async () => {
+    const { computeCardCounters: cc } = await import('@/dashboard/modules/cardCounters.js');
+    const result = cc({
+      activeReviews: [
+        { project: 'DGouron/review-flow', status: 'running' },
+        { project: '/repo/A', status: 'queued' },
+      ],
+      reviewFiles: [],
+      scope: {
+        kind: 'project',
+        localPath: '/repo/A',
+        projectName: 'A',
+        aliases: ['DGouron/review-flow'],
+      },
+    });
+    expect(result.running).toBe(1);
+    expect(result.queued).toBe(1);
+  });
+
+  it('falls back to localPath-only match when no aliases provided', async () => {
+    const { computeCardCounters: cc } = await import('@/dashboard/modules/cardCounters.js');
+    const result = cc({
+      activeReviews: [
+        { project: 'DGouron/review-flow', status: 'running' },
+      ],
+      reviewFiles: [],
+      scope: { kind: 'project', localPath: '/repo/A', projectName: 'A' },
+    });
+    expect(result.running).toBe(0);
+  });
+});
