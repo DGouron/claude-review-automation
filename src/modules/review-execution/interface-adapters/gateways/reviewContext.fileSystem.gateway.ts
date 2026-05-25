@@ -125,7 +125,11 @@ export class ReviewContextFileSystemGateway implements ReviewContextGateway {
     return collectJsonFiles(logsDir).flatMap((path) => {
       try {
         return [JSON.parse(readFileSync(path, 'utf-8')) as ReviewContext]
-      } catch {
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        process.stderr.write(
+          `[reviewContextGateway] malformed JSON skipped at ${path}: ${message}\n`,
+        )
         return []
       }
     })

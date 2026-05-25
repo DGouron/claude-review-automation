@@ -20,15 +20,21 @@ export interface RecoveryRepository {
 export interface RecoverySummary {
   scanned: number
   recovered: number
+  partial: number
   backfilled: number
   skipped: number
+  failed: number
+}
+
+export interface ExecuteActionsOutcome {
+  posted: number
   failed: number
 }
 
 export interface RecoveryDeps {
   repositories: RecoveryRepository[]
   reviewContextGateway: ReviewContextGateway
-  executeActions: (context: ReviewContext, localPath: string) => Promise<{ success: boolean }>
+  executeActions: (context: ReviewContext, localPath: string) => Promise<ExecuteActionsOutcome>
   now: () => number
   logger: RecoveryLogger
   graceWindowMs?: number
@@ -39,6 +45,7 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
   const summary: RecoverySummary = {
     scanned: 0,
     recovered: 0,
+    partial: 0,
     backfilled: 0,
     skipped: 0,
     failed: 0,
@@ -53,7 +60,8 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
         continue
       }
 
-      const ageMs = deps.now() - new Date(context.createdAt).getTime()
+      const lastActivityMs = lastActivityTime(context)
+      const ageMs = deps.now() - lastActivityMs
       const isStale = ageMs > graceWindowMs
 
       if (isStale) {
@@ -73,15 +81,19 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
       }
 
       try {
-        const result = await deps.executeActions(context, repository.localPath)
-        if (!result.success) {
+        const outcome = await deps.executeActions(context, repository.localPath)
+        if (outcome.posted === 0) {
+          // Nothing reached the platform — safe to retry on the next boot, so do
+          // not finalize the context.
           summary.failed += 1
           deps.logger.warn(
-            { mergeRequestId: context.mergeRequestId },
-            'Recovery execution returned non-success',
+            { mergeRequestId: context.mergeRequestId, outcome },
+            'Recovery posted zero actions, leaving context for retry',
           )
           continue
         }
+        // At least one action was posted. Finalize the context regardless of
+        // partial failures — re-running would double-post the successes.
         markBackfilled(
           deps.reviewContextGateway,
           repository.localPath,
@@ -89,11 +101,19 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
           'recovered-after-restart',
           deps.now,
         )
-        deps.logger.info(
-          { mergeRequestId: context.mergeRequestId, actionCount: context.actions.length },
-          'Review context recovered after restart',
-        )
-        summary.recovered += 1
+        if (outcome.failed > 0) {
+          summary.partial += 1
+          deps.logger.warn(
+            { mergeRequestId: context.mergeRequestId, outcome },
+            'Recovery completed with partial failures — context finalized to avoid double-post',
+          )
+        } else {
+          summary.recovered += 1
+          deps.logger.info(
+            { mergeRequestId: context.mergeRequestId, posted: outcome.posted },
+            'Review context recovered after restart',
+          )
+        }
       } catch (error) {
         summary.failed += 1
         deps.logger.error(
@@ -101,13 +121,24 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
             mergeRequestId: context.mergeRequestId,
             error: error instanceof Error ? error.message : String(error),
           },
-          'Recovery execution failed',
+          'Recovery execution threw',
         )
       }
     }
   }
 
   return summary
+}
+
+function lastActivityTime(context: ReviewContext): number {
+  const updatedAt = context.progress.updatedAt
+  if (updatedAt) {
+    const parsed = new Date(updatedAt).getTime()
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+  }
+  return new Date(context.createdAt).getTime()
 }
 
 function markBackfilled(

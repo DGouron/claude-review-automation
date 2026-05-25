@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js'
@@ -245,7 +245,7 @@ describe('ReviewContextFileSystemGateway', () => {
       expect(ids).toEqual(['github-owner/repo-1', 'github-owner/repo-2', 'gitlab-flat-id-3'])
     })
 
-    it('skips malformed JSON files instead of throwing', () => {
+    it('skips malformed JSON files and writes a warning to stderr', () => {
       const logsDir = join(testDir, '.claude', 'reviews', 'logs')
       mkdirSync(logsDir, { recursive: true })
       writeFileSync(join(logsDir, 'broken.json'), '{ not valid json')
@@ -257,8 +257,18 @@ describe('ReviewContextFileSystemGateway', () => {
         mergeRequestNumber: 1,
       })
 
-      const all = gateway.listAll(testDir)
-      expect(all.map((c) => c.mergeRequestId)).toEqual(['github-owner/repo-1'])
+      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+      try {
+        const all = gateway.listAll(testDir)
+        expect(all.map((c) => c.mergeRequestId)).toEqual(['github-owner/repo-1'])
+        expect(stderrSpy).toHaveBeenCalledOnce()
+        const message = stderrSpy.mock.calls[0]?.[0] as string
+        expect(message).toContain('malformed JSON skipped')
+        expect(message).toContain('broken.json')
+      } finally {
+        stderrSpy.mockRestore()
+      }
     })
   })
 

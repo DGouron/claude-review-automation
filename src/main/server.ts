@@ -140,7 +140,7 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
         deps.logger,
         defaultCommandExecutor,
       );
-      return { success: result.failed === 0 };
+      return { posted: result.succeeded, failed: result.failed };
     },
     now: () => Date.now(),
     logger: deps.logger,
