@@ -10,6 +10,7 @@
  */
 
 import { escapeHtml } from './html.js';
+import { t } from './i18n.js';
 
 const EDITABLE_KEYS = [
   'language',
@@ -101,6 +102,23 @@ function renderModelOptions(viewModel) {
 }
 
 /**
+ * Renders the UI language selector (changes the dashboard interface language,
+ * distinct from the project language used for Claude prompts).
+ * @returns {string}
+ */
+function renderUiLanguageSelect() {
+  return `
+    <label class="settings-modal__field">
+      <span class="settings-modal__label">${escapeHtml(t('settings.uiLanguage'))}</span>
+      <select id="settings-modal-ui-language" class="settings-modal__select" onchange="changeLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+    </label>
+  `.trim();
+}
+
+/**
  * @param {SettingsModalViewModel} viewModel
  * @returns {string}
  */
@@ -109,38 +127,40 @@ export function renderSettingsModalHtml(viewModel) {
     <form class="settings-modal__form" method="dialog">
       <h2 class="settings-modal__title" id="settings-modal-title">// SETTINGS — ${escapeHtml(viewModel.projectName)}</h2>
 
+      ${renderUiLanguageSelect()}
+
       <fieldset class="settings-modal__field">
-        <legend class="settings-modal__legend">Langue</legend>
+        <legend class="settings-modal__legend">${escapeHtml(t('settings.claudePromptsLanguage'))}</legend>
         ${renderLanguageRadios(viewModel)}
       </fieldset>
 
       <label class="settings-modal__field">
-        <span class="settings-modal__label">Modèle par défaut</span>
+        <span class="settings-modal__label">${escapeHtml(t('settings.defaultModel'))}</span>
         <select name="defaultModel" class="settings-modal__select">
           ${renderModelOptions(viewModel)}
         </select>
       </label>
 
       <label class="settings-modal__field">
-        <span class="settings-modal__label">Skill de review</span>
+        <span class="settings-modal__label">${escapeHtml(t('settings.reviewSkill'))}</span>
         <input type="text" name="reviewSkill" value="${escapeHtml(viewModel.reviewSkill)}" class="settings-modal__input" />
       </label>
 
       <label class="settings-modal__field">
-        <span class="settings-modal__label">Skill de review followup</span>
+        <span class="settings-modal__label">${escapeHtml(t('settings.reviewFollowupSkill'))}</span>
         <input type="text" name="reviewFollowupSkill" value="${escapeHtml(viewModel.reviewFollowupSkill)}" class="settings-modal__input" />
       </label>
 
       <label class="settings-modal__field">
-        <span class="settings-modal__label">Lien externe (HTTPS)</span>
-        <input type="url" name="externalLink" value="${escapeHtml(viewModel.externalLink)}" placeholder="https://notion.so/team/projet" class="settings-modal__input" />
+        <span class="settings-modal__label">${escapeHtml(t('settings.externalLink'))}</span>
+        <input type="url" name="externalLink" value="${escapeHtml(viewModel.externalLink)}" placeholder="${escapeHtml(t('settings.externalLinkPlaceholder'))}" class="settings-modal__input" />
       </label>
 
       <p class="settings-modal__error" aria-live="polite"></p>
 
       <div class="settings-modal__actions">
-        <button type="button" class="settings-modal__cancel">Annuler</button>
-        <button type="submit" class="settings-modal__submit">Enregistrer</button>
+        <button type="button" class="settings-modal__cancel">${escapeHtml(t('settings.cancel'))}</button>
+        <button type="submit" class="settings-modal__submit">${escapeHtml(t('settings.save'))}</button>
       </div>
     </form>
   `.trim();

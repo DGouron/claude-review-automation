@@ -52,7 +52,7 @@ describe('Acceptance — SPEC-91: Dashboard Multi-Project Overview', () => {
 
       expect(response.statusCode).toBe(200);
       const body = response.json() as {
-        repositories: Array<{ name: string; localPath: string; platform: string; enabled: boolean }>;
+        repositories: Array<{ name: string; localPath: string; platform: string; enabled: boolean; remoteUrl: string }>;
       };
       expect(body.repositories).toHaveLength(2);
       expect(body.repositories[0]).toEqual({
@@ -60,12 +60,14 @@ describe('Acceptance — SPEC-91: Dashboard Multi-Project Overview', () => {
         localPath: '/repos/frontend',
         platform: 'gitlab',
         enabled: true,
+        remoteUrl: 'https://gitlab.com/org/sample-project',
       });
       expect(body.repositories[1]).toEqual({
         name: 'api',
         localPath: '/repos/api',
         platform: 'github',
         enabled: false,
+        remoteUrl: 'https://gitlab.com/org/sample-project',
       });
 
       await app.close();

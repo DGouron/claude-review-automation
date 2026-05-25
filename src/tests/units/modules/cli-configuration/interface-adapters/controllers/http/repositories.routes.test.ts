@@ -54,10 +54,10 @@ describe('repositoriesRoutes — GET /api/repositories', () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json() as {
-      repositories: Array<{ name: string; localPath: string; platform: string; enabled: boolean }>;
+      repositories: Array<{ name: string; localPath: string; platform: string; enabled: boolean; remoteUrl: string }>;
     };
     expect(body.repositories).toEqual([
-      { name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab', enabled: true },
+      { name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab', enabled: true, remoteUrl: 'https://gitlab.com/org/sample-project' },
     ]);
 
     await app.close();
