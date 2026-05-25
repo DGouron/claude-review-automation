@@ -8,18 +8,20 @@ import { healthRoutes } from '@/modules/cli-configuration/interface-adapters/con
 import { settingsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/settings.routes.js';
 import { reviewRoutes } from '@/modules/review-execution/interface-adapters/controllers/http/reviews.routes.js';
 import { statsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/stats.routes.js';
+import { overviewRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/overview.routes.js';
 import { mrTrackingRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.js';
 import { mrTrackingAdvancedRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTrackingAdvanced.routes.js';
 import { logsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/logs.routes.js';
 import { cliStatusRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/cliStatus.routes.js';
 import { projectConfigRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/projectConfig.routes.js';
+import { repositoriesRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/repositories.routes.js';
 import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js';
 import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
-import { cancelJob, getJobStatus, enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
+import { cancelJob, getJobStatus, enqueueReview, getJobsStatus } from '@/frameworks/queue/pQueueAdapter.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
@@ -120,6 +122,22 @@ export async function registerRoutes(
     },
     broadcastBackfillProgress,
     logger: deps.logger,
+  });
+
+  await app.register(overviewRoutes, {
+    getRepositories: () => deps.config.repositories,
+    getActiveJobs: () => getJobsStatus().active.map((job) => ({
+      id: job.id,
+      mrNumber: job.mrNumber,
+      project: job.project,
+      mrUrl: job.mrUrl,
+      status: job.status,
+      startedAt: job.startedAt ?? null,
+      title: job.title,
+      jobType: job.jobType,
+    })),
+    statsGateway: deps.statsGateway,
+    reviewFileGateway: deps.reviewFileGateway,
   });
 
   await app.register(mrTrackingRoutes, {
@@ -338,14 +356,8 @@ export async function registerRoutes(
     reply.redirect('/dashboard/');
   });
 
-  app.get('/api/repositories', async () => {
-    return {
-      repositories: deps.config.repositories.map((repository) => ({
-        name: repository.name,
-        localPath: repository.localPath,
-        enabled: repository.enabled,
-      })),
-    };
+  await app.register(repositoriesRoutes, {
+    getRepositories: () => deps.config.repositories,
   });
 
   app.get('/api', async () => {

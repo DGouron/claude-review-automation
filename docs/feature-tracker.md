@@ -28,7 +28,7 @@
 | Split stats service | [80-split-stats-service](specs/80-split-stats-service.md) | drafted | 2026-03-14 |
 | EventBus queue state | [82-eventbus-queue-state](specs/82-eventbus-queue-state.md) | implemented | 2026-03-14 |
 | Delete services folder | [83-delete-services-folder](specs/83-delete-services-folder.md) | implemented | 2026-03-14 |
-| Dashboard multi-project overview | [91-dashboard-multi-project-overview](specs/91-dashboard-multi-project-overview.md) | re-drafted (UI gap) | 2026-05-24 |
+| Dashboard multi-project overview | [91-dashboard-multi-project-overview](specs/91-dashboard-multi-project-overview.md) — [plan](plans/91-dashboard-multi-project-overview.plan.md) — [report](reports/91-dashboard-multi-project-overview.report.md) | implemented | 2026-05-25 |
 | Split CLI god file | [92-split-cli-god-file](specs/92-split-cli-god-file.md) — [plan](plans/92-split-cli-god-file.plan.md) | implemented | 2026-05-24 |
 | Developer & team insights | [125-developer-team-insights](specs/125-developer-team-insights.md) | implemented | 2026-04-01 |
 | Hybrid model routing + token tracking | (no spec — see report) | implemented | 2026-05-14 |
