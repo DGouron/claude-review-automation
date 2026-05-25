@@ -101,6 +101,23 @@ function renderModelOptions(viewModel) {
 }
 
 /**
+ * Renders the UI language selector (changes the dashboard interface language,
+ * distinct from the project language used for Claude prompts).
+ * @returns {string}
+ */
+function renderUiLanguageSelect() {
+  return `
+    <label class="settings-modal__field">
+      <span class="settings-modal__label">Langue de l'interface</span>
+      <select id="settings-modal-ui-language" class="settings-modal__select" onchange="changeLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+    </label>
+  `.trim();
+}
+
+/**
  * @param {SettingsModalViewModel} viewModel
  * @returns {string}
  */
@@ -109,8 +126,10 @@ export function renderSettingsModalHtml(viewModel) {
     <form class="settings-modal__form" method="dialog">
       <h2 class="settings-modal__title" id="settings-modal-title">// SETTINGS — ${escapeHtml(viewModel.projectName)}</h2>
 
+      ${renderUiLanguageSelect()}
+
       <fieldset class="settings-modal__field">
-        <legend class="settings-modal__legend">Langue</legend>
+        <legend class="settings-modal__legend">Langue des prompts Claude</legend>
         ${renderLanguageRadios(viewModel)}
       </fieldset>
 

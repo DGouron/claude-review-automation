@@ -4,13 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reviewflow Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <div class="container">
     <header>
-      <div class="logo"><i data-lucide="bot"></i></div>
+      <div class="logo" aria-label="Reviewflow">
+        <svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect class="logo-frame" x="2" y="2" width="40" height="40" rx="10"/>
+          <line class="logo-line" x1="10" y1="14" x2="26" y2="14"/>
+          <line class="logo-line logo-line--accent" x1="10" y1="22" x2="20" y2="22"/>
+          <line class="logo-line" x1="10" y1="30" x2="24" y2="30"/>
+          <path class="logo-check" d="M28 26 L31 29 L36 22"/>
+          <circle class="logo-pulse" cx="20" cy="22" r="1.7"/>
+        </svg>
+      </div>
       <h1>Reviewflow</h1>
       <div class="header-actions">
         <div class="version-update-wrapper">
@@ -84,17 +96,17 @@
 
     <div class="dashboard-layout">
       <aside class="dashboard-sidebar" aria-label="Project tools">
-        <div class="sidebar-language">
-          <label class="sidebar-language-label" for="language-select" id="i18n-card-language"></label>
-          <select id="language-select" class="model-select" onchange="changeLanguage(this.value)">
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-          </select>
-        </div>
+        <button type="button" id="open-settings-modal-btn" class="sidebar-settings-button" hidden>
+          <span class="sidebar-settings-button__prefix">// SETTINGS</span>
+        </button>
 
         <span id="config-status" class="config-status hidden"></span>
 
-        <div class="focus-strip">
+        <section id="worktree-section" aria-label="Worktree pool"></section>
+      </aside>
+
+      <main class="dashboard-main">
+        <div class="focus-strip attention-strip" aria-label="Attention indicators">
           <div class="focus-chip focus-now">
             <div class="focus-copy">
               <span class="focus-label" id="i18n-strip-now"></span>
@@ -119,14 +131,6 @@
           <button id="focus-strip-toggle" class="focus-toggle-btn" onclick="toggleFocusStripMode()"></button>
         </div>
 
-        <section id="worktree-section" aria-label="Worktree pool"></section>
-
-        <button type="button" id="open-settings-modal-btn" class="sidebar-settings-button" hidden>
-          <span class="sidebar-settings-button__prefix">// SETTINGS</span>
-        </button>
-      </aside>
-
-      <main class="dashboard-main">
         <section id="overview-section" class="overview-section" aria-label="Multi-project overview"></section>
 
         <div id="data-loading-state" class="data-loading hidden" role="status" aria-live="polite">
@@ -154,7 +158,11 @@
             <span id="pending-reviews-count" class="badge-count hidden">0</span>
           </div>
           <div id="pending-reviews" class="section-content">
-            <div class="empty-state" id="i18n-empty-pending-reviews"></div>
+            <div class="heartbeat-empty-state" id="pending-reviews-empty-state">
+              <span class="heartbeat-label">// STANDBY</span>
+              <span class="heartbeat-message" id="i18n-empty-pending-reviews">Toutes les reviews sont traitées.</span>
+              <div class="heartbeat-line-container" id="heartbeat-line" aria-hidden="true"></div>
+            </div>
           </div>
         </div>
 
@@ -323,9 +331,30 @@
 
   <dialog id="settings-modal" class="settings-modal" aria-labelledby="settings-modal-title"></dialog>
 
+  <!-- UI language select — kept in DOM for JS wiring; visual control lives in settings modal -->
+  <select id="language-select" style="display:none" aria-hidden="true" onchange="changeLanguage(this.value)">
+    <option value="en">English</option>
+    <option value="fr">Français</option>
+  </select>
+
   <script type="module">
     import { t, setLanguage, getLanguage } from './modules/i18n.js';
     import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
+    import {
+      reducedMotion,
+      animateMount,
+      animateCounter as animateCounterValue,
+      slideTabUnderline,
+      heartbeat,
+      pulseLive,
+      springIn,
+      liftCard,
+      unliftCard,
+      pulseStatusDot,
+      breatheLogo,
+      crossFadeTab,
+      toggleHeight,
+    } from './modules/animations.js';
     import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from './modules/html.js';
     import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
     import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
@@ -803,6 +832,13 @@
       document.getElementById('focus-now-count').textContent = String(nowCount);
       document.getElementById('focus-next-count').textContent = String(nextCount);
       document.getElementById('focus-blocked-count').textContent = String(blocked);
+
+      const chipNow = document.querySelector('.focus-chip.focus-now');
+      const chipNext = document.querySelector('.focus-chip.focus-next');
+      const chipBlocked = document.querySelector('.focus-chip.focus-blocked');
+      if (chipNow) chipNow.dataset.active = nowCount > 0 ? 'true' : 'false';
+      if (chipNext) chipNext.dataset.active = nextCount > 0 ? 'true' : 'false';
+      if (chipBlocked) chipBlocked.dataset.active = blocked > 0 ? 'critical' : 'false';
 
       const activeReviewsSection = document.getElementById('active-reviews-section');
       const activeReviewsEl = document.getElementById('active-reviews');
@@ -2428,6 +2464,7 @@
           handleTabClick(tabId);
         });
       });
+      setupTabUnderline();
     }
 
     function handleTabClick(tabId) {
@@ -2499,6 +2536,11 @@
         });
         dialog.innerHTML = renderSettingsModalHtml(viewModel);
         bindSettingsModalForm(dialog);
+        const uiLangSelect = dialog.querySelector('#settings-modal-ui-language');
+        if (uiLangSelect) {
+          const hiddenSelect = document.getElementById('language-select');
+          uiLangSelect.value = hiddenSelect ? hiddenSelect.value : getLanguage();
+        }
         dialog.showModal();
       } catch (error) {
         showToast(t('toast.error') || 'Erreur', 'error');
@@ -2627,6 +2669,12 @@
         isManagePanelOpen = !isManagePanelOpen;
         toggle.setAttribute('aria-expanded', isManagePanelOpen ? 'true' : 'false');
         renderManagePanel();
+        const panel = document.getElementById('manage-panel');
+        if (panel) {
+          loadAnimeApi().then((anime) => {
+            if (anime) toggleHeight(panel, isManagePanelOpen, { animeApi: anime });
+          }).catch(() => {});
+        }
       });
     }
 
@@ -3391,6 +3439,166 @@
 
     refreshWorktreeSection({ animate: true });
     setInterval(() => refreshWorktreeSection({ animate: false }), 30000);
+
+    // === Operator's Console boot animations ===
+
+    let heartbeatStop = null;
+
+    async function bootAnimations() {
+      const anime = await loadAnimeApi();
+      if (!anime) return;
+
+      // Logo breath — daemon-alive signal
+      const logo = document.querySelector('.logo');
+      if (logo) breatheLogo(logo, { animeApi: anime });
+
+      // Online status dot pulse
+      const statusDot = document.querySelector('.status-dot');
+      if (statusDot) pulseStatusDot(statusDot, { animeApi: anime });
+
+      // Metric cards stagger mount
+      const cards = document.querySelectorAll('.cards > .card');
+      if (cards.length > 0) animateMount(cards, { animeApi: anime });
+
+      // Sidebar slide-in
+      const sidebar = document.querySelector('.dashboard-sidebar');
+      if (sidebar && !reducedMotion()) {
+        anime.animate(sidebar, {
+          opacity: [{ from: 0, to: 1 }],
+          translateX: [{ from: -8, to: 0 }],
+          duration: 280,
+          easing: 'easeOutCubic',
+        });
+      }
+
+      // Attention strip mount (focus-strip promoted to main)
+      const focusChips = document.querySelectorAll('.focus-chip');
+      if (focusChips.length > 0) animateMount(focusChips, { animeApi: anime, staggerMs: 40, yOffset: 8 });
+
+      // Heartbeat on pending-reviews empty state
+      startHeartbeat(anime);
+
+      // Card hover lift — wire to existing cards
+      wireCardHovers(anime);
+
+      // Settings modal spring-in
+      wireSettingsModal(anime);
+    }
+
+    function startHeartbeat(anime) {
+      const container = document.getElementById('heartbeat-line');
+      if (!container) return;
+      if (heartbeatStop) heartbeatStop.stop();
+      heartbeatStop = heartbeat(container, { animeApi: anime });
+    }
+
+    function wireCardHovers(anime) {
+      const cards = document.querySelectorAll('.cards > .card');
+      for (const card of cards) {
+        card.addEventListener('mouseenter', () => liftCard(card, { animeApi: anime }));
+        card.addEventListener('mouseleave', () => unliftCard(card, { animeApi: anime }));
+      }
+    }
+
+    function wireSettingsModal(anime) {
+      const modal = document.getElementById('settings-modal');
+      if (!modal) return;
+      modal.addEventListener('animationsjs-open', () => springIn(modal, { animeApi: anime }));
+    }
+
+    // Tab underline glide — set up after tab bar renders
+    let tabUnderlineEl = null;
+
+    function setupTabUnderline() {
+      const tabBar = document.querySelector('.dashboard-tab-bar');
+      if (!tabBar) return;
+
+      if (!tabUnderlineEl) {
+        tabUnderlineEl = document.createElement('div');
+        tabUnderlineEl.className = 'tab-underline-indicator';
+        tabBar.style.position = 'relative';
+        tabBar.appendChild(tabUnderlineEl);
+      }
+
+      const activeTab = tabBar.querySelector('.is-active');
+      if (activeTab) {
+        loadAnimeApi().then((anime) => {
+          if (anime && tabUnderlineEl) slideTabUnderline(tabUnderlineEl, activeTab, { animeApi: anime });
+        }).catch(() => {});
+      }
+    }
+
+    // Counter animation — wrap renderCardCounters and focus strip to animate changes
+    const originalCounterIds = ['running-count', 'queued-count', 'completed-count', 'focus-now-count', 'focus-next-count', 'focus-blocked-count'];
+    const previousCounterValues = {};
+
+    function animateCounterChanges(anime) {
+      for (const id of originalCounterIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.dataset.animating === 'true') continue;
+        const currentText = el.textContent;
+        const currentVal = parseInt(currentText, 10);
+        const prevVal = previousCounterValues[id];
+        if (!Number.isNaN(currentVal) && prevVal !== undefined && prevVal !== currentVal) {
+          el.dataset.animating = 'true';
+          animateCounterValue(el, prevVal, currentVal, {
+            animeApi: anime,
+            onComplete: () => {
+              el.dataset.animating = 'false';
+              previousCounterValues[id] = currentVal;
+            },
+          });
+        } else if (!Number.isNaN(currentVal)) {
+          previousCounterValues[id] = currentVal;
+        }
+      }
+    }
+
+    // Observe counter element changes
+    async function observeCounters() {
+      const anime = await loadAnimeApi();
+      if (!anime) return;
+
+      // Snapshot initial values
+      for (const id of originalCounterIds) {
+        const el = document.getElementById(id);
+        if (el) {
+          const val = parseInt(el.textContent, 10);
+          if (!Number.isNaN(val)) previousCounterValues[id] = val;
+        }
+      }
+
+      const observer = new MutationObserver(() => animateCounterChanges(anime));
+      for (const id of originalCounterIds) {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
+      }
+    }
+
+    // Visibility change — pause/resume heartbeat to save battery
+    document.addEventListener('visibilitychange', () => {
+      loadAnimeApi().then((anime) => {
+        if (!anime) return;
+        if (document.hidden) {
+          if (heartbeatStop) heartbeatStop.stop();
+        } else {
+          startHeartbeat(anime);
+        }
+      }).catch(() => {});
+    });
+
+    // Boot when DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      bootAnimations();
+      observeCounters();
+    });
+
+    // Also boot if already loaded
+    if (document.readyState !== 'loading') {
+      bootAnimations();
+      observeCounters();
+    }
   </script>
 </body>
 </html>
