@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.21.0...reviewflow-v3.22.0) (2026-05-25)
+
+
+### Added
+
+* **dashboard:** operator's console redesign + animations ([#204](https://github.com/DGouron/review-flow/issues/204)) ([8b33ebd](https://github.com/DGouron/review-flow/commit/8b33ebd28bc09a85280371c499f68d73927eb18e))
+
 ## [3.21.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.20.0...reviewflow-v3.21.0) (2026-05-25)
 
 
