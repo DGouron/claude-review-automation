@@ -1,7 +1,10 @@
 import { vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as childProcess from 'node:child_process'
-import { validateAndEnrichConfig } from '@/frameworks/config/configLoader.js'
+import {
+  validateAndEnrichConfig,
+  enrichSingleRepository,
+} from '@/frameworks/config/configLoader.js'
 
 vi.mock('node:fs', async () => {
   const actual = await vi.importActual<typeof import('node:fs')>('node:fs')
@@ -210,5 +213,50 @@ describe('enrichRepository — reviewFocus derivation', () => {
     const result = validateAndEnrichConfig(configWithRepo())
 
     expect(result.repositories[0]?.skill).toBe('review-code')
+  })
+})
+
+describe('enrichSingleRepository (SPEC-177)', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('returns a tolerant RepositoryConfig with the resolved git remote URL when present', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    vi.mocked(fs.readFileSync).mockImplementation(() =>
+      JSON.stringify({ github: true, gitlab: false }),
+    )
+    vi.mocked(childProcess.execSync).mockImplementation(
+      () => 'https://github.com/org/new-app.git\n',
+    )
+
+    const result = enrichSingleRepository({
+      name: 'new-app',
+      localPath: '/home/dev/new-app',
+      enabled: true,
+    })
+
+    expect(result.name).toBe('new-app')
+    expect(result.localPath).toBe('/home/dev/new-app')
+    expect(result.enabled).toBe(true)
+    expect(result.remoteUrl).toBe('https://github.com/org/new-app')
+  })
+
+  it('returns a tolerant RepositoryConfig with empty remoteUrl when git remote get-url fails', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    vi.mocked(childProcess.execSync).mockImplementation(() => {
+      throw new Error('not a git repository')
+    })
+
+    const result = enrichSingleRepository({
+      name: 'no-git',
+      localPath: '/home/dev/no-git',
+      enabled: true,
+    })
+
+    expect(result.name).toBe('no-git')
+    expect(result.remoteUrl).toBe('')
+    expect(result.platform).toBe('github')
+    expect(result.skill).toBe('review-code')
   })
 })

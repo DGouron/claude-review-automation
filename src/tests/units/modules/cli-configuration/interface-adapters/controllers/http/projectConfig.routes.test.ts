@@ -4,7 +4,10 @@ import { statSync, type Stats } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as fsPromises from 'node:fs/promises';
 import { projectConfigRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/projectConfig.routes.js';
+import { UpdateProjectConfigUseCase } from '@/modules/cli-configuration/usecases/projectConfig/updateProjectConfig.usecase.js';
+import { StubProjectConfigGateway } from '@/tests/stubs/projectConfigGateway.stub.js';
 import { ProjectConfigFactory } from '@/tests/factories/projectConfig.factory.js';
+import type { ProjectConfig } from '@/config/projectConfig.js';
 
 vi.mock('node:fs/promises', async () => {
   const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
@@ -171,6 +174,138 @@ describe('projectConfigRoutes — GET /api/project-config', () => {
     const payload = response.json();
     expect(payload.success).toBe(false);
     expect(payload.error).toMatch(/review-back/);
+    await app.close();
+  });
+});
+
+function baseConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
+  return {
+    github: false,
+    gitlab: true,
+    defaultModel: 'sonnet',
+    reviewSkill: 'review-front',
+    reviewFollowupSkill: 'review-followup',
+    language: 'fr',
+    retentionDays: 14,
+    ...overrides,
+  };
+}
+
+async function buildAppWithPatch(gateway: StubProjectConfigGateway): Promise<FastifyInstance> {
+  const app = Fastify();
+  const updateProjectConfig = new UpdateProjectConfigUseCase(gateway);
+  await app.register(projectConfigRoutes, { updateProjectConfig });
+  return app;
+}
+
+describe('projectConfigRoutes — PATCH /api/project-config', () => {
+  it('returns 400 when the path query parameter is missing', async () => {
+    const gateway = new StubProjectConfigGateway();
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config',
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('returns 400 when the path contains "..":', async () => {
+    const gateway = new StubProjectConfigGateway();
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/../etc'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('returns 200 + { success: true, config } on a successful update', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.success).toBe(true);
+    expect(body.config.language).toBe('en');
+    await app.close();
+  });
+
+  it('returns 400 + French message when externalLink is http://', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { externalLink: 'http://insecure' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('Le lien doit être en HTTPS');
+    await app.close();
+  });
+
+  it('returns 404 when the project has no config', async () => {
+    const gateway = new StubProjectConfigGateway();
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/unknown'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('returns 422 + "Configuration projet illisible" when the file is malformed', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    gateway.forceMalformed('/repo/A');
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().error).toBe('Configuration projet illisible');
+    await app.close();
+  });
+
+  it('returns 500 + "Échec de la sauvegarde" when the gateway write fails', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    gateway.forceIoError();
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json().error).toBe('Échec de la sauvegarde');
     await app.close();
   });
 });

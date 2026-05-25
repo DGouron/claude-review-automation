@@ -326,4 +326,55 @@ describe('OverviewPresenter', () => {
       expect(viewModel.recentReviewsFeed.items[0]?.projectName).toBe('—');
     });
   });
+
+  describe('externalLink propagation (SPEC-179)', () => {
+    it('forwards externalLink from the input projectConfigs into the matching project card', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [
+          RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab' }),
+        ],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+        projectConfigs: {
+          '/repos/frontend': { externalLink: 'https://notion.so/team/frontend' },
+        },
+      });
+
+      expect(viewModel.projectCards.items[0]?.externalLink).toBe('https://notion.so/team/frontend');
+    });
+
+    it('omits externalLink when the projectConfigs map has no entry for the project', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [
+          RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab' }),
+        ],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+        projectConfigs: {},
+      });
+
+      expect(viewModel.projectCards.items[0]?.externalLink).toBeUndefined();
+    });
+
+    it('omits externalLink when projectConfigs is not provided (backward compat)', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [
+          RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab' }),
+        ],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+      });
+
+      expect(viewModel.projectCards.items[0]?.externalLink).toBeUndefined();
+    });
+  });
 });

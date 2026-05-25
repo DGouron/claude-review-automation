@@ -41,6 +41,7 @@ const SPARKLINE_PADDING = 2;
  * @property {string} averageScoreLabel
  * @property {number[]} sparklinePoints
  * @property {boolean} isEmptyHistory
+ * @property {string} [externalLink]
  */
 
 /**
@@ -149,16 +150,29 @@ function renderActiveReviewsSection(section) {
 }
 
 /**
+ * @param {string | undefined} externalLink
+ * @returns {string}
+ */
+function renderProjectExternalLink(externalLink) {
+  if (typeof externalLink !== 'string' || externalLink.length === 0) return '';
+  const safeHref = sanitizeHttpUrl(externalLink);
+  if (safeHref === '#') return '';
+  return `<a class="project-card__external" href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir la documentation du projet">&#x2197;</a>`;
+}
+
+/**
  * @param {OverviewProjectCardItem} card
  * @returns {string}
  */
 function renderProjectCard(card) {
   const sparkline = card.sparklinePoints.length === 0 ? '' : renderSparklineSvg(card.sparklinePoints);
+  const externalAnchor = renderProjectExternalLink(card.externalLink);
   return `
     <button type="button" class="overview-project-card" data-project-path="${escapeHtml(card.projectPath)}">
       <div class="overview-project-card-header">
         <span class="overview-project-card-name">${escapeHtml(card.projectName)}</span>
         <span class="overview-project-card-platform" data-platform="${escapeHtml(card.platform)}">${escapeHtml(card.platform)}</span>
+        ${externalAnchor}
       </div>
       <div class="overview-project-card-totals">
         <span class="overview-project-card-count">${escapeHtml(String(card.totalReviews))} reviews</span>

@@ -16,6 +16,7 @@ const OVERVIEW_TAB_LABEL = 'Overview';
  * @typedef {Object} TabBarRepositoryInput
  * @property {string} name
  * @property {string} localPath
+ * @property {boolean} enabled
  */
 
 /**
@@ -29,6 +30,7 @@ const OVERVIEW_TAB_LABEL = 'Overview';
  * @property {string} id
  * @property {string} label
  * @property {boolean} isActive
+ * @property {boolean} enabled
  */
 
 /**
@@ -50,11 +52,13 @@ export function buildTabBarModel(input) {
     id: OVERVIEW_TAB_ID,
     label: OVERVIEW_TAB_LABEL,
     isActive: effectiveActiveId === OVERVIEW_TAB_ID,
+    enabled: true,
   };
   const projectTabs = repositories.map((repository) => ({
     id: repository.localPath,
     label: repository.name,
     isActive: effectiveActiveId === repository.localPath,
+    enabled: repository.enabled !== false,
   }));
 
   return { tabs: [overviewTab, ...projectTabs] };
@@ -68,7 +72,8 @@ export function renderTabBarHtml(viewModel) {
   const buttons = viewModel.tabs
     .map((tab) => {
       const activeClass = tab.isActive ? ' is-active' : '';
-      return `<button type="button" class="dashboard-tab${activeClass}" data-tab-id="${escapeHtml(tab.id)}" role="tab" aria-selected="${tab.isActive ? 'true' : 'false'}">${escapeHtml(tab.label)}</button>`;
+      const enabledAttribute = tab.enabled ? 'true' : 'false';
+      return `<button type="button" class="dashboard-tab${activeClass}" data-tab-id="${escapeHtml(tab.id)}" data-enabled="${enabledAttribute}" role="tab" aria-selected="${tab.isActive ? 'true' : 'false'}">${escapeHtml(tab.label)}</button>`;
     })
     .join('');
   return `<nav class="dashboard-tab-bar" role="tablist">${buttons}</nav>`;

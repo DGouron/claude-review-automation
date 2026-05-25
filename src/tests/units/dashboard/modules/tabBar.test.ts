@@ -35,7 +35,7 @@ describe('tabBar module', () => {
   describe('buildTabBarModel', () => {
     it('marks Overview as active when no activeTabId is provided', () => {
       const model = buildTabBarModel({
-        repositories: [{ name: 'frontend', localPath: '/repos/frontend' }],
+        repositories: [{ name: 'frontend', localPath: '/repos/frontend', enabled: true }],
         activeTabId: null,
       });
 
@@ -48,8 +48,8 @@ describe('tabBar module', () => {
     it('marks the matching project tab as active and Overview as inactive', () => {
       const model = buildTabBarModel({
         repositories: [
-          { name: 'frontend', localPath: '/repos/frontend' },
-          { name: 'api', localPath: '/repos/api' },
+          { name: 'frontend', localPath: '/repos/frontend', enabled: true },
+          { name: 'api', localPath: '/repos/api', enabled: true },
         ],
         activeTabId: '/repos/api',
       });
@@ -61,7 +61,7 @@ describe('tabBar module', () => {
 
     it('falls back to Overview when the active tab id matches no repository', () => {
       const model = buildTabBarModel({
-        repositories: [{ name: 'frontend', localPath: '/repos/frontend' }],
+        repositories: [{ name: 'frontend', localPath: '/repos/frontend', enabled: true }],
         activeTabId: '/repos/missing',
       });
 
@@ -71,15 +71,37 @@ describe('tabBar module', () => {
     it('builds a tab per repository using the repository name as label', () => {
       const model = buildTabBarModel({
         repositories: [
-          { name: 'frontend', localPath: '/repos/frontend' },
-          { name: 'api', localPath: '/repos/api' },
+          { name: 'frontend', localPath: '/repos/frontend', enabled: true },
+          { name: 'api', localPath: '/repos/api', enabled: true },
         ],
         activeTabId: null,
       });
 
       expect(model.tabs).toHaveLength(3);
-      expect(model.tabs[1]).toEqual({ id: '/repos/frontend', label: 'frontend', isActive: false });
-      expect(model.tabs[2]).toEqual({ id: '/repos/api', label: 'api', isActive: false });
+      expect(model.tabs[1]).toMatchObject({ id: '/repos/frontend', label: 'frontend', isActive: false });
+      expect(model.tabs[2]).toMatchObject({ id: '/repos/api', label: 'api', isActive: false });
+    });
+
+    it('propagates the enabled flag from the repository to the tab viewmodel', () => {
+      const model = buildTabBarModel({
+        repositories: [
+          { name: 'live', localPath: '/repos/live', enabled: true },
+          { name: 'paused', localPath: '/repos/paused', enabled: false },
+        ],
+        activeTabId: null,
+      });
+
+      expect(model.tabs.find((tab) => tab.id === '/repos/live')?.enabled).toBe(true);
+      expect(model.tabs.find((tab) => tab.id === '/repos/paused')?.enabled).toBe(false);
+    });
+
+    it('treats Overview as always enabled', () => {
+      const model = buildTabBarModel({
+        repositories: [{ name: 'project', localPath: '/repos/project', enabled: false }],
+        activeTabId: null,
+      });
+
+      expect(model.tabs.find((tab) => tab.id === 'overview')?.enabled).toBe(true);
     });
   });
 
@@ -87,8 +109,8 @@ describe('tabBar module', () => {
     it('renders a <nav> element with one button per tab and marks the active one', () => {
       const html = renderTabBarHtml({
         tabs: [
-          { id: 'overview', label: 'Overview', isActive: true },
-          { id: '/repos/frontend', label: 'frontend', isActive: false },
+          { id: 'overview', label: 'Overview', isActive: true, enabled: true },
+          { id: '/repos/frontend', label: 'frontend', isActive: false, enabled: true },
         ],
       });
 
@@ -100,11 +122,24 @@ describe('tabBar module', () => {
 
     it('escapes the label to prevent HTML injection', () => {
       const html = renderTabBarHtml({
-        tabs: [{ id: 'overview', label: '<script>alert(1)</script>', isActive: true }],
+        tabs: [{ id: 'overview', label: '<script>alert(1)</script>', isActive: true, enabled: true }],
       });
 
       expect(html).not.toContain('<script>alert(1)</script>');
       expect(html).toContain('&lt;script&gt;');
+    });
+
+    it('emits data-enabled attribute reflecting the tab state', () => {
+      const html = renderTabBarHtml({
+        tabs: [
+          { id: 'overview', label: 'Overview', isActive: true, enabled: true },
+          { id: '/repos/live', label: 'live', isActive: false, enabled: true },
+          { id: '/repos/paused', label: 'paused', isActive: false, enabled: false },
+        ],
+      });
+
+      expect(html).toContain('data-enabled="true"');
+      expect(html).toContain('data-enabled="false"');
     });
   });
 

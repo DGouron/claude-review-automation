@@ -24,6 +24,14 @@ export interface ProjectConfig {
   agents?: AgentDefinition[];
   followupAgents?: AgentDefinition[];
   routingPolicy?: RoutingPolicy;
+  externalLink?: string;
+}
+
+function parseExternalLink(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.length > 0) {
+    return value;
+  }
+  return undefined;
 }
 
 /**
@@ -110,7 +118,15 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
 
   const rawContent = readFileSync(configPath, 'utf-8');
   const parsed = JSON.parse(rawContent) as Record<string, unknown>;
+  return parseProjectConfig(parsed);
+}
 
+/**
+ * Pure parsing/validation of an already-loaded JSON object.
+ * Throws on missing/invalid fields. Use this when the caller already has
+ * the parsed object in memory and wants to avoid re-reading the file.
+ */
+export function parseProjectConfig(parsed: Record<string, unknown>): ProjectConfig {
   const reviewFocus = parseReviewFocus(parsed.reviewFocus);
 
   const hasExplicitReviewSkill =
@@ -171,6 +187,11 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
 
   if (reviewFocus !== undefined) {
     config.reviewFocus = reviewFocus;
+  }
+
+  const externalLink = parseExternalLink(parsed.externalLink);
+  if (externalLink !== undefined) {
+    config.externalLink = externalLink;
   }
 
   return config;

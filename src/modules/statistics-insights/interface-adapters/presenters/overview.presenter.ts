@@ -35,11 +35,16 @@ export interface OverviewActiveJobInput {
   jobType?: 'review' | 'followup';
 }
 
+export interface OverviewProjectConfigSummary {
+  externalLink?: string;
+}
+
 export interface OverviewPresenterInput {
   repositories: RepositoryConfig[];
   activeJobs: OverviewActiveJobInput[];
   projectStats: OverviewProjectStatsEntry[];
   recentReviews: ReviewFileInfo[];
+  projectConfigs?: Record<string, OverviewProjectConfigSummary>;
 }
 
 export interface OverviewActiveReviewItem {
@@ -67,6 +72,7 @@ export interface OverviewProjectCardItem {
   averageScoreLabel: string;
   sparklinePoints: number[];
   isEmptyHistory: boolean;
+  externalLink?: string;
 }
 
 export interface OverviewProjectCardsSection {
@@ -158,13 +164,27 @@ function buildActiveReviewItem(
   };
 }
 
+function resolveExternalLink(
+  projectConfigs: Record<string, OverviewProjectConfigSummary> | undefined,
+  localPath: string,
+): string | undefined {
+  if (!projectConfigs) return undefined;
+  const entry = projectConfigs[localPath];
+  if (!entry || typeof entry.externalLink !== 'string' || entry.externalLink.length === 0) {
+    return undefined;
+  }
+  return entry.externalLink;
+}
+
 function buildProjectCard(
   repository: RepositoryConfig,
   statsByPath: Map<string, OverviewProjectStatsEntry>,
+  projectConfigs: Record<string, OverviewProjectConfigSummary> | undefined,
 ): OverviewProjectCardItem {
+  const externalLink = resolveExternalLink(projectConfigs, repository.localPath);
   const statsEntry = statsByPath.get(repository.localPath) ?? null;
   if (statsEntry === null) {
-    return {
+    const emptyCard: OverviewProjectCardItem = {
       projectName: repository.name,
       projectPath: repository.localPath,
       platform: repository.platform,
@@ -173,9 +193,11 @@ function buildProjectCard(
       sparklinePoints: [],
       isEmptyHistory: true,
     };
+    if (externalLink !== undefined) emptyCard.externalLink = externalLink;
+    return emptyCard;
   }
   const sparklinePoints = buildSparklinePoints(statsEntry.stats.reviews);
-  return {
+  const card: OverviewProjectCardItem = {
     projectName: repository.name,
     projectPath: repository.localPath,
     platform: repository.platform,
@@ -184,6 +206,8 @@ function buildProjectCard(
     sparklinePoints,
     isEmptyHistory: statsEntry.summary.totalReviews === 0,
   };
+  if (externalLink !== undefined) card.externalLink = externalLink;
+  return card;
 }
 
 function buildRecentReviewItem(
@@ -221,7 +245,7 @@ export class OverviewPresenter {
     for (const entry of input.projectStats) {
       statsByPath.set(entry.path, entry);
     }
-    const cardItems = input.repositories.map((repository) => buildProjectCard(repository, statsByPath));
+    const cardItems = input.repositories.map((repository) => buildProjectCard(repository, statsByPath, input.projectConfigs));
 
     const recentItems = [...input.recentReviews]
       .sort((left, right) => right.mtime.localeCompare(left.mtime))

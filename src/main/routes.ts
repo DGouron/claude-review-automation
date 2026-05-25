@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { Dependencies } from '@/main/dependencies.js';
@@ -14,7 +13,17 @@ import { mrTrackingAdvancedRoutes } from '@/modules/tracking/interface-adapters/
 import { logsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/logs.routes.js';
 import { cliStatusRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/cliStatus.routes.js';
 import { projectConfigRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/projectConfig.routes.js';
+import { ProjectConfigFileSystemGateway } from '@/modules/cli-configuration/interface-adapters/gateways/projectConfig.fileSystem.gateway.js';
+import { UpdateProjectConfigUseCase } from '@/modules/cli-configuration/usecases/projectConfig/updateProjectConfig.usecase.js';
 import { repositoriesRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/repositories.routes.js';
+import { AddRepositoriesToConfigUseCase } from '@/modules/cli-configuration/usecases/cli/addRepositoriesToConfig.usecase.js';
+import { RemoveRepositoryFromConfigUseCase } from '@/modules/cli-configuration/usecases/cli/removeRepositoryFromConfig.usecase.js';
+import { ToggleRepositoryEnabledUseCase } from '@/modules/cli-configuration/usecases/cli/toggleRepositoryEnabled.usecase.js';
+import { AddRepositoryFromDashboardUseCase } from '@/modules/cli-configuration/usecases/dashboardRepositories/addRepositoryFromDashboard.usecase.js';
+import { RemoveRepositoryFromDashboardUseCase } from '@/modules/cli-configuration/usecases/dashboardRepositories/removeRepositoryFromDashboard.usecase.js';
+import { UpdateRepositoryEnabledFromDashboardUseCase } from '@/modules/cli-configuration/usecases/dashboardRepositories/updateRepositoryEnabledFromDashboard.usecase.js';
+import { enrichSingleRepository, resolveActiveConfigPath } from '@/frameworks/config/configLoader.js';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js';
 import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
@@ -124,6 +133,9 @@ export async function registerRoutes(
     logger: deps.logger,
   });
 
+  const projectConfigGateway = new ProjectConfigFileSystemGateway();
+  const updateProjectConfig = new UpdateProjectConfigUseCase(projectConfigGateway);
+
   await app.register(overviewRoutes, {
     getRepositories: () => deps.config.repositories,
     getActiveJobs: () => getJobsStatus().active.map((job) => ({
@@ -138,6 +150,7 @@ export async function registerRoutes(
     })),
     statsGateway: deps.statsGateway,
     reviewFileGateway: deps.reviewFileGateway,
+    projectConfigGateway,
   });
 
   await app.register(mrTrackingRoutes, {
@@ -292,7 +305,7 @@ export async function registerRoutes(
 
   await app.register(logsRoutes);
   await app.register(cliStatusRoutes);
-  await app.register(projectConfigRoutes);
+  await app.register(projectConfigRoutes, { updateProjectConfig });
 
   await registerWebSocketRoutes(app, deps);
 
@@ -356,8 +369,43 @@ export async function registerRoutes(
     reply.redirect('/dashboard/');
   });
 
+  const repositoryConfigDeps = { readFileSync, writeFileSync, existsSync };
+  const addRepositoriesToConfig = new AddRepositoriesToConfigUseCase(repositoryConfigDeps);
+  const removeRepositoryFromConfig = new RemoveRepositoryFromConfigUseCase(repositoryConfigDeps);
+  const toggleRepositoryEnabled = new ToggleRepositoryEnabledUseCase(repositoryConfigDeps);
+  const repositoriesConfigPath = resolveActiveConfigPath();
+
+  function isExistingDirectory(path: string): boolean {
+    try {
+      return statSync(path).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  const addRepositoryFromDashboard = new AddRepositoryFromDashboardUseCase({
+    isDirectory: isExistingDirectory,
+    addRepositoriesToConfig,
+    enrichSingleRepository,
+    repositories: deps.config.repositories,
+    configPath: repositoriesConfigPath,
+  });
+  const removeRepositoryFromDashboard = new RemoveRepositoryFromDashboardUseCase({
+    removeRepositoryFromConfig,
+    repositories: deps.config.repositories,
+    configPath: repositoriesConfigPath,
+  });
+  const updateRepositoryEnabledFromDashboard = new UpdateRepositoryEnabledFromDashboardUseCase({
+    toggleRepositoryEnabled,
+    repositories: deps.config.repositories,
+    configPath: repositoriesConfigPath,
+  });
+
   await app.register(repositoriesRoutes, {
     getRepositories: () => deps.config.repositories,
+    addRepository: (input) => addRepositoryFromDashboard.execute(input),
+    removeRepository: (input) => removeRepositoryFromDashboard.execute(input),
+    patchRepository: (input) => updateRepositoryEnabledFromDashboard.execute(input),
   });
 
   app.get('/api', async () => {

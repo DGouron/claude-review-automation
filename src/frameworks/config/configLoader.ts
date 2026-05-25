@@ -149,6 +149,25 @@ function enrichRepository(input: RepositoryInput): RepositoryConfig | null {
   };
 }
 
+export function enrichSingleRepository(input: RepositoryInput): RepositoryConfig {
+  const projectConfig = loadProjectConfig(input.localPath);
+  const remoteUrl = getGitRemoteUrl(input.localPath);
+
+  const platform: 'gitlab' | 'github' = projectConfig?.gitlab ? 'gitlab' : 'github';
+  const skill =
+    projectConfig?.reviewSkill ||
+    (projectConfig?.reviewFocus ? reviewSkillForFocus(projectConfig.reviewFocus) : 'review-code');
+
+  return {
+    name: input.name,
+    platform,
+    remoteUrl: remoteUrl ?? '',
+    localPath: input.localPath,
+    skill,
+    enabled: input.enabled,
+  };
+}
+
 export function validateAndEnrichConfig(data: unknown): Config {
   if (!data || typeof data !== 'object') {
     throw new Error('Configuration invalide : objet attendu');
@@ -275,6 +294,10 @@ function resolveConfigPath(): string {
   const xdgPath = join(configDir, 'config.json');
   if (existsSync(xdgPath)) return xdgPath;
   return cwdPath;
+}
+
+export function resolveActiveConfigPath(): string {
+  return resolveConfigPath();
 }
 
 export function loadConfig(): Config {
