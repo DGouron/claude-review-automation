@@ -122,7 +122,15 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     billingIntervalMs: 60 * 60 * 1000,
   });
 
-  const recoverySummary = await runReviewRecovery({
+  await app.listen({
+    port,
+    host: '0.0.0.0',
+  });
+
+  // Recovery runs as a non-blocking background task so the HTTP listener is
+  // available immediately at boot. A long replay backlog can't delay health
+  // checks or webhook reception.
+  void runReviewRecovery({
     repositories: config.repositories.filter((repo) => repo.enabled),
     reviewContextGateway: deps.reviewContextGateway,
     executeActions: async (context, localPath) => {
@@ -136,13 +144,16 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     },
     now: () => Date.now(),
     logger: deps.logger,
-  });
-  deps.logger.info(recoverySummary, 'Review recovery completed at boot');
-
-  await app.listen({
-    port,
-    host: '0.0.0.0',
-  });
+  })
+    .then((summary) => {
+      deps.logger.info(summary, 'Review recovery completed in background');
+    })
+    .catch((error) => {
+      deps.logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Review recovery threw unexpectedly',
+      );
+    });
 
   const shutdown = async () => {
     deps.logger.info('Shutting down...');
