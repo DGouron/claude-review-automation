@@ -43,3 +43,4 @@
 | Semi-automatic review trigger mode | [174-semi-auto-review-trigger-mode](specs/174-semi-auto-review-trigger-mode.md) — [plan](plans/174-semi-auto-review-trigger-mode.plan.md) | implemented | 2026-05-23 |
 | Worktree failure visibility & force-cleanup | [175-worktree-failure-visibility](specs/175-worktree-failure-visibility.md) | drafted | 2026-05-24 |
 | Job history persistence | [176-job-history-persistence](specs/176-job-history-persistence.md) | drafted | 2026-05-24 |
+| Dashboard project CRUD UI + animations | [177-dashboard-add-project-ui](specs/177-dashboard-add-project-ui.md) — [plan](plans/177-dashboard-add-project-ui.plan.md) — [report](reports/177-dashboard-add-project-ui.report.md) | implemented | 2026-05-25 |

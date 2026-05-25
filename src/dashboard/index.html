@@ -78,6 +78,11 @@
           </select>
         </div>
 
+        <button type="button" id="manage-projects-toggle" class="manage-projects-toggle" aria-expanded="false" aria-controls="manage-panel">
+          <span class="manage-projects-toggle-label">// MANAGE PROJECTS</span>
+          <i data-lucide="chevron-down" class="manage-projects-toggle-icon"></i>
+        </button>
+        <section id="manage-panel" class="manage-panel" aria-label="Manage projects" data-open="false"></section>
         <nav id="dashboard-tabs" class="dashboard-tab-bar-wrapper" aria-label="Project tabs"></nav>
         <span id="config-status" class="config-status hidden"></span>
 
@@ -309,8 +314,9 @@
     import { formatTime, formatDuration, formatPhase, formatLogTime } from './modules/formatting.js';
     import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from './modules/html.js';
     import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
-    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_PROJECTS, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
+    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
     import { buildTabBarModel, renderTabBarHtml, readActiveTab, writeActiveTab } from './modules/tabBar.js';
+    import { buildManagePanelModel, renderManagePanelHtml, buildOptimisticAddedRow, validateLocalPathInput } from './modules/managePanel.js';
     import { renderOverviewHtml } from './modules/overview.js';
     import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
     import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
@@ -2273,71 +2279,6 @@
     let currentProjectConfig = null;
     let currentProjectPath = null;
 
-    function getStoredProjects() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY_PROJECTS) || '[]');
-      } catch {
-        return [];
-      }
-    }
-
-    function saveProjects(projects) {
-      localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
-    }
-
-    function addProjectToHistory(path) {
-      const projects = getStoredProjects();
-      const filtered = projects.filter(p => p !== path);
-      filtered.unshift(path);
-      saveProjects(filtered.slice(0, 10));
-      updateProjectSelect();
-    }
-
-    function removeProjectFromHistory(path) {
-      const projects = getStoredProjects().filter(p => p !== path);
-      saveProjects(projects);
-      updateProjectSelect();
-    }
-
-    function updateProjectSelect() {
-      const select = document.getElementById('project-select');
-      if (!select) return;
-      const projects = getStoredProjects();
-      const current = localStorage.getItem(STORAGE_KEY_CURRENT) || '';
-
-      select.innerHTML = `<option value="">${t('project.selectPlaceholder')}</option>`;
-      for (const path of projects) {
-        const shortName = path.split('/').slice(-2).join('/');
-        const option = document.createElement('option');
-        option.value = path;
-        option.textContent = shortName;
-        option.title = path;
-        if (path === current) option.selected = true;
-        select.appendChild(option);
-      }
-    }
-
-    function onProjectSelect(path) {
-      if (path) {
-        const input = document.getElementById('project-path-input');
-        if (input) input.value = '';
-        loadProjectConfigFromPath(path);
-      }
-    }
-
-    async function loadProjectConfig() {
-      const input = document.getElementById('project-path-input');
-      const select = document.getElementById('project-select');
-      const projectPath = (input?.value.trim() ?? '') || (select?.value ?? '');
-
-      if (!projectPath) {
-        showConfigStatus(t('error.selectOrEnterPath'), 'error');
-        return;
-      }
-
-      await loadProjectConfigFromPath(projectPath);
-    }
-
     async function loadProjectConfigFromPath(projectPath) {
       const status = document.getElementById('config-status');
       const info = document.getElementById('config-info');
@@ -2353,13 +2294,7 @@
           currentProjectConfig = data.config;
           currentProjectPath = projectPath;
 
-          addProjectToHistory(projectPath);
           localStorage.setItem(STORAGE_KEY_CURRENT, projectPath);
-
-          const legacySelect = document.getElementById('project-select');
-          if (legacySelect) legacySelect.value = projectPath;
-          const legacyInput = document.getElementById('project-path-input');
-          if (legacyInput) legacyInput.value = '';
 
           const shortName = projectPath.split('/').slice(-2).join('/');
           showConfigStatus(`<i data-lucide="check-circle"></i> ${escapeHtml(shortName)}`, 'success');
@@ -2413,43 +2348,6 @@
       refreshIcons();
     }
 
-    function removeCurrentProject() {
-      const select = document.getElementById('project-select');
-      const path = select?.value ?? currentProjectPath ?? '';
-      if (!path) {
-        showConfigStatus(t('project.noProjectSelected'), 'error');
-        return;
-      }
-      const shortName = path.split('/').slice(-2).join('/');
-      if (confirm(t('confirm.removeProject', { name: shortName }))) {
-        removeProjectFromHistory(path);
-        localStorage.removeItem(STORAGE_KEY_CURRENT);
-        currentProjectPath = null;
-        currentProjectConfig = null;
-        document.getElementById('config-info')?.classList.add('hidden');
-        showConfigStatus(t('project.removed'), 'success');
-      }
-    }
-
-    async function syncServerRepositories() {
-      try {
-        const response = await fetch(`${API_URL}/api/repositories`);
-        const data = await response.json();
-        if (!data.repositories) return;
-
-        const stored = getStoredProjects();
-        for (const repository of data.repositories) {
-          if (repository.enabled && !stored.includes(repository.localPath)) {
-            stored.push(repository.localPath);
-          }
-        }
-        saveProjects(stored);
-        updateProjectSelect();
-      } catch {
-        // Server unreachable — use localStorage only
-      }
-    }
-
     // SPEC-91 — Dashboard Multi-Project Overview
     let availableRepositories = [];
     let activeTabId = 'overview';
@@ -2458,12 +2356,14 @@
       try {
         const response = await fetch(`${API_URL}/api/repositories`);
         const data = await response.json();
-        availableRepositories = Array.isArray(data.repositories)
-          ? data.repositories.filter((repository) => repository.enabled)
-          : [];
+        availableRepositories = Array.isArray(data.repositories) ? data.repositories : [];
       } catch {
         availableRepositories = [];
       }
+    }
+
+    function syncAvailableRepositoriesFromResponse(payload) {
+      availableRepositories = Array.isArray(payload?.repositories) ? payload.repositories : [];
     }
 
     function renderDashboardTabs() {
@@ -2532,13 +2432,204 @@
 
     async function initOverviewAndTabs() {
       await fetchAvailableRepositories();
-      await syncServerRepositories();
+      renderManagePanel();
+      bindManagePanelToggle();
       const persistedTab = readActiveTab();
       const repositoryPaths = availableRepositories.map((repository) => repository.localPath);
       if (persistedTab && persistedTab !== 'overview' && repositoryPaths.includes(persistedTab)) {
         activateProjectTab(persistedTab);
       } else {
         activateOverviewTab();
+      }
+    }
+
+    let isManagePanelOpen = false;
+
+    function renderManagePanel() {
+      const panel = document.getElementById('manage-panel');
+      if (!panel) return;
+      const model = buildManagePanelModel({ repositories: availableRepositories, isOpen: isManagePanelOpen });
+      panel.innerHTML = renderManagePanelHtml(model);
+      panel.dataset.open = isManagePanelOpen ? 'true' : 'false';
+      bindManagePanelHandlers();
+    }
+
+    function bindManagePanelToggle() {
+      const toggle = document.getElementById('manage-projects-toggle');
+      if (!toggle || toggle.dataset.bound === 'true') return;
+      toggle.dataset.bound = 'true';
+      toggle.addEventListener('click', () => {
+        isManagePanelOpen = !isManagePanelOpen;
+        toggle.setAttribute('aria-expanded', isManagePanelOpen ? 'true' : 'false');
+        renderManagePanel();
+      });
+    }
+
+    function bindManagePanelHandlers() {
+      const panel = document.getElementById('manage-panel');
+      if (!panel) return;
+      const form = panel.querySelector('form.add-form');
+      if (form) {
+        form.addEventListener('submit', handleAddProjectSubmit);
+        const input = form.querySelector('input.add-form-input');
+        if (input) {
+          input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+              input.value = '';
+              clearManagePanelError();
+            }
+          });
+        }
+      }
+      panel.querySelectorAll('.manage-row-delete').forEach((button) => {
+        button.addEventListener('click', () => {
+          const row = button.closest('.manage-row');
+          const localPath = row?.dataset.localPath;
+          if (localPath) handleDeleteProject(localPath, row);
+        });
+      });
+      panel.querySelectorAll('.manage-row-toggle').forEach((button) => {
+        button.addEventListener('click', () => {
+          const row = button.closest('.manage-row');
+          const localPath = row?.dataset.localPath;
+          const currentlyEnabled = row?.dataset.enabled === 'true';
+          if (localPath) handleToggleProject(localPath, !currentlyEnabled);
+        });
+      });
+    }
+
+    function setManagePanelError(message) {
+      const panel = document.getElementById('manage-panel');
+      const target = panel?.querySelector('[data-role="error-message"]');
+      if (!target) return;
+      target.textContent = message;
+      target.hidden = false;
+    }
+
+    function clearManagePanelError() {
+      const panel = document.getElementById('manage-panel');
+      const target = panel?.querySelector('[data-role="error-message"]');
+      if (!target) return;
+      target.textContent = '';
+      target.hidden = true;
+    }
+
+    function flashAddFormError() {
+      const form = document.querySelector('#manage-panel form.add-form');
+      if (!form) return;
+      form.classList.remove('is-error');
+      requestAnimationFrame(() => form.classList.add('is-error'));
+      setTimeout(() => form.classList.remove('is-error'), 320);
+    }
+
+    function flashAddFormSuccess() {
+      const input = document.querySelector('#manage-panel input.add-form-input');
+      if (!input) return;
+      input.classList.remove('is-success');
+      requestAnimationFrame(() => input.classList.add('is-success'));
+      setTimeout(() => input.classList.remove('is-success'), 1500);
+    }
+
+    function flashTabEntering(localPath) {
+      const tab = document.querySelector(`.dashboard-tab[data-tab-id="${CSS.escape(localPath)}"]`);
+      if (!tab) return;
+      tab.classList.add('is-entering');
+      setTimeout(() => tab.classList.remove('is-entering'), 1500);
+    }
+
+    async function handleAddProjectSubmit(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const input = form.querySelector('input.add-form-input');
+      const submit = form.querySelector('button.add-form-submit');
+      const rawValue = input ? input.value : '';
+      const validation = validateLocalPathInput(rawValue);
+      clearManagePanelError();
+      if (!validation.ok) {
+        const message = validation.reason === 'empty' ? 'Chemin du projet requis' : 'Le chemin doit être absolu';
+        setManagePanelError(message);
+        flashAddFormError();
+        return;
+      }
+      const trimmed = rawValue.trim();
+      if (submit) submit.classList.add('is-busy');
+      try {
+        const response = await fetch(`${API_URL}/api/repositories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ localPath: trimmed }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setManagePanelError(typeof body?.error === 'string' ? body.error : 'Erreur inconnue');
+          flashAddFormError();
+          return;
+        }
+        syncAvailableRepositoriesFromResponse(body);
+        if (input) input.value = '';
+        flashAddFormSuccess();
+        renderManagePanel();
+        renderDashboardTabs();
+        flashTabEntering(trimmed);
+      } catch {
+        setManagePanelError('Erreur réseau');
+        flashAddFormError();
+      } finally {
+        if (submit) submit.classList.remove('is-busy');
+      }
+    }
+
+    async function handleDeleteProject(localPath, rowElement) {
+      try {
+        const response = await fetch(`${API_URL}/api/repositories?localPath=${encodeURIComponent(localPath)}`, {
+          method: 'DELETE',
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setManagePanelError(typeof body?.error === 'string' ? body.error : 'Erreur inconnue');
+          return;
+        }
+        syncAvailableRepositoriesFromResponse(body);
+        if (rowElement) {
+          rowElement.classList.add('is-leaving');
+          setTimeout(() => {
+            renderManagePanel();
+          }, 250);
+        } else {
+          renderManagePanel();
+        }
+        const tab = document.querySelector(`.dashboard-tab[data-tab-id="${CSS.escape(localPath)}"]`);
+        if (tab) {
+          tab.classList.add('is-leaving');
+          setTimeout(() => renderDashboardTabs(), 250);
+        } else {
+          renderDashboardTabs();
+        }
+        if (activeTabId === localPath) {
+          activateOverviewTab();
+        }
+      } catch {
+        setManagePanelError('Erreur réseau');
+      }
+    }
+
+    async function handleToggleProject(localPath, enabled) {
+      try {
+        const response = await fetch(`${API_URL}/api/repositories?localPath=${encodeURIComponent(localPath)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setManagePanelError(typeof body?.error === 'string' ? body.error : 'Erreur inconnue');
+          return;
+        }
+        syncAvailableRepositoriesFromResponse(body);
+        renderManagePanel();
+        renderDashboardTabs();
+      } catch {
+        setManagePanelError('Erreur réseau');
       }
     }
 
@@ -2681,19 +2772,6 @@
       const modelSonnet = document.getElementById('i18n-model-sonnet');
       if (modelSonnet) modelSonnet.textContent = t('model.sonnet');
 
-      // Project loader
-      const projectPlaceholder = document.getElementById('i18n-project-placeholder');
-      if (projectPlaceholder) projectPlaceholder.textContent = t('project.selectPlaceholder');
-
-      const projectPathInput = document.getElementById('project-path-input');
-      if (projectPathInput) projectPathInput.placeholder = t('project.inputPlaceholder');
-
-      const projectLoad = document.getElementById('i18n-project-load');
-      if (projectLoad) projectLoad.textContent = t('project.load');
-
-      const removeProjectBtn = document.getElementById('remove-project-btn');
-      if (removeProjectBtn) removeProjectBtn.title = t('project.removeTooltip');
-
       // Login sections
       const claudeLoginTitle = document.getElementById('i18n-claude-login-title');
       if (claudeLoginTitle) claudeLoginTitle.textContent = t('login.claude.title');
@@ -2792,9 +2870,6 @@
 
       const modalConfirm = document.getElementById('cancel-modal-confirm');
       if (modalConfirm) modalConfirm.textContent = t('modal.confirm');
-
-      // Update project select placeholder (re-render the select)
-      updateProjectSelect();
     }
 
     async function checkForUpdates() {
@@ -2952,9 +3027,6 @@
     window.toggleStats = toggleStats;
     window.changeModel = changeModel;
     window.changeLanguage = changeLanguage;
-    window.onProjectSelect = onProjectSelect;
-    window.loadProjectConfig = loadProjectConfig;
-    window.removeCurrentProject = removeCurrentProject;
     window.toggleReviewAccordion = toggleReviewAccordion;
     window.toggleReviewDescription = toggleReviewDescription;
     window.deleteReviewFile = deleteReviewFile;
