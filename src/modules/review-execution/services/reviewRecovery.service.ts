@@ -57,7 +57,13 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
       const isStale = ageMs > graceWindowMs
 
       if (isStale) {
-        finalize(deps.reviewContextGateway, repository.localPath, context, deps.now)
+        markBackfilled(
+          deps.reviewContextGateway,
+          repository.localPath,
+          context,
+          'stale-on-boot',
+          deps.now,
+        )
         deps.logger.info(
           { mergeRequestId: context.mergeRequestId, ageMs },
           'Review context backfilled (older than grace window, not replayed)',
@@ -76,7 +82,13 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
           )
           continue
         }
-        finalize(deps.reviewContextGateway, repository.localPath, context, deps.now)
+        markBackfilled(
+          deps.reviewContextGateway,
+          repository.localPath,
+          context,
+          'recovered-after-restart',
+          deps.now,
+        )
         deps.logger.info(
           { mergeRequestId: context.mergeRequestId, actionCount: context.actions.length },
           'Review context recovered after restart',
@@ -98,18 +110,16 @@ export async function runReviewRecovery(deps: RecoveryDeps): Promise<RecoverySum
   return summary
 }
 
-function finalize(
+function markBackfilled(
   gateway: ReviewContextGateway,
   localPath: string,
   context: ReviewContext,
+  reason: 'stale-on-boot' | 'recovered-after-restart',
   now: () => number,
 ): void {
   gateway.setResult(localPath, context.mergeRequestId, {
-    blocking: 0,
-    warnings: 0,
-    suggestions: 0,
-    score: 0,
-    verdict: 'needs_discussion',
+    kind: 'backfilled',
     backfilledAt: new Date(now()).toISOString(),
+    reason,
   })
 }

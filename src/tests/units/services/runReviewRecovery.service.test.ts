@@ -77,7 +77,12 @@ describe('runReviewRecovery', () => {
     expect(summary.backfilled).toBe(1)
     expect(summary.recovered).toBe(0)
     expect(executeActions).not.toHaveBeenCalled()
-    expect(gateway.read('/repo', 'github-owner/repo-1')?.result?.backfilledAt).toBeDefined()
+    const result = gateway.read('/repo', 'github-owner/repo-1')?.result
+    expect(result?.kind).toBe('backfilled')
+    if (result?.kind === 'backfilled') {
+      expect(result.reason).toBe('stale-on-boot')
+      expect(result.backfilledAt).toBeDefined()
+    }
   })
 
   it('recovers contexts inside the grace window by calling executeActions then setResult', async () => {
@@ -105,7 +110,12 @@ describe('runReviewRecovery', () => {
     expect(summary.recovered).toBe(1)
     expect(summary.backfilled).toBe(0)
     expect(executeActions).toHaveBeenCalledTimes(1)
-    expect(gateway.read('/repo', 'github-owner/repo-2')?.result?.backfilledAt).toBeDefined()
+    const result = gateway.read('/repo', 'github-owner/repo-2')?.result
+    expect(result?.kind).toBe('backfilled')
+    if (result?.kind === 'backfilled') {
+      expect(result.reason).toBe('recovered-after-restart')
+      expect(result.backfilledAt).toBeDefined()
+    }
   })
 
   it('counts a failure when executeActions throws and leaves result unset', async () => {

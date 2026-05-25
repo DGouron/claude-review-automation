@@ -17,6 +17,7 @@ describe('shouldRecover', () => {
       progress: { phase: 'completed', currentStep: null },
       actions: [{ type: 'POST_COMMENT', body: 'global review' }],
       result: {
+        kind: 'measured',
         blocking: 0,
         warnings: 2,
         suggestions: 3,

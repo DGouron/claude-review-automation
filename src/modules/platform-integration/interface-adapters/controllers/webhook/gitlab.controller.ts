@@ -25,6 +25,7 @@ import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/sy
 import { loadProjectConfig, getProjectAgentsOrFocusDefaults, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
+import { ReviewContextResultFactory } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.factory.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
@@ -421,13 +422,11 @@ export async function handleGitLabWebhook(
                   { ...contextActionResult, threadResolveCount, mrNumber: j.mrNumber },
                   'Actions executed from context file for followup'
                 );
-                contextGateway.setResult(j.localPath, mergeRequestId, {
-                  blocking: parsed.blocking,
-                  warnings: parsed.warnings,
-                  suggestions: parsed.suggestions,
-                  score: parsed.score ?? 0,
-                  verdict: parsed.blocking > 0 ? 'needs_fixes' : 'needs_discussion',
-                });
+                contextGateway.setResult(
+                  j.localPath,
+                  mergeRequestId,
+                  ReviewContextResultFactory.fromParsedReview(parsed),
+                );
               } else {
                 // FALLBACK: Execute thread actions from stdout markers (backward compatibility)
                 const threadActions = parseThreadActions(result.stdout);
@@ -779,13 +778,11 @@ export function buildGitLabReviewProcessor(
             { ...contextActionResult, mrNumber: j.mrNumber },
             'Actions executed from context file'
           );
-          contextGateway.setResult(j.localPath, mergeRequestId, {
-            blocking: parsed.blocking,
-            warnings: parsed.warnings,
-            suggestions: parsed.suggestions,
-            score: parsed.score ?? 0,
-            verdict: parsed.blocking > 0 ? 'needs_fixes' : 'needs_discussion',
-          });
+          contextGateway.setResult(
+            j.localPath,
+            mergeRequestId,
+            ReviewContextResultFactory.fromParsedReview(parsed),
+          );
         } else {
           // FALLBACK: Execute thread actions from stdout markers (backward compatibility)
           const threadActions = parseThreadActions(result.stdout);

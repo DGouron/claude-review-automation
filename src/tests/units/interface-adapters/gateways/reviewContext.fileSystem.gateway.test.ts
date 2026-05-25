@@ -273,6 +273,7 @@ describe('ReviewContextFileSystemGateway', () => {
       })
 
       const result = gateway.setResult(testDir, 'github-owner/repo-42', {
+        kind: 'measured',
         blocking: 0,
         warnings: 2,
         suggestions: 3,
@@ -283,8 +284,11 @@ describe('ReviewContextFileSystemGateway', () => {
       expect(result.success).toBe(true)
 
       const context = gateway.read(testDir, 'github-owner/repo-42')
-      expect(context?.result?.blocking).toBe(0)
-      expect(context?.result?.verdict).toBe('ready_to_merge')
+      expect(context?.result?.kind).toBe('measured')
+      if (context?.result?.kind === 'measured') {
+        expect(context.result.blocking).toBe(0)
+        expect(context.result.verdict).toBe('ready_to_merge')
+      }
     })
   })
 })

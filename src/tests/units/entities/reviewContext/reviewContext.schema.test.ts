@@ -146,6 +146,7 @@ describe('reviewContextSchema', () => {
     const context = {
       ...validContext,
       result: {
+        kind: 'measured',
         blocking: 0,
         warnings: 1,
         suggestions: 2,

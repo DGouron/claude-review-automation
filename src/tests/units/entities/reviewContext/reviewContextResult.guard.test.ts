@@ -6,8 +6,9 @@ import {
 
 describe('reviewContextResult.guard', () => {
   describe('parseReviewContextResult', () => {
-    it('should parse a valid result', () => {
+    it('should parse a valid measured result', () => {
       const data = {
+        kind: 'measured',
         blocking: 0,
         warnings: 1,
         suggestions: 2,
@@ -17,14 +18,16 @@ describe('reviewContextResult.guard', () => {
 
       const result = parseReviewContextResult(data)
 
+      if (result.kind !== 'measured') throw new Error('expected measured')
       expect(result.verdict).toBe('ready_to_merge')
       expect(result.score).toBe(9)
     })
   })
 
   describe('isValidReviewContextResult', () => {
-    it('should return true for valid result', () => {
+    it('should return true for valid measured result', () => {
       const data = {
+        kind: 'measured',
         blocking: 1,
         warnings: 0,
         suggestions: 0,
@@ -36,7 +39,7 @@ describe('reviewContextResult.guard', () => {
     })
 
     it('should return false for invalid result', () => {
-      expect(isValidReviewContextResult({ verdict: 'bad' })).toBe(false)
+      expect(isValidReviewContextResult({ kind: 'measured', verdict: 'bad' })).toBe(false)
     })
   })
 })
