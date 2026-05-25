@@ -49,6 +49,29 @@
       </button>
       <section id="manage-panel" class="manage-panel" aria-label="Manage projects" data-open="false"></section>
       <nav id="dashboard-tabs" class="dashboard-tab-bar-wrapper" aria-label="Project tabs"></nav>
+      <div class="context-chips" aria-label="Toolchain status">
+        <div class="context-chip">
+          <span class="context-chip-label" id="i18n-card-claude-cli"></span>
+          <div id="claude-status" class="card-claude checking">
+            <span class="status" id="i18n-claude-checking"></span>
+            <span class="version"></span>
+          </div>
+        </div>
+        <div class="context-chip" id="git-cli-card">
+          <span class="context-chip-label" id="git-cli-label"></span>
+          <div id="git-cli-status" class="card-claude checking">
+            <span class="status" id="i18n-git-load-project"></span>
+            <span class="version"></span>
+          </div>
+        </div>
+        <div class="context-chip context-chip-model">
+          <span class="context-chip-label" id="i18n-card-model"></span>
+          <select id="model-select" class="model-select" onchange="changeModel(this.value)">
+            <option value="opus" id="i18n-model-opus"></option>
+            <option value="sonnet" id="i18n-model-sonnet"></option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <div id="cards-scope-marker" class="cards-scope-marker" data-scope-kind="overview">
@@ -68,29 +91,6 @@
       <div class="card">
         <div class="card-label" id="i18n-card-completed"></div>
         <div id="completed-count" class="card-value">-</div>
-      </div>
-      <div class="card">
-        <div class="card-label" id="i18n-card-claude-cli"></div>
-        <div id="claude-status" class="card-claude checking">
-          <span class="status" id="i18n-claude-checking"></span>
-          <span class="version"></span>
-        </div>
-      </div>
-      <div class="card" id="git-cli-card">
-        <div class="card-label" id="git-cli-label"></div>
-        <div id="git-cli-status" class="card-claude checking">
-          <span class="status" id="i18n-git-load-project"></span>
-          <span class="version"></span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-label" id="i18n-card-model"></div>
-        <div class="card-model">
-          <select id="model-select" class="model-select" onchange="changeModel(this.value)">
-            <option value="opus" id="i18n-model-opus"></option>
-            <option value="sonnet" id="i18n-model-sonnet"></option>
-          </select>
-        </div>
       </div>
     </div>
 
