@@ -4677,19 +4677,7 @@ body:not(.overview-tab-active) #overview-section {
   display: none;
 }
 
-body.overview-tab-active .dashboard-main > .section,
-body.overview-tab-active .dashboard-main > #pending-reviews-section,
-body.overview-tab-active .dashboard-main > #stats-section,
-body.overview-tab-active .dashboard-main > #team-section,
-body.overview-tab-active .dashboard-main > #claude-economics-section,
-body.overview-tab-active .dashboard-main > #active-reviews-section,
-body.overview-tab-active .dashboard-main > #active-followups-section,
-body.overview-tab-active .dashboard-main > #pending-fix-section,
-body.overview-tab-active .dashboard-main > #pending-approval-section,
-body.overview-tab-active .dashboard-main > #completed-reviews-section,
-body.overview-tab-active .dashboard-main > #cleanup-section,
-body.overview-tab-active .dashboard-main > #config-info,
-body.overview-tab-active .dashboard-main > .refresh-info {
+body.overview-tab-active .dashboard-main > *:not(#overview-section) {
   display: none;
 }
 

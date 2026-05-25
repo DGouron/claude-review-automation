@@ -1,22 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildOverviewModel,
   renderOverviewHtml,
   renderSparklineSvg,
 } from '@/dashboard/modules/overview.js';
 
-describe('buildOverviewModel', () => {
-  it('passes through the presenter-shaped payload as the rendering view model', () => {
-    const payload = {
+describe('renderOverviewHtml', () => {
+  it('falls back to French empty defaults when sections are missing from server payload', () => {
+    const html = renderOverviewHtml({});
+
+    expect(html).toContain('Aucune review en cours');
+    expect(html).toContain('Aucun projet configuré');
+    expect(html).toContain('Aucune review récente');
+  });
+
+  it('falls back to empty defaults when payload is null', () => {
+    const html = renderOverviewHtml(null);
+
+    expect(html).toContain('Aucune review en cours');
+  });
+
+  it('strips javascript: scheme from mrUrl when rendering active review row', () => {
+    const html = renderOverviewHtml({
       activeReviews: {
         items: [
           {
-            jobId: 'gitlab:frontend:1',
+            jobId: 'job-1',
             projectName: 'frontend',
             projectPath: '/repos/frontend',
             mrPrefix: 'MR',
             mrNumber: 1,
-            mrUrl: 'https://example.com/1',
+            mrUrl: 'javascript:alert(1)',
             elapsedLabel: '3m',
             jobType: 'review',
           },
@@ -24,48 +37,15 @@ describe('buildOverviewModel', () => {
         isEmpty: false,
         emptyMessage: 'Aucune review en cours',
       },
-      projectCards: {
-        items: [
-          {
-            projectName: 'frontend',
-            projectPath: '/repos/frontend',
-            platform: 'gitlab',
-            totalReviews: 12,
-            averageScoreLabel: '7.2',
-            sparklinePoints: [6, 7, 8],
-            isEmptyHistory: false,
-          },
-        ],
-        isEmpty: false,
-        emptyMessage: 'Aucun projet configuré',
-      },
-      recentReviewsFeed: {
-        items: [],
-        isEmpty: true,
-        emptyMessage: 'Aucune review récente',
-      },
-    };
+      projectCards: { items: [], isEmpty: true, emptyMessage: 'Aucun projet configuré' },
+      recentReviewsFeed: { items: [], isEmpty: true, emptyMessage: 'Aucune review récente' },
+    });
 
-    const model = buildOverviewModel(payload);
-
-    expect(model.activeReviews.items).toHaveLength(1);
-    expect(model.projectCards.items).toHaveLength(1);
-    expect(model.recentReviewsFeed.isEmpty).toBe(true);
+    expect(html).not.toContain('javascript:');
+    expect(html).toContain('href="#"');
   });
 
-  it('coerces missing sections to empty defaults', () => {
-    const model = buildOverviewModel({});
 
-    expect(model.activeReviews.items).toEqual([]);
-    expect(model.activeReviews.isEmpty).toBe(true);
-    expect(model.projectCards.items).toEqual([]);
-    expect(model.projectCards.isEmpty).toBe(true);
-    expect(model.recentReviewsFeed.items).toEqual([]);
-    expect(model.recentReviewsFeed.isEmpty).toBe(true);
-  });
-});
-
-describe('renderOverviewHtml', () => {
   it('renders the three sections with their LABEL prefix headings', () => {
     const html = renderOverviewHtml({
       activeReviews: { items: [], isEmpty: true, emptyMessage: 'Aucune review en cours' },

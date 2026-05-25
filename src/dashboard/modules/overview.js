@@ -2,10 +2,12 @@
  * Dashboard module — multi-project overview humble object (SPEC-91).
  * Pure functions, no global state, no DOM access.
  * All presentation logic lives in OverviewPresenter (server-side TypeScript);
- * this module mirrors the presenter view-model shape and renders it as HTML.
+ * this module renders its view-model as HTML.
  *
  * Visual DNA: "Agentic OS" — see project_agentic_os_design_dna.md.
  */
+
+import { escapeHtml, sanitizeHttpUrl } from './html.js';
 
 const SPARKLINE_WIDTH = 96;
 const SPARKLINE_HEIGHT = 28;
@@ -73,36 +75,6 @@ const SPARKLINE_PADDING = 2;
  */
 
 /**
- * @param {string | number | null | undefined} value
- * @returns {string}
- */
-function escapeHtml(value) {
-  if (value === null || value === undefined) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/**
- * @param {unknown} payload
- * @returns {OverviewViewModel}
- */
-export function buildOverviewModel(payload) {
-  const source = payload && typeof payload === 'object' ? /** @type {Record<string, unknown>} */ (payload) : {};
-  const activeReviews = sectionWithDefaults(source.activeReviews, 'Aucune review en cours');
-  const projectCards = sectionWithDefaults(source.projectCards, 'Aucun projet configuré');
-  const recentReviewsFeed = sectionWithDefaults(source.recentReviewsFeed, 'Aucune review récente');
-  return {
-    activeReviews: /** @type {OverviewActiveReviewsSection} */ (activeReviews),
-    projectCards: /** @type {OverviewProjectCardsSection} */ (projectCards),
-    recentReviewsFeed: /** @type {OverviewRecentReviewsFeedSection} */ (recentReviewsFeed),
-  };
-}
-
-/**
  * @param {unknown} section
  * @param {string} emptyMessage
  * @returns {{ items: unknown[]; isEmpty: boolean; emptyMessage: string }}
@@ -154,7 +126,7 @@ function renderActiveReviewRow(item) {
     <li class="overview-active-row" data-job-id="${escapeHtml(item.jobId)}">
       <span class="overview-status-dot" data-status="running"></span>
       <span class="overview-active-project">${escapeHtml(item.projectName)}</span>
-      <a class="overview-active-mr" href="${escapeHtml(item.mrUrl)}" target="_blank" rel="noopener">${escapeHtml(item.mrPrefix)} #${escapeHtml(item.mrNumber)}</a>
+      <a class="overview-active-mr" href="${escapeHtml(sanitizeHttpUrl(item.mrUrl))}" target="_blank" rel="noopener">${escapeHtml(item.mrPrefix)} #${escapeHtml(String(item.mrNumber))}</a>
       <span class="overview-active-elapsed">${escapeHtml(item.elapsedLabel)}</span>
     </li>
   `.trim();
@@ -189,7 +161,7 @@ function renderProjectCard(card) {
         <span class="overview-project-card-platform" data-platform="${escapeHtml(card.platform)}">${escapeHtml(card.platform)}</span>
       </div>
       <div class="overview-project-card-totals">
-        <span class="overview-project-card-count">${escapeHtml(card.totalReviews)} reviews</span>
+        <span class="overview-project-card-count">${escapeHtml(String(card.totalReviews))} reviews</span>
         <span class="overview-project-card-score">Score ${escapeHtml(card.averageScoreLabel)}</span>
       </div>
       <div class="overview-project-card-sparkline">${sparkline}</div>
@@ -244,15 +216,31 @@ function renderRecentReviewsSection(section) {
 }
 
 /**
- * @param {OverviewViewModel} viewModel
+ * Renders the overview HTML from a server-provided view-model.
+ * Tolerates missing sections by falling back to empty French defaults — the server
+ * is a boundary, so this guards against malformed payloads (deploys, partial fetches).
+ *
+ * @param {unknown} viewModel
  * @returns {string}
  */
 export function renderOverviewHtml(viewModel) {
+  const source = viewModel && typeof viewModel === 'object'
+    ? /** @type {Record<string, unknown>} */ (viewModel)
+    : {};
+  const activeReviews = /** @type {OverviewActiveReviewsSection} */ (
+    sectionWithDefaults(source.activeReviews, 'Aucune review en cours')
+  );
+  const projectCards = /** @type {OverviewProjectCardsSection} */ (
+    sectionWithDefaults(source.projectCards, 'Aucun projet configuré')
+  );
+  const recentReviewsFeed = /** @type {OverviewRecentReviewsFeedSection} */ (
+    sectionWithDefaults(source.recentReviewsFeed, 'Aucune review récente')
+  );
   return `
     <div class="overview-grid">
-      ${renderActiveReviewsSection(viewModel.activeReviews)}
-      ${renderProjectCardsSection(viewModel.projectCards)}
-      ${renderRecentReviewsSection(viewModel.recentReviewsFeed)}
+      ${renderActiveReviewsSection(activeReviews)}
+      ${renderProjectCardsSection(projectCards)}
+      ${renderRecentReviewsSection(recentReviewsFeed)}
     </div>
   `.trim();
 }

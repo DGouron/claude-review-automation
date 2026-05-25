@@ -7,6 +7,7 @@
  */
 
 import { STORAGE_KEY_ACTIVE_TAB } from './constants.js';
+import { escapeHtml } from './html.js';
 
 const OVERVIEW_TAB_ID = 'overview';
 const OVERVIEW_TAB_LABEL = 'Overview';
@@ -34,20 +35,6 @@ const OVERVIEW_TAB_LABEL = 'Overview';
  * @typedef {Object} TabBarViewModel
  * @property {TabBarTabViewModel[]} tabs
  */
-
-/**
- * @param {string | number | null | undefined} value
- * @returns {string}
- */
-function escapeHtml(value) {
-  if (value === null || value === undefined) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 /**
  * @param {TabBarBuildInput} input

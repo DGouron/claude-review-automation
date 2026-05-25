@@ -30,7 +30,7 @@ export interface OverviewActiveJobInput {
   project: string;
   mrUrl: string;
   status: string;
-  startedAt?: string;
+  startedAt: string | null;
   title?: string;
   jobType?: 'review' | 'followup';
 }
@@ -118,8 +118,8 @@ function resolvePlatformForProject(
   return match ? match.platform : 'gitlab';
 }
 
-function formatElapsed(now: Date, startedAt: string | undefined): string {
-  if (!startedAt) return EMPTY_ELAPSED_LABEL;
+function formatElapsed(now: Date, startedAt: string | null): string {
+  if (startedAt === null) return EMPTY_ELAPSED_LABEL;
   const startedMs = new Date(startedAt).getTime();
   if (Number.isNaN(startedMs)) return EMPTY_ELAPSED_LABEL;
   const elapsedMs = Math.max(0, now.getTime() - startedMs);
@@ -213,7 +213,7 @@ export class OverviewPresenter {
     const now = this.now();
 
     const activeItems = [...input.activeJobs]
-      .map((job) => ({ job, startedAtMs: job.startedAt ? new Date(job.startedAt).getTime() : 0 }))
+      .map((job) => ({ job, startedAtMs: job.startedAt === null ? 0 : new Date(job.startedAt).getTime() }))
       .sort((left, right) => right.startedAtMs - left.startedAtMs)
       .map(({ job }) => buildActiveReviewItem(job, input.repositories, now));
 

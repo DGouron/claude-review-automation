@@ -311,7 +311,7 @@
     import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
     import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_PROJECTS, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
     import { buildTabBarModel, renderTabBarHtml, readActiveTab, writeActiveTab } from './modules/tabBar.js';
-    import { buildOverviewModel, renderOverviewHtml } from './modules/overview.js';
+    import { renderOverviewHtml } from './modules/overview.js';
     import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
     import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
     import { collectReviewNotifications, createReviewNotificationState } from './modules/notifications.js';
@@ -2511,143 +2511,23 @@
       loadProjectConfigFromPath(projectPath);
     }
 
-    async function fetchOverviewData() {
-      try {
-        const [statsResponse, reviewsResponse] = await Promise.all([
-          fetch(`${API_URL}/api/stats`),
-          fetch(`${API_URL}/api/reviews`),
-        ]);
-        const statsData = await statsResponse.json();
-        const reviewsData = await reviewsResponse.json();
-        return {
-          projects: Array.isArray(statsData.projects) ? statsData.projects : [],
-          reviews: Array.isArray(reviewsData.reviews) ? reviewsData.reviews : [],
-        };
-      } catch {
-        return { projects: [], reviews: [] };
-      }
-    }
-
-    function resolveProjectNameForPath(localPath) {
-      const match = availableRepositories.find((repository) => repository.localPath === localPath);
-      return match ? match.name : '—';
-    }
-
-    function resolveProjectNameFromReviewPath(reviewPath) {
-      const match = availableRepositories.find((repository) =>
-        typeof reviewPath === 'string' && reviewPath.startsWith(`${repository.localPath}/`)
-      );
-      return match ? match.name : '—';
-    }
-
-    function resolvePlatformForPath(localPath) {
-      const match = availableRepositories.find((repository) => repository.localPath === localPath);
-      return match ? match.platform : 'gitlab';
-    }
-
-    function formatOverviewElapsed(startedAt) {
-      if (!startedAt) return '—';
-      const startedMs = new Date(startedAt).getTime();
-      if (Number.isNaN(startedMs)) return '—';
-      return formatDuration(startedAt);
-    }
-
-    function buildOverviewPayloadFromClient(stats, reviews) {
-      const activeReviewsItems = [...currentData.activeReviews]
-        .map((job) => ({ job, startedAtMs: job.startedAt ? new Date(job.startedAt).getTime() : 0 }))
-        .sort((left, right) => right.startedAtMs - left.startedAtMs)
-        .map(({ job }) => {
-          const platform = resolvePlatformForPath(job.project);
-          return {
-            jobId: job.id,
-            projectName: resolveProjectNameForPath(job.project),
-            projectPath: job.project,
-            mrPrefix: platform === 'github' ? 'PR' : 'MR',
-            mrNumber: job.mrNumber,
-            mrUrl: job.mrUrl,
-            elapsedLabel: formatOverviewElapsed(job.startedAt),
-            jobType: job.jobType ?? 'review',
-          };
-        });
-
-      const statsByPath = new Map(stats.map((entry) => [entry.path, entry]));
-      const projectCardsItems = availableRepositories.map((repository) => {
-        const entry = statsByPath.get(repository.localPath) ?? null;
-        if (entry === null) {
-          return {
-            projectName: repository.name,
-            projectPath: repository.localPath,
-            platform: repository.platform,
-            totalReviews: 0,
-            averageScoreLabel: '-',
-            sparklinePoints: [],
-            isEmptyHistory: true,
-          };
-        }
-        const reviewsSorted = [...(entry.stats?.reviews ?? [])].sort((left, right) =>
-          String(left.timestamp).localeCompare(String(right.timestamp))
-        );
-        const sparklinePoints = reviewsSorted
-          .slice(-10)
-          .filter((review) => review.score !== null && review.score !== undefined)
-          .map((review) => review.score);
-        const averageScore = entry.summary?.averageScore ?? null;
-        return {
-          projectName: repository.name,
-          projectPath: repository.localPath,
-          platform: repository.platform,
-          totalReviews: entry.summary?.totalReviews ?? 0,
-          averageScoreLabel: averageScore === null ? '-' : averageScore.toFixed(1),
-          sparklinePoints,
-          isEmptyHistory: (entry.summary?.totalReviews ?? 0) === 0,
-        };
-      });
-
-      const recentItems = [...reviews]
-        .sort((left, right) => String(right.mtime).localeCompare(String(left.mtime)))
-        .slice(0, 10)
-        .map((review) => ({
-          filename: review.filename,
-          projectName: resolveProjectNameFromReviewPath(review.path),
-          mrPrefix: review.type === 'PR' ? 'PR' : 'MR',
-          mrNumber: String(review.mrNumber),
-          title: review.title ?? '',
-          mtime: review.mtime,
-        }));
-
-      return {
-        activeReviews: {
-          items: activeReviewsItems,
-          isEmpty: activeReviewsItems.length === 0,
-          emptyMessage: 'Aucune review en cours',
-        },
-        projectCards: {
-          items: projectCardsItems,
-          isEmpty: projectCardsItems.length === 0,
-          emptyMessage: 'Aucun projet configuré',
-        },
-        recentReviewsFeed: {
-          items: recentItems,
-          isEmpty: recentItems.length === 0,
-          emptyMessage: 'Aucune review récente',
-        },
-      };
-    }
-
     async function refreshOverviewSection() {
       const container = document.getElementById('overview-section');
       if (!container) return;
       if (activeTabId !== 'overview') return;
-      const { projects, reviews } = await fetchOverviewData();
-      const payload = buildOverviewPayloadFromClient(projects, reviews);
-      const viewModel = buildOverviewModel(payload);
-      container.innerHTML = renderOverviewHtml(viewModel);
-      container.querySelectorAll('.overview-project-card').forEach((card) => {
-        card.addEventListener('click', () => {
-          const projectPath = card.dataset.projectPath;
-          if (projectPath) activateProjectTab(projectPath);
+      try {
+        const response = await fetch(`${API_URL}/api/overview`);
+        const viewModel = await response.json();
+        container.innerHTML = renderOverviewHtml(viewModel);
+        container.querySelectorAll('.overview-project-card').forEach((card) => {
+          card.addEventListener('click', () => {
+            const projectPath = card.dataset.projectPath;
+            if (projectPath) activateProjectTab(projectPath);
+          });
         });
-      });
+      } catch {
+        // Silent: WS reconnection or next refresh will retry
+      }
     }
 
     async function initOverviewAndTabs() {

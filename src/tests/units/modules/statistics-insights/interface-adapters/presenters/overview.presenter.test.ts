@@ -120,7 +120,7 @@ describe('OverviewPresenter', () => {
       expect(viewModel.activeReviews.items[0]?.mrPrefix).toBe('PR');
     });
 
-    it('falls back to "—" elapsedLabel when startedAt is missing', () => {
+    it('falls back to "—" elapsedLabel when startedAt is null', () => {
       const presenter = new OverviewPresenter({ now: () => NOW });
 
       const viewModel = presenter.present({
@@ -132,6 +132,7 @@ describe('OverviewPresenter', () => {
             project: '/repos/frontend',
             mrUrl: 'https://example.com/5',
             status: 'queued',
+            startedAt: null,
           },
         ],
         projectStats: [],
