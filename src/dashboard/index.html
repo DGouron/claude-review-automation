@@ -50,22 +50,22 @@
       <section id="manage-panel" class="manage-panel" aria-label="Manage projects" data-open="false"></section>
       <nav id="dashboard-tabs" class="dashboard-tab-bar-wrapper" aria-label="Project tabs"></nav>
       <div class="context-chips" aria-label="Toolchain status">
-        <div class="context-chip">
-          <span class="context-chip-label" id="i18n-card-claude-cli"></span>
+        <div class="toolchain-chip">
+          <span class="toolchain-chip-label" id="i18n-card-claude-cli"></span>
           <div id="claude-status" class="card-claude checking">
             <span class="status" id="i18n-claude-checking"></span>
             <span class="version"></span>
           </div>
         </div>
-        <div class="context-chip" id="git-cli-card">
-          <span class="context-chip-label" id="git-cli-label"></span>
+        <div class="toolchain-chip" id="git-cli-card">
+          <span class="toolchain-chip-label" id="git-cli-label"></span>
           <div id="git-cli-status" class="card-claude checking">
             <span class="status" id="i18n-git-load-project"></span>
             <span class="version"></span>
           </div>
         </div>
-        <div class="context-chip context-chip-model">
-          <span class="context-chip-label" id="i18n-card-model"></span>
+        <div class="toolchain-chip toolchain-chip-model">
+          <span class="toolchain-chip-label" id="i18n-card-model"></span>
           <select id="model-select" class="model-select" onchange="changeModel(this.value)">
             <option value="opus" id="i18n-model-opus"></option>
             <option value="sonnet" id="i18n-model-sonnet"></option>
@@ -160,7 +160,7 @@
           <div id="pending-reviews" class="section-content">
             <div class="heartbeat-empty-state" id="pending-reviews-empty-state">
               <span class="heartbeat-label">// STANDBY</span>
-              <span class="heartbeat-message" id="i18n-empty-pending-reviews">Toutes les reviews sont traitées.</span>
+              <span class="heartbeat-message" id="i18n-empty-pending-reviews">No reviews waiting for confirmation</span>
               <div class="heartbeat-line-container" id="heartbeat-line" aria-hidden="true"></div>
             </div>
           </div>
@@ -3592,16 +3592,18 @@
       }).catch(() => {});
     });
 
-    // Boot when DOM is ready
-    window.addEventListener('DOMContentLoaded', () => {
+    // Boot animations & observers exactly once, regardless of readyState timing
+    let __animationsBooted = false;
+    function bootOnce() {
+      if (__animationsBooted) return;
+      __animationsBooted = true;
       bootAnimations();
       observeCounters();
-    });
-
-    // Also boot if already loaded
+    }
     if (document.readyState !== 'loading') {
-      bootAnimations();
-      observeCounters();
+      bootOnce();
+    } else {
+      window.addEventListener('DOMContentLoaded', bootOnce);
     }
   </script>
 </body>

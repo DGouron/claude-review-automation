@@ -47,7 +47,7 @@ export function animateMount(elements, options) {
  * @param {Element} element
  * @param {number} from
  * @param {number} to
- * @param {{ animeApi: object, durationMs?: number }} options
+ * @param {{ animeApi: object, durationMs?: number, onComplete?: () => void }} options
  */
 export function animateCounter(element, from, to, options) {
   if (reducedMotion()) {
@@ -309,6 +309,7 @@ export function expandHeight(element, options) {
   const targetHeight = element.getBoundingClientRect().height;
   element.style.height = '0px';
   element.style.overflow = 'hidden';
+  void element.offsetHeight;
 
   if (reducedMotion()) {
     element.style.height = 'auto';

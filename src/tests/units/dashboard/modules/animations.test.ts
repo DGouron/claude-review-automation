@@ -117,3 +117,137 @@ describe('animations module — export contracts', () => {
     expect(reducedMotion()).toBe(true);
   });
 });
+
+
+describe('animations module — behavioral tests', () => {
+  let originalWindow: unknown;
+
+  beforeEach(() => {
+    originalWindow = globalAny.window;
+    Object.defineProperty(globalThis, 'window', {
+      value: { matchMedia: vi.fn().mockReturnValue({ matches: false }) },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'window', {
+      value: originalWindow,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('animateCounter with reduced-motion writes target value synchronously, no animeApi call', async () => {
+    Object.defineProperty(globalThis, 'window', {
+      value: { matchMedia: vi.fn().mockReturnValue({ matches: true }) },
+      writable: true,
+      configurable: true,
+    });
+    const { animateCounter } = await import('@/dashboard/modules/animations.js');
+    const element = { textContent: '' } as { textContent: string };
+    const animeApi = { animate: vi.fn() };
+    animateCounter(element as Parameters<typeof animateCounter>[0], 0, 42, { animeApi });
+    expect(element.textContent).toBe('42');
+    expect(animeApi.animate).not.toHaveBeenCalled();
+  });
+
+  it('animateCounter passes onComplete to animeApi.animate (regression for counter-loop guard)', async () => {
+    const { animateCounter } = await import('@/dashboard/modules/animations.js');
+    const element = { textContent: '0' } as { textContent: string };
+    const calls: Array<{ params: Record<string, unknown> }> = [];
+    const animeApi = {
+      animate: (_target: unknown, params: Record<string, unknown>) => {
+        calls.push({ params });
+      },
+    };
+    let onCompleteFired = false;
+    animateCounter(element as Parameters<typeof animateCounter>[0], 0, 5, {
+      animeApi,
+      onComplete: () => {
+        onCompleteFired = true;
+      },
+    });
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    const tween = calls[0].params as { onComplete?: () => void };
+    expect(typeof tween.onComplete).toBe('function');
+    tween.onComplete!();
+    expect(onCompleteFired).toBe(true);
+    expect(element.textContent).toBe('5');
+  });
+
+  it('expandHeight with reduced-motion sets height to auto and skips animation', async () => {
+    Object.defineProperty(globalThis, 'window', {
+      value: { matchMedia: vi.fn().mockReturnValue({ matches: true }) },
+      writable: true,
+      configurable: true,
+    });
+    const { expandHeight } = await import('@/dashboard/modules/animations.js');
+    const fakeEl = {
+      style: { height: '', overflow: '' },
+      getBoundingClientRect: () => ({ height: 200 }),
+      offsetHeight: 0,
+    };
+    const animeApi = { animate: vi.fn() };
+    expandHeight(fakeEl as Parameters<typeof expandHeight>[0], { animeApi });
+    expect(fakeEl.style.height).toBe('auto');
+    expect(fakeEl.style.overflow).toBe('');
+    expect(animeApi.animate).not.toHaveBeenCalled();
+  });
+
+  it('collapseHeight with reduced-motion sets height to 0 and skips animation', async () => {
+    Object.defineProperty(globalThis, 'window', {
+      value: { matchMedia: vi.fn().mockReturnValue({ matches: true }) },
+      writable: true,
+      configurable: true,
+    });
+    const { collapseHeight } = await import('@/dashboard/modules/animations.js');
+    const fakeEl = {
+      style: { height: '', overflow: '' },
+      getBoundingClientRect: () => ({ height: 200 }),
+      offsetHeight: 200,
+    };
+    const animeApi = { animate: vi.fn() };
+    collapseHeight(fakeEl as Parameters<typeof collapseHeight>[0], { animeApi });
+    expect(fakeEl.style.height).toBe('0px');
+    expect(animeApi.animate).not.toHaveBeenCalled();
+  });
+
+  it('expandHeight forces a reflow before animating (no flash regression)', async () => {
+    const { expandHeight } = await import('@/dashboard/modules/animations.js');
+    let offsetHeightReads = 0;
+    const element = {
+      style: { height: '', overflow: '' },
+      getBoundingClientRect: () => ({ height: 200 } as unknown),
+      get offsetHeight() {
+        offsetHeightReads += 1;
+        return 0;
+      },
+    };
+    const animeApi = { animate: vi.fn() };
+    expandHeight(element as never, { animeApi });
+    expect(offsetHeightReads).toBeGreaterThanOrEqual(1);
+    expect(animeApi.animate).toHaveBeenCalledTimes(1);
+  });
+
+  it('reducedMotion returns true when matchMedia matches', async () => {
+    Object.defineProperty(globalThis, 'window', {
+      value: { matchMedia: vi.fn().mockReturnValue({ matches: true }) },
+      writable: true,
+      configurable: true,
+    });
+    const { reducedMotion } = await import('@/dashboard/modules/animations.js');
+    expect(reducedMotion()).toBe(true);
+  });
+
+  it('reducedMotion returns false when matchMedia does not match', async () => {
+    Object.defineProperty(globalThis, 'window', {
+      value: { matchMedia: vi.fn().mockReturnValue({ matches: false }) },
+      writable: true,
+      configurable: true,
+    });
+    const { reducedMotion } = await import('@/dashboard/modules/animations.js');
+    expect(reducedMotion()).toBe(false);
+  });
+});
