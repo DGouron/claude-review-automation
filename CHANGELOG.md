@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.21.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.20.0...reviewflow-v3.21.0) (2026-05-25)
+
+
+### Added
+
+* **dashboard:** project CRUD + tabs reposition + settings modal ([#202](https://github.com/DGouron/review-flow/issues/202)) ([d3dfa7b](https://github.com/DGouron/review-flow/commit/d3dfa7bd61717ebe376d704870642a44d6d3d34d))
+
 ## [3.20.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.19.2...reviewflow-v3.20.0) (2026-05-25)
 
 
