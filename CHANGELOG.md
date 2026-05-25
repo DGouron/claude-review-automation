@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.20.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.19.2...reviewflow-v3.20.0) (2026-05-25)
+
+
+### Added
+
+* **dashboard:** implement SPEC-91 multi-project overview UI ([#200](https://github.com/DGouron/review-flow/issues/200)) ([05b1952](https://github.com/DGouron/review-flow/commit/05b1952617cbe2ed7d11953eb28aa37c53a14fae))
+
 ## [3.19.2](https://github.com/DGouron/review-flow/compare/reviewflow-v3.19.1...reviewflow-v3.19.2) (2026-05-24)
 
 
