@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ProjectConfig } from '@/config/projectConfig.js';
-import { loadProjectConfig } from '@/config/projectConfig.js';
+import { parseProjectConfig } from '@/config/projectConfig.js';
 import type {
   ProjectConfigGateway,
   ProjectConfigReadResult,
@@ -12,22 +12,27 @@ function resolveConfigPath(projectPath: string): string {
   return join(projectPath, '.claude', 'reviews', 'config.json');
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 export class ProjectConfigFileSystemGateway implements ProjectConfigGateway {
   read(projectPath: string): ProjectConfigReadResult {
     const configPath = resolveConfigPath(projectPath);
     if (!existsSync(configPath)) {
       return { status: 'not-found' };
     }
+    let parsed: unknown;
     try {
-      JSON.parse(readFileSync(configPath, 'utf-8'));
+      parsed = JSON.parse(readFileSync(configPath, 'utf-8'));
     } catch {
       return { status: 'malformed' };
     }
+    if (!isPlainObject(parsed)) {
+      return { status: 'malformed' };
+    }
     try {
-      const config = loadProjectConfig(projectPath);
-      if (!config) {
-        return { status: 'not-found' };
-      }
+      const config = parseProjectConfig(parsed);
       return { status: 'ok', config };
     } catch {
       return { status: 'malformed' };

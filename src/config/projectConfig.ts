@@ -118,7 +118,15 @@ export function loadProjectConfig(localPath: string): ProjectConfig | undefined 
 
   const rawContent = readFileSync(configPath, 'utf-8');
   const parsed = JSON.parse(rawContent) as Record<string, unknown>;
+  return parseProjectConfig(parsed);
+}
 
+/**
+ * Pure parsing/validation of an already-loaded JSON object.
+ * Throws on missing/invalid fields. Use this when the caller already has
+ * the parsed object in memory and wants to avoid re-reading the file.
+ */
+export function parseProjectConfig(parsed: Record<string, unknown>): ProjectConfig {
   const reviewFocus = parseReviewFocus(parsed.reviewFocus);
 
   const hasExplicitReviewSkill =

@@ -1,15 +1,10 @@
 import type { UseCase } from '@/shared/foundation/usecase.base.js';
+import type { RepositoryEntry } from '@/modules/cli-configuration/entities/repositoryEntry/repositoryEntry.js';
 
 export interface AddRepositoriesToConfigDependencies {
   readFileSync: (path: string, encoding: BufferEncoding) => string;
   writeFileSync: (path: string, content: string) => void;
   existsSync: (path: string) => boolean;
-}
-
-interface RepositoryEntry {
-  name: string;
-  localPath: string;
-  enabled: boolean;
 }
 
 export interface AddRepositoriesToConfigInput {

@@ -22,7 +22,6 @@ async function buildAcceptanceApp(repositories: ReturnType<typeof RepositoryConf
   const app = Fastify();
   await app.register(repositoriesRoutes, {
     getRepositories: () => repositories,
-    mutateRepositories: (mutator) => mutator(repositories),
     addRepository: () => ({ status: 'ok', repositories }),
     removeRepository: () => ({ status: 'ok', repositories }),
     patchRepository: () => ({ status: 'ok', repositories }),

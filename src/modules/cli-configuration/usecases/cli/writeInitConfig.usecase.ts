@@ -1,14 +1,9 @@
 import { join } from 'node:path';
+import type { RepositoryEntry } from '@/modules/cli-configuration/entities/repositoryEntry/repositoryEntry.js';
 
 export interface WriteInitConfigDependencies {
   mkdirSync: (path: string, options: { recursive: boolean }) => void;
   writeFileSync: (path: string, content: string) => void;
-}
-
-interface RepositoryEntry {
-  name: string;
-  localPath: string;
-  enabled: boolean;
 }
 
 export interface WriteInitConfigInput {

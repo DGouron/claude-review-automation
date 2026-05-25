@@ -7,15 +7,10 @@ import {
 import type { RepositoryConfig } from '@/frameworks/config/configLoader.js';
 import { RepositoryConfigFactory } from '@/tests/factories/repositoryConfig.factory.js';
 
-function noopMutate(_mutator: (repos: RepositoryConfig[]) => void): void {
-  // unused in GET-only tests
-}
-
 async function buildApp(repositories: RepositoryConfig[]): Promise<FastifyInstance> {
   const app = Fastify();
   await app.register(repositoriesRoutes, {
     getRepositories: () => repositories,
-    mutateRepositories: noopMutate,
     addRepository: () => ({ status: 'ok', repositories }),
     removeRepository: () => ({ status: 'ok', repositories }),
     patchRepository: () => ({ status: 'ok', repositories }),
@@ -34,7 +29,6 @@ async function buildCustomApp(options: BuildOptions): Promise<FastifyInstance> {
   const app = Fastify();
   await app.register(repositoriesRoutes, {
     getRepositories: () => options.repositories,
-    mutateRepositories: (mutator) => mutator(options.repositories),
     addRepository:
       options.addRepository ?? (() => ({ status: 'ok', repositories: options.repositories })),
     removeRepository:

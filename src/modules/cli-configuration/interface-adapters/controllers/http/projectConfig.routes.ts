@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { logInfo, logError } from '@/frameworks/logging/logBuffer.js';
 import {
   REVIEW_FOCUS_VALUES,
@@ -16,12 +17,63 @@ interface ProjectConfigRoutesOptions {
   updateProjectConfig?: UpdateProjectConfigUseCase;
 }
 
+const querySchema = z.object({ path: z.string().optional() }).passthrough();
+
+const patchBodySchema = z
+  .object({
+    language: z.unknown().optional(),
+    defaultModel: z.unknown().optional(),
+    reviewSkill: z.unknown().optional(),
+    reviewFollowupSkill: z.unknown().optional(),
+    externalLink: z.unknown().optional(),
+  })
+  .passthrough();
+
 function formatReviewFocusValues(): string {
   return REVIEW_FOCUS_VALUES.map(value => `'${value}'`).join(', ');
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return undefined;
+  }
+  const code: unknown = Reflect.get(error, 'code');
+  return typeof code === 'string' ? code : undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function extractPatch(body: Record<string, unknown>): ProjectConfigPatch {
+  const patch: ProjectConfigPatch = {};
+  if ('language' in body && typeof body.language === 'string') {
+    if (body.language === 'en' || body.language === 'fr') {
+      patch.language = body.language;
+    }
+  }
+  if ('defaultModel' in body && typeof body.defaultModel === 'string') {
+    if (body.defaultModel === 'haiku' || body.defaultModel === 'sonnet' || body.defaultModel === 'opus') {
+      patch.defaultModel = body.defaultModel;
+    }
+  }
+  if ('reviewSkill' in body && typeof body.reviewSkill === 'string') {
+    patch.reviewSkill = body.reviewSkill;
+  }
+  if ('reviewFollowupSkill' in body && typeof body.reviewFollowupSkill === 'string') {
+    patch.reviewFollowupSkill = body.reviewFollowupSkill;
+  }
+  if ('externalLink' in body && typeof body.externalLink === 'string') {
+    patch.externalLink = body.externalLink;
+  }
+  return patch;
 }
 
 function validateProjectPath(rawPath: string | undefined): { ok: true; path: string } | { ok: false; error: string } {
@@ -40,8 +92,9 @@ export const projectConfigRoutes: FastifyPluginAsync<ProjectConfigRoutesOptions>
   options,
 ) => {
   fastify.get('/api/project-config', async (request, reply) => {
-    const query = request.query as { path?: string };
-    const validation = validateProjectPath(query.path);
+    const parsedQuery = querySchema.safeParse(request.query);
+    const queryPath = parsedQuery.success ? parsedQuery.data.path : undefined;
+    const validation = validateProjectPath(queryPath);
     if (!validation.ok) {
       reply.code(400);
       return { success: false, error: validation.error };
@@ -122,12 +175,12 @@ export const projectConfigRoutes: FastifyPluginAsync<ProjectConfigRoutesOptions>
       logInfo('Project config loaded', { projectPath, config });
       return { success: true, config, path: configPath };
     } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      if (err.code === 'ENOENT') {
+      if (getErrorCode(error) === 'ENOENT') {
         return { success: false, error: 'config.json file not found in .claude/reviews/' };
       }
-      logError('Error reading project config', { projectPath, error: err.message });
-      return { success: false, error: 'Read error: ' + err.message };
+      const message = getErrorMessage(error);
+      logError('Error reading project config', { projectPath, error: message });
+      return { success: false, error: 'Read error: ' + message };
     }
   });
 
@@ -138,8 +191,9 @@ export const projectConfigRoutes: FastifyPluginAsync<ProjectConfigRoutesOptions>
       return { success: false, error: 'PATCH not configured' };
     }
 
-    const query = request.query as { path?: string };
-    const validation = validateProjectPath(query.path);
+    const parsedQuery = querySchema.safeParse(request.query);
+    const queryPath = parsedQuery.success ? parsedQuery.data.path : undefined;
+    const validation = validateProjectPath(queryPath);
     if (!validation.ok) {
       reply.code(400);
       return { success: false, error: validation.error };
@@ -151,9 +205,15 @@ export const projectConfigRoutes: FastifyPluginAsync<ProjectConfigRoutesOptions>
       return { success: false, error: 'Body must be a JSON object' };
     }
 
+    const parsedBody = patchBodySchema.safeParse(body);
+    if (!parsedBody.success) {
+      reply.code(400);
+      return { success: false, error: 'Invalid body shape' };
+    }
+
     const result = updateProjectConfig.execute({
       path: validation.path,
-      patch: body as ProjectConfigPatch,
+      patch: extractPatch(parsedBody.data),
     });
 
     if (result.status === 'success') {

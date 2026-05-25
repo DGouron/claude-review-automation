@@ -157,7 +157,7 @@ function renderProjectExternalLink(externalLink) {
   if (typeof externalLink !== 'string' || externalLink.length === 0) return '';
   const safeHref = sanitizeHttpUrl(externalLink);
   if (safeHref === '#') return '';
-  return `<a class="project-card__external" href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir la documentation du projet" onclick="event.stopPropagation()">&#x2197;</a>`;
+  return `<a class="project-card__external" href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir la documentation du projet">&#x2197;</a>`;
 }
 
 /**

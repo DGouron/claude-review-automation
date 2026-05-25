@@ -2585,6 +2585,9 @@
             if (projectPath) activateProjectTab(projectPath);
           });
         });
+        container.querySelectorAll('.project-card__external').forEach((anchor) => {
+          anchor.addEventListener('click', (event) => event.stopPropagation());
+        });
       } catch {
         // Silent: WS reconnection or next refresh will retry
       }

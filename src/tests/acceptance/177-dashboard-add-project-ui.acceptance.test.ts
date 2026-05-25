@@ -41,7 +41,6 @@ async function buildAcceptanceApp(options: BuildAppOptions): Promise<{
   const app = Fastify();
   await app.register(repositoriesRoutes, {
     getRepositories: () => repositories,
-    mutateRepositories: (mutator) => mutator(repositories),
     addRepository: ({ localPath }) => {
       if (!diskExists.has(localPath)) {
         return { status: 'not-a-directory' };

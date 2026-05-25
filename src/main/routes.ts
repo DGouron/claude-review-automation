@@ -19,9 +19,11 @@ import { repositoriesRoutes } from '@/modules/cli-configuration/interface-adapte
 import { AddRepositoriesToConfigUseCase } from '@/modules/cli-configuration/usecases/cli/addRepositoriesToConfig.usecase.js';
 import { RemoveRepositoryFromConfigUseCase } from '@/modules/cli-configuration/usecases/cli/removeRepositoryFromConfig.usecase.js';
 import { ToggleRepositoryEnabledUseCase } from '@/modules/cli-configuration/usecases/cli/toggleRepositoryEnabled.usecase.js';
+import { AddRepositoryFromDashboardUseCase } from '@/modules/cli-configuration/usecases/dashboardRepositories/addRepositoryFromDashboard.usecase.js';
+import { RemoveRepositoryFromDashboardUseCase } from '@/modules/cli-configuration/usecases/dashboardRepositories/removeRepositoryFromDashboard.usecase.js';
+import { UpdateRepositoryEnabledFromDashboardUseCase } from '@/modules/cli-configuration/usecases/dashboardRepositories/updateRepositoryEnabledFromDashboard.usecase.js';
 import { enrichSingleRepository, resolveActiveConfigPath } from '@/frameworks/config/configLoader.js';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
 import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js';
 import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
@@ -368,84 +370,42 @@ export async function registerRoutes(
   });
 
   const repositoryConfigDeps = { readFileSync, writeFileSync, existsSync };
-  const addRepositoryUseCase = new AddRepositoriesToConfigUseCase(repositoryConfigDeps);
-  const removeRepositoryUseCase = new RemoveRepositoryFromConfigUseCase(repositoryConfigDeps);
-  const toggleRepositoryUseCase = new ToggleRepositoryEnabledUseCase(repositoryConfigDeps);
+  const addRepositoriesToConfig = new AddRepositoriesToConfigUseCase(repositoryConfigDeps);
+  const removeRepositoryFromConfig = new RemoveRepositoryFromConfigUseCase(repositoryConfigDeps);
+  const toggleRepositoryEnabled = new ToggleRepositoryEnabledUseCase(repositoryConfigDeps);
   const repositoriesConfigPath = resolveActiveConfigPath();
+
+  function isExistingDirectory(path: string): boolean {
+    try {
+      return statSync(path).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  const addRepositoryFromDashboard = new AddRepositoryFromDashboardUseCase({
+    isDirectory: isExistingDirectory,
+    addRepositoriesToConfig,
+    enrichSingleRepository,
+    repositories: deps.config.repositories,
+    configPath: repositoriesConfigPath,
+  });
+  const removeRepositoryFromDashboard = new RemoveRepositoryFromDashboardUseCase({
+    removeRepositoryFromConfig,
+    repositories: deps.config.repositories,
+    configPath: repositoriesConfigPath,
+  });
+  const updateRepositoryEnabledFromDashboard = new UpdateRepositoryEnabledFromDashboardUseCase({
+    toggleRepositoryEnabled,
+    repositories: deps.config.repositories,
+    configPath: repositoriesConfigPath,
+  });
 
   await app.register(repositoriesRoutes, {
     getRepositories: () => deps.config.repositories,
-    mutateRepositories: (mutator) => mutator(deps.config.repositories),
-    addRepository: ({ localPath }) => {
-      let isDirectory = false;
-      try {
-        isDirectory = statSync(localPath).isDirectory();
-      } catch {
-        isDirectory = false;
-      }
-      if (!isDirectory) {
-        return { status: 'not-a-directory' };
-      }
-      const name = basename(localPath);
-      let result: ReturnType<typeof addRepositoryUseCase.execute>;
-      try {
-        result = addRepositoryUseCase.execute({
-          configPath: repositoriesConfigPath,
-          newRepositories: [{ name, localPath, enabled: true }],
-        });
-      } catch {
-        return { status: 'write-failed' };
-      }
-      if (result.skipped.length > 0) {
-        return { status: 'duplicate' };
-      }
-      const enriched = enrichSingleRepository({ name, localPath, enabled: true });
-      deps.config.repositories.push(enriched);
-      return { status: 'ok', repositories: deps.config.repositories };
-    },
-    removeRepository: ({ localPath }) => {
-      let result: ReturnType<typeof removeRepositoryUseCase.execute>;
-      try {
-        result = removeRepositoryUseCase.execute({
-          configPath: repositoriesConfigPath,
-          localPath,
-        });
-      } catch {
-        return { status: 'write-failed' };
-      }
-      if (!result.removed) {
-        return { status: 'not-found' };
-      }
-      const index = deps.config.repositories.findIndex(
-        (repository) => repository.localPath === localPath,
-      );
-      if (index >= 0) {
-        deps.config.repositories.splice(index, 1);
-      }
-      return { status: 'ok', repositories: deps.config.repositories };
-    },
-    patchRepository: ({ localPath, enabled }) => {
-      let result: ReturnType<typeof toggleRepositoryUseCase.execute>;
-      try {
-        result = toggleRepositoryUseCase.execute({
-          configPath: repositoriesConfigPath,
-          localPath,
-          enabled,
-        });
-      } catch {
-        return { status: 'write-failed' };
-      }
-      if (!result.updated) {
-        return { status: 'not-found' };
-      }
-      const target = deps.config.repositories.find(
-        (repository) => repository.localPath === localPath,
-      );
-      if (target) {
-        target.enabled = enabled;
-      }
-      return { status: 'ok', repositories: deps.config.repositories };
-    },
+    addRepository: (input) => addRepositoryFromDashboard.execute(input),
+    removeRepository: (input) => removeRepositoryFromDashboard.execute(input),
+    patchRepository: (input) => updateRepositoryEnabledFromDashboard.execute(input),
   });
 
   app.get('/api', async () => {

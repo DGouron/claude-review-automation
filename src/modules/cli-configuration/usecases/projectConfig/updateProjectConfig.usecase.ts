@@ -60,12 +60,15 @@ function pickWhitelisted(patch: ProjectConfigPatch): ProjectConfigPatch {
   return sanitized;
 }
 
+const SUPPORTED_LANGUAGE_VALUES: readonly string[] = SUPPORTED_LANGUAGES;
+const SUPPORTED_MODEL_VALUES: readonly string[] = SUPPORTED_MODELS;
+
 function isSupportedLanguage(value: unknown): value is Language {
-  return typeof value === 'string' && SUPPORTED_LANGUAGES.includes(value as Language);
+  return typeof value === 'string' && SUPPORTED_LANGUAGE_VALUES.includes(value);
 }
 
 function isSupportedModel(value: unknown): value is ProjectConfig['defaultModel'] {
-  return typeof value === 'string' && SUPPORTED_MODELS.includes(value as ProjectConfig['defaultModel']);
+  return typeof value === 'string' && SUPPORTED_MODEL_VALUES.includes(value);
 }
 
 function mergeConfig(current: ProjectConfig, patch: ProjectConfigPatch): ProjectConfig {
