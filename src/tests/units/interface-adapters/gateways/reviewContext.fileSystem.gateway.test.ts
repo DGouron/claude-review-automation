@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js'
 
 describe('ReviewContextFileSystemGateway', () => {
@@ -208,6 +209,56 @@ describe('ReviewContextFileSystemGateway', () => {
       })
 
       expect(result.success).toBe(false)
+    })
+  })
+
+  describe('listAll', () => {
+    it('returns an empty array when no logs directory exists', () => {
+      expect(gateway.listAll(testDir)).toEqual([])
+    })
+
+    it('returns every context, even when mergeRequestId contains a slash (subdir)', () => {
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'github-owner/repo-1',
+        platform: 'github',
+        projectPath: 'owner/repo',
+        mergeRequestNumber: 1,
+      })
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'github-owner/repo-2',
+        platform: 'github',
+        projectPath: 'owner/repo',
+        mergeRequestNumber: 2,
+      })
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'gitlab-flat-id-3',
+        platform: 'gitlab',
+        projectPath: 'group/proj',
+        mergeRequestNumber: 3,
+      })
+
+      const all = gateway.listAll(testDir)
+      const ids = all.map((c) => c.mergeRequestId).sort()
+      expect(ids).toEqual(['github-owner/repo-1', 'github-owner/repo-2', 'gitlab-flat-id-3'])
+    })
+
+    it('skips malformed JSON files instead of throwing', () => {
+      const logsDir = join(testDir, '.claude', 'reviews', 'logs')
+      mkdirSync(logsDir, { recursive: true })
+      writeFileSync(join(logsDir, 'broken.json'), '{ not valid json')
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'github-owner/repo-1',
+        platform: 'github',
+        projectPath: 'owner/repo',
+        mergeRequestNumber: 1,
+      })
+
+      const all = gateway.listAll(testDir)
+      expect(all.map((c) => c.mergeRequestId)).toEqual(['github-owner/repo-1'])
     })
   })
 

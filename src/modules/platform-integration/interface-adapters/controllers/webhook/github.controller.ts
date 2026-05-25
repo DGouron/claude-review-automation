@@ -365,6 +365,13 @@ export async function handleGitHubWebhook(
                   { ...contextActionResult, threadResolveCount, prNumber: j.mrNumber },
                   'Actions executed from context file for followup'
                 );
+                contextGateway.setResult(j.localPath, mergeRequestId, {
+                  blocking: parsed.blocking,
+                  warnings: parsed.warnings,
+                  suggestions: parsed.suggestions,
+                  score: parsed.score ?? 0,
+                  verdict: parsed.blocking > 0 ? 'needs_fixes' : 'needs_discussion',
+                });
               } else {
                 const threadActions = parseThreadActions(result.stdout);
                 if (threadActions.length > 0) {
@@ -664,6 +671,13 @@ export async function handleGitHubWebhook(
           { ...contextActionResult, prNumber: j.mrNumber },
           'Actions executed from context file'
         );
+        contextGateway.setResult(j.localPath, mergeRequestId, {
+          blocking: parsed.blocking,
+          warnings: parsed.warnings,
+          suggestions: parsed.suggestions,
+          score: parsed.score ?? 0,
+          verdict: parsed.blocking > 0 ? 'needs_fixes' : 'needs_discussion',
+        });
       }
 
       let reviewDiffStats = null;

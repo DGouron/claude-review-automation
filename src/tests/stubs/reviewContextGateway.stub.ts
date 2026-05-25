@@ -84,6 +84,10 @@ export class StubReviewContextGateway implements ReviewContextGateway {
     return { success: true }
   }
 
+  listAll(_localPath: string): ReviewContext[] {
+    return Array.from(this.contexts.values())
+  }
+
   clear(): void {
     this.contexts.clear()
   }

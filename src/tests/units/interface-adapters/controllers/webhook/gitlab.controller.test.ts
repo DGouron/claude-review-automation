@@ -127,6 +127,7 @@ function createStubContextGateway() {
     appendAction: vi.fn(() => ({ success: true })),
     updateProgress: vi.fn(() => ({ success: true })),
     setResult: vi.fn(() => ({ success: true })),
+    listAll: vi.fn(() => []),
   };
 }
 

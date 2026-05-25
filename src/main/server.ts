@@ -14,6 +14,9 @@ import { InMemorySupervisorHealthGateway } from '@/modules/claude-invocation/int
 import { startSupervisorScheduler } from '@/frameworks/scheduler/supervisorScheduler.js';
 import { SupervisorCliGateway, createDefaultSupervisorProbe, createDefaultSupervisorSpawner } from '@/modules/supervisor-management/interface-adapters/gateways/supervisor.cli.gateway.js';
 import { SupervisorLockFileSystemGateway, createDefaultSupervisorLockFileSystem, getDefaultSupervisorLockFilePath } from '@/modules/supervisor-management/interface-adapters/gateways/supervisorLock.fileSystem.gateway.js';
+import { runReviewRecovery } from '@/modules/review-execution/services/reviewRecovery.service.js';
+import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
+import { defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -118,6 +121,23 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     supervisorIntervalMs: 5 * 60 * 1000,
     billingIntervalMs: 60 * 60 * 1000,
   });
+
+  const recoverySummary = await runReviewRecovery({
+    repositories: config.repositories.filter((repo) => repo.enabled),
+    reviewContextGateway: deps.reviewContextGateway,
+    executeActions: async (context, localPath) => {
+      const result = await executeActionsFromContext(
+        context,
+        localPath,
+        deps.logger,
+        defaultCommandExecutor,
+      );
+      return { success: result.failed === 0 };
+    },
+    now: () => Date.now(),
+    logger: deps.logger,
+  });
+  deps.logger.info(recoverySummary, 'Review recovery completed at boot');
 
   await app.listen({
     port,

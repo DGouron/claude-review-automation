@@ -21,4 +21,5 @@ export interface ReviewContextGateway {
   appendAction(localPath: string, mergeRequestId: string, action: ReviewContextAction): UpdateResult
   updateProgress(localPath: string, mergeRequestId: string, progress: ReviewContextProgress): UpdateResult
   setResult(localPath: string, mergeRequestId: string, result: ReviewContextResult): UpdateResult
+  listAll(localPath: string): ReviewContext[]
 }

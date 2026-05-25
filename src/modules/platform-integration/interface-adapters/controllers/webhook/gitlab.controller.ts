@@ -421,6 +421,13 @@ export async function handleGitLabWebhook(
                   { ...contextActionResult, threadResolveCount, mrNumber: j.mrNumber },
                   'Actions executed from context file for followup'
                 );
+                contextGateway.setResult(j.localPath, mergeRequestId, {
+                  blocking: parsed.blocking,
+                  warnings: parsed.warnings,
+                  suggestions: parsed.suggestions,
+                  score: parsed.score ?? 0,
+                  verdict: parsed.blocking > 0 ? 'needs_fixes' : 'needs_discussion',
+                });
               } else {
                 // FALLBACK: Execute thread actions from stdout markers (backward compatibility)
                 const threadActions = parseThreadActions(result.stdout);
@@ -772,6 +779,13 @@ export function buildGitLabReviewProcessor(
             { ...contextActionResult, mrNumber: j.mrNumber },
             'Actions executed from context file'
           );
+          contextGateway.setResult(j.localPath, mergeRequestId, {
+            blocking: parsed.blocking,
+            warnings: parsed.warnings,
+            suggestions: parsed.suggestions,
+            score: parsed.score ?? 0,
+            verdict: parsed.blocking > 0 ? 'needs_fixes' : 'needs_discussion',
+          });
         } else {
           // FALLBACK: Execute thread actions from stdout markers (backward compatibility)
           const threadActions = parseThreadActions(result.stdout);
