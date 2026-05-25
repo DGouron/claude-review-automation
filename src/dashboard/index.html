@@ -78,19 +78,8 @@
           </select>
         </div>
 
-        <div class="project-loader">
-          <select id="project-select" class="project-input" onchange="onProjectSelect(this.value)">
-            <option value="" id="i18n-project-placeholder"></option>
-          </select>
-          <input type="text" id="project-path-input" class="project-input" value="">
-          <button class="btn btn-primary" onclick="loadProjectConfig()">
-            <i data-lucide="folder-open"></i> <span id="i18n-project-load"></span>
-          </button>
-          <button id="remove-project-btn" class="btn btn-secondary" onclick="removeCurrentProject()">
-            <i data-lucide="trash-2"></i>
-          </button>
-          <span id="config-status" class="config-status hidden"></span>
-        </div>
+        <nav id="dashboard-tabs" class="dashboard-tab-bar-wrapper" aria-label="Project tabs"></nav>
+        <span id="config-status" class="config-status hidden"></span>
 
         <div class="focus-strip">
           <div class="focus-chip focus-now">
@@ -121,6 +110,8 @@
       </aside>
 
       <main class="dashboard-main">
+        <section id="overview-section" class="overview-section" aria-label="Multi-project overview"></section>
+
         <div id="data-loading-state" class="data-loading hidden" role="status" aria-live="polite">
           <i data-lucide="loader-circle"></i>
           <span id="i18n-loading-data"></span>
@@ -319,6 +310,8 @@
     import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from './modules/html.js';
     import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
     import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_PROJECTS, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
+    import { buildTabBarModel, renderTabBarHtml, readActiveTab, writeActiveTab } from './modules/tabBar.js';
+    import { buildOverviewModel, renderOverviewHtml } from './modules/overview.js';
     import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
     import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
     import { collectReviewNotifications, createReviewNotificationState } from './modules/notifications.js';
@@ -2088,6 +2081,9 @@
                 if (message.type === 'state') {
                   fetchMrTracking();
                 }
+                if (activeTabId === 'overview') {
+                  refreshOverviewSection();
+                }
                 break;
               case 'progress':
                 handleProgressUpdate(message);
@@ -2305,6 +2301,7 @@
 
     function updateProjectSelect() {
       const select = document.getElementById('project-select');
+      if (!select) return;
       const projects = getStoredProjects();
       const current = localStorage.getItem(STORAGE_KEY_CURRENT) || '';
 
@@ -2322,7 +2319,8 @@
 
     function onProjectSelect(path) {
       if (path) {
-        document.getElementById('project-path-input').value = '';
+        const input = document.getElementById('project-path-input');
+        if (input) input.value = '';
         loadProjectConfigFromPath(path);
       }
     }
@@ -2330,7 +2328,7 @@
     async function loadProjectConfig() {
       const input = document.getElementById('project-path-input');
       const select = document.getElementById('project-select');
-      const projectPath = input.value.trim() || select.value;
+      const projectPath = (input?.value.trim() ?? '') || (select?.value ?? '');
 
       if (!projectPath) {
         showConfigStatus(t('error.selectOrEnterPath'), 'error');
@@ -2358,8 +2356,10 @@
           addProjectToHistory(projectPath);
           localStorage.setItem(STORAGE_KEY_CURRENT, projectPath);
 
-          document.getElementById('project-select').value = projectPath;
-          document.getElementById('project-path-input').value = '';
+          const legacySelect = document.getElementById('project-select');
+          if (legacySelect) legacySelect.value = projectPath;
+          const legacyInput = document.getElementById('project-path-input');
+          if (legacyInput) legacyInput.value = '';
 
           const shortName = projectPath.split('/').slice(-2).join('/');
           showConfigStatus(`<i data-lucide="check-circle"></i> ${escapeHtml(shortName)}`, 'success');
@@ -2415,7 +2415,7 @@
 
     function removeCurrentProject() {
       const select = document.getElementById('project-select');
-      const path = select.value;
+      const path = select?.value ?? currentProjectPath ?? '';
       if (!path) {
         showConfigStatus(t('project.noProjectSelected'), 'error');
         return;
@@ -2426,7 +2426,7 @@
         localStorage.removeItem(STORAGE_KEY_CURRENT);
         currentProjectPath = null;
         currentProjectConfig = null;
-        document.getElementById('config-info').classList.add('hidden');
+        document.getElementById('config-info')?.classList.add('hidden');
         showConfigStatus(t('project.removed'), 'success');
       }
     }
@@ -2450,22 +2450,215 @@
       }
     }
 
-    async function initProjectLoader() {
-      await syncServerRepositories();
-      updateProjectSelect();
-      const lastProject = localStorage.getItem(STORAGE_KEY_CURRENT);
-      if (lastProject) {
-        loadProjectConfigFromPath(lastProject);
-      } else {
-        const storedProjects = getStoredProjects();
-        if (storedProjects.length > 0) {
-          loadProjectConfigFromPath(storedProjects[0]);
-        } else {
-          document.getElementById('recent-reviews').innerHTML =
-            `<div class="empty-state">${t('empty.reviewsNoProject')}</div>`;
-          document.getElementById('project-stats').innerHTML =
-            `<div class="empty-state">${t('empty.statsNoProject')}</div>`;
+    // SPEC-91 — Dashboard Multi-Project Overview
+    let availableRepositories = [];
+    let activeTabId = 'overview';
+
+    async function fetchAvailableRepositories() {
+      try {
+        const response = await fetch(`${API_URL}/api/repositories`);
+        const data = await response.json();
+        availableRepositories = Array.isArray(data.repositories)
+          ? data.repositories.filter((repository) => repository.enabled)
+          : [];
+      } catch {
+        availableRepositories = [];
+      }
+    }
+
+    function renderDashboardTabs() {
+      const container = document.getElementById('dashboard-tabs');
+      if (!container) return;
+      const model = buildTabBarModel({
+        repositories: availableRepositories,
+        activeTabId: activeTabId === 'overview' ? null : activeTabId,
+      });
+      container.innerHTML = renderTabBarHtml(model);
+      container.querySelectorAll('.dashboard-tab').forEach((button) => {
+        button.addEventListener('click', () => {
+          const tabId = button.dataset.tabId;
+          if (!tabId) return;
+          handleTabClick(tabId);
+        });
+      });
+    }
+
+    function handleTabClick(tabId) {
+      if (tabId === 'overview') {
+        activateOverviewTab();
+        return;
+      }
+      activateProjectTab(tabId);
+    }
+
+    function activateOverviewTab() {
+      activeTabId = 'overview';
+      writeActiveTab('overview');
+      document.body.classList.add('overview-tab-active');
+      const overviewSection = document.getElementById('overview-section');
+      if (overviewSection) overviewSection.classList.remove('hidden');
+      renderDashboardTabs();
+      refreshOverviewSection();
+    }
+
+    function activateProjectTab(projectPath) {
+      activeTabId = projectPath;
+      writeActiveTab(projectPath);
+      document.body.classList.remove('overview-tab-active');
+      const overviewSection = document.getElementById('overview-section');
+      if (overviewSection) overviewSection.classList.add('hidden');
+      renderDashboardTabs();
+      loadProjectConfigFromPath(projectPath);
+    }
+
+    async function fetchOverviewData() {
+      try {
+        const [statsResponse, reviewsResponse] = await Promise.all([
+          fetch(`${API_URL}/api/stats`),
+          fetch(`${API_URL}/api/reviews`),
+        ]);
+        const statsData = await statsResponse.json();
+        const reviewsData = await reviewsResponse.json();
+        return {
+          projects: Array.isArray(statsData.projects) ? statsData.projects : [],
+          reviews: Array.isArray(reviewsData.reviews) ? reviewsData.reviews : [],
+        };
+      } catch {
+        return { projects: [], reviews: [] };
+      }
+    }
+
+    function resolveProjectNameForPath(localPath) {
+      const match = availableRepositories.find((repository) => repository.localPath === localPath);
+      return match ? match.name : '—';
+    }
+
+    function resolveProjectNameFromReviewPath(reviewPath) {
+      const match = availableRepositories.find((repository) =>
+        typeof reviewPath === 'string' && reviewPath.startsWith(`${repository.localPath}/`)
+      );
+      return match ? match.name : '—';
+    }
+
+    function resolvePlatformForPath(localPath) {
+      const match = availableRepositories.find((repository) => repository.localPath === localPath);
+      return match ? match.platform : 'gitlab';
+    }
+
+    function formatOverviewElapsed(startedAt) {
+      if (!startedAt) return '—';
+      const startedMs = new Date(startedAt).getTime();
+      if (Number.isNaN(startedMs)) return '—';
+      return formatDuration(startedAt);
+    }
+
+    function buildOverviewPayloadFromClient(stats, reviews) {
+      const activeReviewsItems = [...currentData.activeReviews]
+        .map((job) => ({ job, startedAtMs: job.startedAt ? new Date(job.startedAt).getTime() : 0 }))
+        .sort((left, right) => right.startedAtMs - left.startedAtMs)
+        .map(({ job }) => {
+          const platform = resolvePlatformForPath(job.project);
+          return {
+            jobId: job.id,
+            projectName: resolveProjectNameForPath(job.project),
+            projectPath: job.project,
+            mrPrefix: platform === 'github' ? 'PR' : 'MR',
+            mrNumber: job.mrNumber,
+            mrUrl: job.mrUrl,
+            elapsedLabel: formatOverviewElapsed(job.startedAt),
+            jobType: job.jobType ?? 'review',
+          };
+        });
+
+      const statsByPath = new Map(stats.map((entry) => [entry.path, entry]));
+      const projectCardsItems = availableRepositories.map((repository) => {
+        const entry = statsByPath.get(repository.localPath) ?? null;
+        if (entry === null) {
+          return {
+            projectName: repository.name,
+            projectPath: repository.localPath,
+            platform: repository.platform,
+            totalReviews: 0,
+            averageScoreLabel: '-',
+            sparklinePoints: [],
+            isEmptyHistory: true,
+          };
         }
+        const reviewsSorted = [...(entry.stats?.reviews ?? [])].sort((left, right) =>
+          String(left.timestamp).localeCompare(String(right.timestamp))
+        );
+        const sparklinePoints = reviewsSorted
+          .slice(-10)
+          .filter((review) => review.score !== null && review.score !== undefined)
+          .map((review) => review.score);
+        const averageScore = entry.summary?.averageScore ?? null;
+        return {
+          projectName: repository.name,
+          projectPath: repository.localPath,
+          platform: repository.platform,
+          totalReviews: entry.summary?.totalReviews ?? 0,
+          averageScoreLabel: averageScore === null ? '-' : averageScore.toFixed(1),
+          sparklinePoints,
+          isEmptyHistory: (entry.summary?.totalReviews ?? 0) === 0,
+        };
+      });
+
+      const recentItems = [...reviews]
+        .sort((left, right) => String(right.mtime).localeCompare(String(left.mtime)))
+        .slice(0, 10)
+        .map((review) => ({
+          filename: review.filename,
+          projectName: resolveProjectNameFromReviewPath(review.path),
+          mrPrefix: review.type === 'PR' ? 'PR' : 'MR',
+          mrNumber: String(review.mrNumber),
+          title: review.title ?? '',
+          mtime: review.mtime,
+        }));
+
+      return {
+        activeReviews: {
+          items: activeReviewsItems,
+          isEmpty: activeReviewsItems.length === 0,
+          emptyMessage: 'Aucune review en cours',
+        },
+        projectCards: {
+          items: projectCardsItems,
+          isEmpty: projectCardsItems.length === 0,
+          emptyMessage: 'Aucun projet configuré',
+        },
+        recentReviewsFeed: {
+          items: recentItems,
+          isEmpty: recentItems.length === 0,
+          emptyMessage: 'Aucune review récente',
+        },
+      };
+    }
+
+    async function refreshOverviewSection() {
+      const container = document.getElementById('overview-section');
+      if (!container) return;
+      if (activeTabId !== 'overview') return;
+      const { projects, reviews } = await fetchOverviewData();
+      const payload = buildOverviewPayloadFromClient(projects, reviews);
+      const viewModel = buildOverviewModel(payload);
+      container.innerHTML = renderOverviewHtml(viewModel);
+      container.querySelectorAll('.overview-project-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const projectPath = card.dataset.projectPath;
+          if (projectPath) activateProjectTab(projectPath);
+        });
+      });
+    }
+
+    async function initOverviewAndTabs() {
+      await fetchAvailableRepositories();
+      await syncServerRepositories();
+      const persistedTab = readActiveTab();
+      const repositoryPaths = availableRepositories.map((repository) => repository.localPath);
+      if (persistedTab && persistedTab !== 'overview' && repositoryPaths.includes(persistedTab)) {
+        activateProjectTab(persistedTab);
+      } else {
+        activateOverviewTab();
       }
     }
 
@@ -2926,7 +3119,7 @@
     checkClaudeStatus();
     loadModelSetting();
     loadLanguageSetting();
-    initProjectLoader();
+    initOverviewAndTabs();
     refreshBudgetTile();
     initBudgetSlider();
 

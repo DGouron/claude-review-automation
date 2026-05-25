@@ -4,7 +4,49 @@
 **Labels**: enhancement, P1-critical, dashboard
 **Milestone**: Dashboard Modularization
 **Date**: 2026-03-14
-**Status**: re-drafted (2026-05-24) — UI layer never delivered despite previous "implemented" mark
+**Status**: implemented (2026-05-25)
+
+---
+
+## Implementation
+
+### Artefacts
+
+| Layer | Artefact | File |
+|---|---|---|
+| HTTP Controller | `repositoriesRoutes` (`GET /api/repositories`) | `src/modules/cli-configuration/interface-adapters/controllers/http/repositories.routes.ts` |
+| Presenter | `OverviewPresenter` | `src/modules/statistics-insights/interface-adapters/presenters/overview.presenter.ts` |
+| Dashboard module (humble) | `overview.js` — `buildOverviewModel`, `renderOverviewHtml`, `renderSparklineSvg`, `shouldRefreshOverviewOnState` | `src/dashboard/modules/overview.js` |
+| Dashboard module (humble) | `tabBar.js` — `buildTabBarModel`, `renderTabBarHtml`, `readActiveTab`, `writeActiveTab`, `resolveActiveView`, `resolveTabClick` | `src/dashboard/modules/tabBar.js` |
+| Constants | `STORAGE_KEY_ACTIVE_TAB` | `src/dashboard/modules/constants.js` |
+| HTML restructure | Tab bar `<nav id="dashboard-tabs">` replacing project dropdown; `<section id="overview-section">` mount | `src/dashboard/index.html` |
+| Styles | Agentic OS DNA block (tab bar, overview panel, project cards, sparklines, status dots, glow-pulse) | `src/dashboard/styles.css` |
+| Wiring | Register `repositoriesRoutes` plugin | `src/main/routes.ts` |
+| Acceptance test | 8 tests covering Scenarios 2, 4, 6, 9, 10, 12 + `/api/repositories` shape | `src/tests/acceptance/91-dashboard-multi-project-overview.acceptance.test.ts` |
+
+### Endpoints
+
+| Method | Route | Source | Notes |
+|---|---|---|---|
+| GET | `/api/repositories` | New | Returns `{ repositories: Array<{ name, localPath, platform, enabled }> }` from config |
+| GET | `/api/stats` (no `path` param) | Pre-existing | Returns all-project stats, consumed by Overview |
+| GET | `/api/reviews` (no `path` param) | Pre-existing | Returns cross-project recent reviews, consumed by Overview |
+
+### Architectural decisions
+
+- **No new entity, no new use case, no new gateway** — anti-overengineering challenge respected: Overview is a presentation aggregation over existing gateway data, so logic lives in the presenter and dashboard modules.
+- **Humble Objects strictly enforced** — `overview.js` and `tabBar.js` contain only render and pure helpers. ALL formatting, sorting, sparkline computation, French empty-state messages live in the TypeScript `OverviewPresenter` (unit-tested) or in tiny pure helpers in the JS modules (unit-tested).
+- **Inline-logic budget in `index.html`** — orchestration only (fetch, mount, attach listeners). Decision helpers (`resolveActiveView`, `shouldRefreshOverviewOnState`, `resolveTabClick`) extracted into testable JS modules to avoid untested inline logic in the 2k+ LOC HTML file.
+- **Tab persistence via `localStorage`** under key `review-flow-active-tab` (exported as `STORAGE_KEY_ACTIVE_TAB` from `constants.js`).
+- **Per-project tab behaviour unchanged** — `activateProjectTab` only writes the active tab + dispatches the existing `loadProjectConfigFromPath`. Hide/show via `body.overview-tab-active` CSS toggle. Legacy globals (`onProjectSelect`, `loadProjectConfig`, `removeCurrentProject`) kept null-guarded to avoid touching unrelated code.
+- **Spec scenarios coverage** — 12/12 delivered: 9 automated (acceptance + presenter + modules), 3 (real-time WS update, click→navigate, per-project tab unchanged) verified via wiring code review per plan disposition.
+
+### Verification
+
+- `yarn verify` GREEN end-to-end: typecheck + lint (673 files) + 272 test files / 1968 tests pass, 0 fail.
+- 46 new/updated tests for SPEC-91. Zero regression on the 1922 pre-existing tests.
+
+---
 
 ---
 

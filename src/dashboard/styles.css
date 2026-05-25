@@ -4573,3 +4573,339 @@ input:focus-visible,
     animation: none !important;
   }
 }
+
+/* ============================================================
+   SPEC-91 — Dashboard Multi-Project Overview
+   Visual DNA: warm near-black + amber + green, monospace,
+   corner-bracket frames, // LABEL prefix, glow-pulse status dots.
+   Reference: project_agentic_os_design_dna.md.
+   ============================================================ */
+
+.dashboard-tab-bar-wrapper {
+  --overview-bg: #0a0908;
+  --overview-border-faint: rgba(255, 180, 100, 0.12);
+  --overview-border-active: rgba(255, 138, 61, 0.65);
+  --overview-accent: #ff8a3d;
+  --overview-accent-dim: #a85a25;
+  --overview-success: #5ce28b;
+  --overview-text-primary: #f3eee8;
+  --overview-text-muted: #7a716a;
+  --overview-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Berkeley Mono", monospace;
+
+  display: block;
+  font-family: var(--overview-mono);
+}
+
+.dashboard-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid var(--overview-border-faint);
+}
+
+.dashboard-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--overview-text-muted);
+  cursor: pointer;
+  font-family: var(--overview-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 8px 14px;
+  text-transform: uppercase;
+  transition: color 120ms ease-out, background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.dashboard-tab:hover {
+  color: var(--overview-text-primary);
+  background: rgba(255, 138, 61, 0.06);
+}
+
+.dashboard-tab.is-active {
+  color: var(--overview-accent);
+  border-color: var(--overview-border-active);
+  background: var(--overview-bg);
+  position: relative;
+}
+
+.dashboard-tab.is-active::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--overview-accent);
+  border-left: 2px solid var(--overview-accent);
+  pointer-events: none;
+}
+
+.dashboard-tab.is-active::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--overview-accent);
+  border-right: 2px solid var(--overview-accent);
+  pointer-events: none;
+}
+
+#overview-section {
+  --overview-bg: #0a0908;
+  --overview-border-faint: rgba(255, 180, 100, 0.12);
+  --overview-border-active: rgba(255, 138, 61, 0.65);
+  --overview-accent: #ff8a3d;
+  --overview-accent-dim: #a85a25;
+  --overview-success: #5ce28b;
+  --overview-text-primary: #f3eee8;
+  --overview-text-muted: #7a716a;
+  --overview-glow-active: 0 0 12px rgba(255, 138, 61, 0.55);
+  --overview-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Berkeley Mono", monospace;
+
+  display: block;
+  margin: 24px 0;
+  font-family: var(--overview-mono);
+  color: var(--overview-text-primary);
+}
+
+body:not(.overview-tab-active) #overview-section {
+  display: none;
+}
+
+body.overview-tab-active .dashboard-main > .section,
+body.overview-tab-active .dashboard-main > #pending-reviews-section,
+body.overview-tab-active .dashboard-main > #stats-section,
+body.overview-tab-active .dashboard-main > #team-section,
+body.overview-tab-active .dashboard-main > #claude-economics-section,
+body.overview-tab-active .dashboard-main > #active-reviews-section,
+body.overview-tab-active .dashboard-main > #active-followups-section,
+body.overview-tab-active .dashboard-main > #pending-fix-section,
+body.overview-tab-active .dashboard-main > #pending-approval-section,
+body.overview-tab-active .dashboard-main > #completed-reviews-section,
+body.overview-tab-active .dashboard-main > #cleanup-section,
+body.overview-tab-active .dashboard-main > #config-info,
+body.overview-tab-active .dashboard-main > .refresh-info {
+  display: none;
+}
+
+#overview-section .overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 1100px) {
+  #overview-section .overview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #overview-section .overview-grid > [data-section="projects"] {
+    grid-column: 1 / -1;
+  }
+}
+
+#overview-section .overview-panel {
+  position: relative;
+  background: var(--overview-bg);
+  border: 1px solid var(--overview-border-faint);
+  padding: 18px 20px 16px;
+  animation: overview-reveal 250ms ease-out;
+}
+
+#overview-section .overview-panel::before,
+#overview-section .overview-panel::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+
+#overview-section .overview-panel::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--overview-border-active);
+  border-left: 2px solid var(--overview-border-active);
+}
+
+#overview-section .overview-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--overview-border-active);
+  border-right: 2px solid var(--overview-border-active);
+}
+
+@keyframes overview-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#overview-section .overview-panel-title {
+  font-family: var(--overview-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--overview-accent);
+  margin-bottom: 14px;
+}
+
+#overview-section .overview-empty {
+  color: var(--overview-text-muted);
+  font-family: var(--overview-mono);
+  font-size: 12px;
+  padding: 16px 0;
+  text-align: center;
+}
+
+#overview-section .overview-active-list,
+#overview-section .overview-recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#overview-section .overview-active-row,
+#overview-section .overview-recent-row {
+  display: grid;
+  grid-template-columns: 14px auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  font-family: var(--overview-mono);
+  font-size: 12px;
+  transition: border-color 120ms ease-out, background-color 120ms ease-out;
+}
+
+#overview-section .overview-active-row:hover,
+#overview-section .overview-recent-row:hover {
+  border-color: var(--overview-border-faint);
+  background: rgba(255, 138, 61, 0.04);
+}
+
+#overview-section .overview-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--overview-success);
+  box-shadow: 0 0 6px rgba(92, 226, 139, 0.55);
+  animation: overview-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes overview-pulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 6px rgba(92, 226, 139, 0.45); }
+  50%      { opacity: 1;   box-shadow: 0 0 12px rgba(92, 226, 139, 0.75); }
+}
+
+#overview-section .overview-active-project,
+#overview-section .overview-recent-project {
+  color: var(--overview-accent);
+  letter-spacing: 0.04em;
+}
+
+#overview-section .overview-active-mr,
+#overview-section .overview-recent-mr {
+  color: var(--overview-text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+#overview-section .overview-active-mr:hover {
+  color: var(--overview-accent);
+  text-decoration: underline;
+}
+
+#overview-section .overview-active-elapsed {
+  color: var(--overview-text-muted);
+  text-align: right;
+}
+
+#overview-section .overview-recent-title {
+  color: var(--overview-text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#overview-section .overview-project-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+#overview-section .overview-project-card {
+  background: transparent;
+  border: 1px solid var(--overview-border-faint);
+  color: var(--overview-text-primary);
+  cursor: pointer;
+  font-family: var(--overview-mono);
+  padding: 14px 14px 10px;
+  text-align: left;
+  transition: border-color 120ms ease-out, background-color 120ms ease-out, transform 120ms ease-out;
+}
+
+#overview-section .overview-project-card:hover {
+  border-color: var(--overview-border-active);
+  background: rgba(255, 138, 61, 0.06);
+  transform: translateY(-1px);
+}
+
+#overview-section .overview-project-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+#overview-section .overview-project-card-name {
+  color: var(--overview-accent);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+#overview-section .overview-project-card-platform {
+  color: var(--overview-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+#overview-section .overview-project-card-totals {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--overview-text-primary);
+  margin-bottom: 8px;
+}
+
+#overview-section .overview-project-card-score {
+  color: var(--overview-success);
+}
+
+#overview-section .overview-project-card-sparkline {
+  height: 28px;
+  color: var(--overview-accent);
+}
+
+#overview-section .overview-sparkline {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #overview-section .overview-panel,
+  #overview-section .overview-status-dot,
+  #overview-section .overview-project-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}

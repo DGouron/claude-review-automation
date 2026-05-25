@@ -13,6 +13,7 @@ import { mrTrackingAdvancedRoutes } from '@/modules/tracking/interface-adapters/
 import { logsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/logs.routes.js';
 import { cliStatusRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/cliStatus.routes.js';
 import { projectConfigRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/projectConfig.routes.js';
+import { repositoriesRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/repositories.routes.js';
 import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/controllers/http/cleanup.routes.js';
 import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js';
 import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
@@ -338,14 +339,8 @@ export async function registerRoutes(
     reply.redirect('/dashboard/');
   });
 
-  app.get('/api/repositories', async () => {
-    return {
-      repositories: deps.config.repositories.map((repository) => ({
-        name: repository.name,
-        localPath: repository.localPath,
-        enabled: repository.enabled,
-      })),
-    };
+  await app.register(repositoriesRoutes, {
+    getRepositories: () => deps.config.repositories,
   });
 
   app.get('/api', async () => {
