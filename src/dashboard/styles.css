@@ -5801,60 +5801,72 @@ input:focus-visible,
   }
 }
 
-/* Task 6 — Toolchain chips (context bar, right-aligned in project-bar) */
+/* Task 6 — Toolchain chips: inline mono text, right-aligned in project-bar */
 .context-chips {
   flex: 0 0 auto;
   display: flex;
-  gap: 1.25rem;
+  gap: 1.75rem;
   align-items: center;
   margin-left: auto;
+  padding: 0 0.25rem;
+  height: 100%;
+}
+.context-chips .context-chip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   font-family: var(--font-mono);
   font-size: 11px;
-  padding: 0 0.25rem;
-}
-.context-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-width: 0;
   white-space: nowrap;
+  min-height: 28px;
+  letter-spacing: 0.04em;
 }
-.context-chip-label {
+.context-chips .context-chip-label {
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.12em;
   color: var(--ink-2);
   font-size: 10px;
+  font-weight: 500;
 }
-.context-chip .card-claude {
+.context-chips .context-chip .card-claude {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-direction: row;
   font-size: 12px;
   padding: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
   background: transparent;
 }
-.context-chip .card-claude .status { font-size: 12px; }
-.context-chip .card-claude .version {
+.context-chips .context-chip .card-claude .status { font-size: 12px; }
+.context-chips .context-chip .card-claude .version {
   color: var(--ink-3);
   font-size: 10px;
 }
-.context-chip .card-claude.available { color: var(--success); }
-.context-chip .card-claude.unavailable { color: var(--danger); }
-.context-chip .card-claude.checking { color: var(--warning); }
-.context-chip-model .model-select {
-  background: var(--bg-2);
-  color: var(--ink-0);
+.context-chips .context-chip .card-claude.available { color: var(--success); }
+.context-chips .context-chip .card-claude.available .status { color: var(--success); }
+.context-chips .context-chip .card-claude.unavailable { color: var(--danger); }
+.context-chips .context-chip .card-claude.unavailable .status { color: var(--danger); }
+.context-chips .context-chip .card-claude.checking { color: var(--warning); }
+.context-chips .context-chip .card-claude.checking .status { color: var(--warning); }
+.context-chips .context-chip-model .model-select {
+  background: var(--bg-1);
+  color: var(--ink-1);
   border: 1px solid var(--ink-4);
   border-radius: 4px;
   padding: 3px 8px;
   font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 16px;
   cursor: pointer;
   transition: border-color 150ms ease;
 }
-.context-chip-model .model-select:hover { border-color: var(--accent); }
-.context-chip-model .model-select:focus {
+.context-chips .context-chip-model .model-select:hover { border-color: var(--accent); }
+.context-chips .context-chip-model .model-select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-ghost);
@@ -5867,5 +5879,6 @@ input:focus-visible,
     width: 100%;
     flex-basis: 100%;
     margin-top: 0.5rem;
+    justify-content: flex-end;
   }
 }
