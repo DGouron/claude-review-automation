@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.22.0...reviewflow-v3.23.0) (2026-05-26)
+
+
+### Added
+
+* **tracking:** block approval below quality threshold (SPEC-180 iter A) ([#209](https://github.com/DGouron/review-flow/issues/209)) ([9b1f4ca](https://github.com/DGouron/review-flow/commit/9b1f4ca9b40df65b612176465014592f7aab9a73))
+* **tracking:** comment-based bypass for quality gate (SPEC-180 iter B) ([#211](https://github.com/DGouron/review-flow/issues/211)) ([77e6356](https://github.com/DGouron/review-flow/commit/77e6356c2780f6300cd6a127f170a282ba72c4e0))
+* **tracking:** platform unapprove + FR comment on non-qualified MR (SPEC-180 iter C) ([#212](https://github.com/DGouron/review-flow/issues/212)) ([35c5e32](https://github.com/DGouron/review-flow/commit/35c5e320bb8879fc26d14253be4071de0d08d78b))
+
 ## [3.22.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.21.0...reviewflow-v3.22.0) (2026-05-25)
 
 
