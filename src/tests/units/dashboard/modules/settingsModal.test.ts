@@ -73,6 +73,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -87,6 +88,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-back',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -102,6 +104,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: 'https://notion.so/x',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -116,6 +119,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'frontend',
     });
 
@@ -130,6 +134,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
