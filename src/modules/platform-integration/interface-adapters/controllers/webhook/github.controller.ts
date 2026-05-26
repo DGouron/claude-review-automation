@@ -1,8 +1,9 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
 import { verifyGitHubSignature, getGitHubEventType } from '@/security/verifier.js';
-import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose, filterGitHubPrUpdate } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
+import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose, filterGitHubPrUpdate, filterGitHubIssueCommentEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { gitHubPullRequestEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
+import { gitHubIssueCommentEventGuard } from '@/modules/platform-integration/entities/github/githubIssueCommentEvent.guard.js';
 import { findRepositoryByRemoteUrl, type RepositoryConfig } from '@/config/loader.js';
 import {
   enqueueReview,
@@ -18,6 +19,8 @@ import type { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/rec
 import type { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import type { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { ReviewContextResultFactory } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.factory.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
@@ -59,6 +62,9 @@ export interface GitHubWebhookDependencies {
   claudeInvokerDeps?: ClaudeInvokerDependencies;
   gateClaudeInvocation?: GateClaudeInvocationUseCase;
   removeWorktree: RemoveWorktreeAction;
+  recordBypass: RecordBypassUseCase;
+  noteCommentPostGateway: NoteCommentPostGateway;
+  now: () => string;
 }
 
 function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): string[] {
@@ -76,6 +82,69 @@ function computeSourceForkCloneUrl(pullRequest: {
   if (!headRepo || !baseRepo) return undefined;
   if (headRepo.full_name === baseRepo.full_name) return undefined;
   return headRepo.clone_url;
+}
+
+async function handleGitHubIssueCommentHook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  logger: Logger,
+  deps: GitHubWebhookDependencies,
+): Promise<void> {
+  const parseResult = gitHubIssueCommentEventGuard.safeParse(request.body);
+  if (!parseResult.success) {
+    logger.debug({ errors: parseResult.error }, 'Invalid GitHub issue_comment payload (ignored)');
+    reply.status(200).send({ status: 'ignored', reason: 'Comment payload not parseable' });
+    return;
+  }
+
+  const filterResult = filterGitHubIssueCommentEvent(parseResult.data);
+  if (!filterResult.shouldProcess) {
+    reply.status(200).send({ status: 'ignored', reason: filterResult.reason });
+    return;
+  }
+
+  const repoConfig = findRepositoryByRemoteUrl(parseResult.data.repository.clone_url);
+  if (!repoConfig) {
+    logger.debug({ projectPath: filterResult.projectPath }, 'Comment for unconfigured repository (ignored)');
+    reply.status(200).send({ status: 'ignored', reason: 'Repository not configured' });
+    return;
+  }
+
+  const mrId = `github-${filterResult.projectPath}-${filterResult.mergeRequestNumber}`;
+  const result = deps.recordBypass.execute({
+    projectPath: repoConfig.localPath,
+    mrId,
+    commentBody: filterResult.commentBody,
+    author: filterResult.authorUsername,
+    now: deps.now,
+  });
+
+  if (result.kind === 'rejected-missing-reason') {
+    await deps.noteCommentPostGateway.postComment({
+      projectPath: filterResult.projectPath,
+      mrNumber: filterResult.mergeRequestNumber,
+      body: result.message,
+    });
+    logger.info({ mrId, author: filterResult.authorUsername }, 'Bypass marker without reason rejected');
+    reply.status(200).send({ status: 'bypass-rejected', reason: 'missing-reason' });
+    return;
+  }
+
+  if (result.kind === 'recorded') {
+    logger.info(
+      { mrId, author: result.bypass.author, reason: result.bypass.reason },
+      'Bypass recorded on tracked PR',
+    );
+    reply.status(200).send({ status: 'bypass-recorded' });
+    return;
+  }
+
+  if (result.kind === 'mr-not-found') {
+    reply.status(200).send({ status: 'ignored', reason: 'PR not tracked' });
+    return;
+  }
+
+  reply.status(200).send({ status: 'ignored', reason: 'No bypass marker' });
 }
 
 export async function handleGitHubWebhook(
@@ -96,6 +165,12 @@ export async function handleGitHubWebhook(
 
   // 2. Check event type
   const eventType = getGitHubEventType(request);
+
+  if (eventType === 'issue_comment') {
+    await handleGitHubIssueCommentHook(request, reply, logger, deps);
+    return;
+  }
+
   if (eventType !== 'pull_request') {
     logger.debug({ eventType }, 'Ignoring non-PR event');
     reply.status(200).send({ status: 'ignored', reason: 'Not a PR event' });

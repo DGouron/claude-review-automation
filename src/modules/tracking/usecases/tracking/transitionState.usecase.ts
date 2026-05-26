@@ -27,7 +27,7 @@ export class TransitionStateUseCase implements UseCase<TransitionStateInput, Tra
     const mr = this.trackingGateway.getById(input.projectPath, input.mrId);
     if (!mr) return { ok: false, reason: 'not-found' };
 
-    if (input.targetState === 'approved' && input.qualityCheck) {
+    if (input.targetState === 'approved' && input.qualityCheck && mr.bypass === null) {
       const gateResult = input.qualityCheck(mr);
       if (!gateResult.allowed) {
         return { ok: false, reason: 'quality-gate', message: gateResult.message };

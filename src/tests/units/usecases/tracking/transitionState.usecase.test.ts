@@ -101,6 +101,31 @@ describe('TransitionStateUseCase', () => {
     expect(updated?.state).toBe('approved');
   });
 
+  it('should bypass a failing quality check when the MR has an active bypass', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({
+      id: 'mr-1',
+      state: 'pending-approval',
+      bypass: { author: 'alice', reason: 'hotfix critique', recordedAt: '2026-05-26T12:00:00.000Z' },
+    });
+    gateway.create('/project', mr);
+    const useCase = new TransitionStateUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      targetState: 'approved',
+      qualityCheck: () => ({
+        allowed: false,
+        reason: 'below-threshold',
+        message: 'Seuil qualité non atteint (5/10 < 7/10)',
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(gateway.getById('/project', 'mr-1')?.state).toBe('approved');
+  });
+
   it('should skip quality check for non-approval transitions', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'approved' });

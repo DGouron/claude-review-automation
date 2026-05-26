@@ -76,6 +76,7 @@ export class RecordReviewCompletionUseCase implements UseCase<RecordReviewComple
       totalThreads,
       latestScore,
       state: nextState,
+      bypass: null,
     });
 
     return this.trackingGateway.getById(projectPath, mrId);

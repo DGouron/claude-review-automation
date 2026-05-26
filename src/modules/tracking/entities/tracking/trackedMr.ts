@@ -34,6 +34,14 @@ export interface TrackedMr {
   latestScore: number | null;
 
   autoFollowup: boolean;
+
+  bypass: BypassRecord | null;
+}
+
+export interface BypassRecord {
+  author: string;
+  reason: string;
+  recordedAt: string;
 }
 
 export function createTrackedMrId(platform: 'gitlab' | 'github', project: string, mrNumber: number): string {

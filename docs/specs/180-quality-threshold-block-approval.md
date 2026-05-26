@@ -3,10 +3,11 @@
 ## Status: implementing
 
 Iteration A — internal quality gate — **implemented** (scenarios 1, 2, 3, 7, 8).
-Iteration B — comment-based bypass — pending (scenarios 4, 5, 9, 10).
+Iteration B — comment-based bypass — **implemented** (scenarios 4, 5, 9, 10).
 Iteration C — platform unapprove + explanatory comment — pending (scenario 6).
 
-See [report](../reports/180-quality-threshold-block-approval.report.md) and [plan](../plans/180-quality-threshold-block-approval.plan.md).
+See reports: [iter A](../reports/180-quality-threshold-block-approval.report.md), [iter B](../reports/180-quality-threshold-block-approval-iter-B.report.md).
+See plans: [iter A](../plans/180-quality-threshold-block-approval.plan.md), [iter B](../plans/180-quality-threshold-block-approval-iter-B.plan.md).
 
 ## Implementation (Iteration A)
 
@@ -22,6 +23,25 @@ See [report](../reports/180-quality-threshold-block-approval.report.md) and [pla
 - Business policy enforced one layer above the state machine (use-case guards), keeping `ReviewRequestState` a pure structural transition value object.
 - French messages produced by the evaluator and returned untouched at HTTP boundary.
 - Single write per transition — `transitionState` modified rather than wrapped in a new `ApproveMr` use case.
+
+## Implementation (Iteration B)
+
+**Artefacts**:
+- Entity: `src/modules/tracking/entities/bypassMarker/bypassMarker.ts` (pure parser, regex on `/bypass-quality "..."`, returns `{ kind: 'no-marker' | 'valid' | 'invalid-missing-reason' }`).
+- Storage: `bypass: { author; reason; recordedAt } | null` added to `TrackedMr`.
+- Use case: `recordBypass.usecase.ts` (composes parser + tracking gateway, returns discriminated union with FR rejection message for missing reason).
+- Webhook guards: `gitlabNoteEvent.guard.ts` (`object_kind: 'note'`) and `githubIssueCommentEvent.guard.ts` (`action: 'created'`, `issue.pull_request` present).
+- Gateway contract `noteCommentPost.gateway.ts` + CLI impls for GitLab (`glab api .../notes`) and GitHub (`gh api .../comments`), used only on missing-reason rejection.
+- `transitionState.usecase.ts` short-circuits `qualityCheck` when `mr.bypass !== null` — bypass active = transition allowed.
+- `recordReviewCompletion.usecase.ts` clears `bypass: null` on every completed review (scenario 9 reset).
+- Webhook controllers extended with top-of-pipeline note/comment event branch.
+
+**Architectural decisions**:
+- Bypass is an orthogonal override composed at the use-case layer — `evaluateQualityGate` from iter A stays pure and untouched.
+- Use case is I/O-free except for tracking gateway — controller orchestrates the FR rejection comment posting based on the discriminated-union result.
+- FR rejection message owned by the use case, not the parser (parser is context-free).
+- No separate "Bypass" entity — bypass is a value attached to `TrackedMr` (same lifecycle).
+- Separate `NoteCommentPostGateway` from `ReviewActionGateway` — different lifecycle (one-shot webhook context vs batched review actions).
 
 ## Context
 
