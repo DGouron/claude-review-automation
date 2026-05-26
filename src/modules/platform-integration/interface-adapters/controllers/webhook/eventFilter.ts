@@ -3,6 +3,7 @@ import type { GitHubPullRequestEvent } from '@/modules/platform-integration/enti
 import type { GitLabMergeRequestEvent } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
 import type { GitLabNoteEvent } from '@/modules/platform-integration/entities/gitlab/gitlabNoteEvent.guard.js';
 import type { GitHubIssueCommentEvent } from '@/modules/platform-integration/entities/github/githubIssueCommentEvent.guard.js';
+import type { GitHubPullRequestReviewEvent } from '@/modules/platform-integration/entities/github/githubPullRequestReviewEvent.guard.js';
 
 export type { GitHubPullRequestEvent, GitLabMergeRequestEvent };
 
@@ -65,6 +66,37 @@ export function filterGitHubIssueCommentEvent(event: GitHubIssueCommentEvent): N
     projectPath: event.repository.full_name,
     commentBody: event.comment.body,
     authorUsername: event.comment.user.login,
+  };
+}
+
+export type PullRequestReviewFilterResult =
+  | { shouldProcess: false; reason: string }
+  | {
+      shouldProcess: true;
+      reason: string;
+      mergeRequestNumber: number;
+      projectPath: string;
+      reviewId: number;
+      reviewerLogin: string;
+    };
+
+export function filterGitHubPullRequestReviewEvent(
+  event: GitHubPullRequestReviewEvent,
+): PullRequestReviewFilterResult {
+  if (event.action !== 'submitted') {
+    return { shouldProcess: false, reason: `Action is ${event.action}, not submitted` };
+  }
+  if (event.review.state !== 'approved') {
+    return { shouldProcess: false, reason: `Review state is ${event.review.state}, not approved` };
+  }
+
+  return {
+    shouldProcess: true,
+    reason: 'Approval review submitted on a pull request',
+    mergeRequestNumber: event.pull_request.number,
+    projectPath: event.repository.full_name,
+    reviewId: event.review.id,
+    reviewerLogin: event.review.user.login,
   };
 }
 

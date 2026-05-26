@@ -1,9 +1,10 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
 import { verifyGitHubSignature, getGitHubEventType } from '@/security/verifier.js';
-import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose, filterGitHubPrUpdate, filterGitHubIssueCommentEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
+import { filterGitHubEvent, filterGitHubLabelEvent, filterGitHubPrClose, filterGitHubPrUpdate, filterGitHubIssueCommentEvent, filterGitHubPullRequestReviewEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { gitHubPullRequestEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
 import { gitHubIssueCommentEventGuard } from '@/modules/platform-integration/entities/github/githubIssueCommentEvent.guard.js';
+import { gitHubPullRequestReviewEventGuard } from '@/modules/platform-integration/entities/github/githubPullRequestReviewEvent.guard.js';
 import { findRepositoryByRemoteUrl, type RepositoryConfig } from '@/config/loader.js';
 import {
   enqueueReview,
@@ -20,7 +21,10 @@ import type { TransitionStateUseCase } from '@/modules/tracking/usecases/trackin
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import type { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import type { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js';
+import type { ApprovalRevocationGateway } from '@/modules/platform-integration/entities/approvalRevocation/approvalRevocation.gateway.js';
+import { evaluateQualityGate } from '@/modules/tracking/entities/qualityGate/qualityGate.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { ReviewContextResultFactory } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.factory.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
@@ -64,6 +68,9 @@ export interface GitHubWebhookDependencies {
   removeWorktree: RemoveWorktreeAction;
   recordBypass: RecordBypassUseCase;
   noteCommentPostGateway: NoteCommentPostGateway;
+  handlePlatformApproval: HandlePlatformApprovalUseCase;
+  approvalRevocationGateway: ApprovalRevocationGateway;
+  getQualityThreshold: (projectPath: string) => number | null;
   now: () => string;
 }
 
@@ -82,6 +89,128 @@ function computeSourceForkCloneUrl(pullRequest: {
   if (!headRepo || !baseRepo) return undefined;
   if (headRepo.full_name === baseRepo.full_name) return undefined;
   return headRepo.clone_url;
+}
+
+function shortDismissalLabel(reason: 'below-threshold' | 'blockers-present'): string {
+  if (reason === 'below-threshold') return 'Seuil qualité non atteint';
+  return 'Issues bloquantes non résolues';
+}
+
+async function handleGitHubPullRequestReviewHook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  logger: Logger,
+  deps: GitHubWebhookDependencies,
+): Promise<void> {
+  const parseResult = gitHubPullRequestReviewEventGuard.safeParse(request.body);
+  if (!parseResult.success) {
+    logger.debug({ errors: parseResult.error }, 'Invalid GitHub pull_request_review payload (ignored)');
+    reply.status(200).send({ status: 'ignored', reason: 'pull_request_review payload not parseable' });
+    return;
+  }
+
+  const filterResult = filterGitHubPullRequestReviewEvent(parseResult.data);
+  if (!filterResult.shouldProcess) {
+    reply.status(200).send({ status: 'ignored', reason: filterResult.reason });
+    return;
+  }
+
+  const repoConfig = findRepositoryByRemoteUrl(parseResult.data.repository.clone_url);
+  if (!repoConfig) {
+    logger.debug(
+      { projectPath: filterResult.projectPath },
+      'Pull request review for unconfigured repository (ignored)',
+    );
+    reply.status(200).send({ status: 'ignored', reason: 'Repository not configured' });
+    return;
+  }
+
+  const mrId = `github-${filterResult.projectPath}-${filterResult.mergeRequestNumber}`;
+  const threshold = deps.getQualityThreshold(repoConfig.localPath);
+  const transitionResult = deps.transitionState.execute({
+    projectPath: repoConfig.localPath,
+    mrId,
+    targetState: 'approved',
+    qualityCheck: (mr) =>
+      evaluateQualityGate({
+        latestScore: mr.latestScore,
+        blockingIssues: mr.openThreads,
+        threshold,
+      }),
+  });
+
+  if (transitionResult.ok) {
+    logger.info({ prNumber: filterResult.mergeRequestNumber }, 'PR marked as approved');
+    reply.status(200).send({ status: 'approved', prNumber: filterResult.mergeRequestNumber });
+    return;
+  }
+
+  if (transitionResult.reason === 'quality-gate') {
+    const verdict = deps.handlePlatformApproval.execute({
+      projectPath: repoConfig.localPath,
+      mrId,
+      qualityThreshold: threshold,
+    });
+
+    if (verdict.kind === 'reverted') {
+      try {
+        await deps.approvalRevocationGateway.revoke({
+          projectPath: filterResult.projectPath,
+          mrNumber: filterResult.mergeRequestNumber,
+          reviewId: filterResult.reviewId,
+          dismissalMessage: shortDismissalLabel(verdict.reason),
+        });
+      } catch (error) {
+        logger.warn(
+          {
+            prNumber: filterResult.mergeRequestNumber,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          'Failed to dismiss GitHub approval review; continuing with FR comment',
+        );
+      }
+
+      try {
+        await deps.noteCommentPostGateway.postComment({
+          projectPath: filterResult.projectPath,
+          mrNumber: filterResult.mergeRequestNumber,
+          body: verdict.message,
+        });
+      } catch (error) {
+        logger.warn(
+          {
+            prNumber: filterResult.mergeRequestNumber,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          'Failed to post FR explanation comment after dismissing GitHub approval',
+        );
+      }
+
+      logger.info(
+        { prNumber: filterResult.mergeRequestNumber, reason: verdict.reason },
+        'Platform approval revoked on non-qualified PR',
+      );
+      reply.status(200).send({
+        status: 'unapproved',
+        prNumber: filterResult.mergeRequestNumber,
+        reason: verdict.reason,
+      });
+      return;
+    }
+
+    reply.status(200).send({
+      status: 'ignored',
+      prNumber: filterResult.mergeRequestNumber,
+      reason: verdict.kind,
+    });
+    return;
+  }
+
+  reply.status(200).send({
+    status: 'ignored',
+    prNumber: filterResult.mergeRequestNumber,
+    reason: transitionResult.reason,
+  });
 }
 
 async function handleGitHubIssueCommentHook(
@@ -168,6 +297,11 @@ export async function handleGitHubWebhook(
 
   if (eventType === 'issue_comment') {
     await handleGitHubIssueCommentHook(request, reply, logger, deps);
+    return;
+  }
+
+  if (eventType === 'pull_request_review') {
+    await handleGitHubPullRequestReviewHook(request, reply, logger, deps);
     return;
   }
 

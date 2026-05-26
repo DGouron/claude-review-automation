@@ -93,7 +93,9 @@ import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/tra
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import { StubNoteCommentPostGateway } from '@/tests/stubs/noteCommentPost.stub.js';
+import { StubApprovalRevocationGateway } from '@/tests/stubs/approvalRevocation.stub.js';
 
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({
@@ -168,6 +170,9 @@ function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTracking
     removeWorktree: vi.fn(async () => ({ status: 'removed' as const })),
     recordBypass: new RecordBypassUseCase(trackingGateway),
     noteCommentPostGateway: new StubNoteCommentPostGateway(),
+    handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGateway),
+    approvalRevocationGateway: new StubApprovalRevocationGateway(),
+    getQualityThreshold: (): number | null => null,
     now: (): string => '2026-05-26T12:00:00.000Z',
   };
 }

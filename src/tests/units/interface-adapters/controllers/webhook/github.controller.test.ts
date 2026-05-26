@@ -128,6 +128,9 @@ function createMockDeps(): GitHubWebhookDependencies {
     removeWorktree: vi.fn(async () => ({ status: 'removed' as const })),
     recordBypass: { execute: vi.fn(() => ({ kind: 'no-marker' })) },
     noteCommentPostGateway: { postComment: vi.fn(async () => undefined) },
+    handlePlatformApproval: { execute: vi.fn(() => ({ kind: 'allowed' })) },
+    approvalRevocationGateway: { revoke: vi.fn(async () => undefined) },
+    getQualityThreshold: vi.fn(() => null),
     now: (): string => '2026-05-26T12:00:00.000Z',
   } as unknown as GitHubWebhookDependencies;
 }

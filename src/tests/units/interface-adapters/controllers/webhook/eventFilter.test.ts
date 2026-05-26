@@ -22,8 +22,10 @@ import {
   filterGitHubLabelEvent,
   filterGitHubPrClose,
   filterGitHubPrUpdate,
+  filterGitHubPullRequestReviewEvent,
   REVIEW_TRIGGER_LABEL,
 } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js'
+import type { GitHubPullRequestReviewEvent } from '@/modules/platform-integration/entities/github/githubPullRequestReviewEvent.guard.js'
 
 describe('filterGitLabEvent', () => {
   describe('when MR is opened with reviewer assigned', () => {
@@ -585,5 +587,64 @@ describe('FilterResult type narrowing', () => {
       expect(result.sourceBranch).toBeDefined()
       expect(result.targetBranch).toBeDefined()
     }
+  })
+})
+
+describe('filterGitHubPullRequestReviewEvent', () => {
+  function buildEvent(overrides: {
+    action?: string
+    reviewState?: string
+  } = {}): GitHubPullRequestReviewEvent {
+    return {
+      action: overrides.action ?? 'submitted',
+      review: {
+        id: 99,
+        state: overrides.reviewState ?? 'approved',
+        user: { login: 'alice' },
+      },
+      pull_request: {
+        number: 7,
+        state: 'open',
+        html_url: 'https://github.com/test-owner/test-repo/pull/7',
+      },
+      repository: {
+        full_name: 'test-owner/test-repo',
+        html_url: 'https://github.com/test-owner/test-repo',
+        clone_url: 'https://github.com/test-owner/test-repo.git',
+      },
+      sender: { login: 'alice' },
+    }
+  }
+
+  it('processes a submitted approval', () => {
+    const result = filterGitHubPullRequestReviewEvent(buildEvent())
+
+    expect(result.shouldProcess).toBe(true)
+    if (result.shouldProcess) {
+      expect(result.mergeRequestNumber).toBe(7)
+      expect(result.projectPath).toBe('test-owner/test-repo')
+      expect(result.reviewId).toBe(99)
+      expect(result.reviewerLogin).toBe('alice')
+    }
+  })
+
+  it('ignores a changes_requested review', () => {
+    const result = filterGitHubPullRequestReviewEvent(buildEvent({ reviewState: 'changes_requested' }))
+    expect(result.shouldProcess).toBe(false)
+  })
+
+  it('ignores a commented review', () => {
+    const result = filterGitHubPullRequestReviewEvent(buildEvent({ reviewState: 'commented' }))
+    expect(result.shouldProcess).toBe(false)
+  })
+
+  it('ignores a dismissed review', () => {
+    const result = filterGitHubPullRequestReviewEvent(buildEvent({ reviewState: 'dismissed' }))
+    expect(result.shouldProcess).toBe(false)
+  })
+
+  it('ignores an edited action', () => {
+    const result = filterGitHubPullRequestReviewEvent(buildEvent({ action: 'edited' }))
+    expect(result.shouldProcess).toBe(false)
   })
 })

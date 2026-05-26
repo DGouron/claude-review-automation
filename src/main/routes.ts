@@ -45,8 +45,11 @@ import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/tra
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import { GitLabNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.gitlab.cli.gateway.js';
 import { GitHubNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.github.cli.gateway.js';
+import { GitLabApprovalRevocationCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.gitlab.cli.gateway.js';
+import { GitHubApprovalRevocationCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.github.cli.gateway.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { tokenUsageRoutes } from '@/modules/token-accounting/interface-adapters/controllers/http/tokenUsage.routes.js';
 import { worktreeOverviewRoutes } from '@/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.js';
@@ -347,6 +350,10 @@ export async function registerRoutes(
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
       noteCommentPostGateway: new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
+      handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
+      approvalRevocationGateway: new GitLabApprovalRevocationCliGateway(defaultGitLabExecutor),
+      getQualityThreshold: (projectPath: string) =>
+        loadProjectConfig(projectPath)?.qualityThreshold ?? null,
       now: () => new Date().toISOString(),
     });
   });
@@ -373,6 +380,10 @@ export async function registerRoutes(
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
       noteCommentPostGateway: new GitHubNoteCommentPostCliGateway(defaultGitHubExecutor),
+      handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
+      approvalRevocationGateway: new GitHubApprovalRevocationCliGateway(defaultGitHubExecutor),
+      getQualityThreshold: (projectPath: string) =>
+        loadProjectConfig(projectPath)?.qualityThreshold ?? null,
       now: () => new Date().toISOString(),
     });
   });
