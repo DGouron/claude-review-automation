@@ -153,7 +153,7 @@ function buildPlatformIconDataUri(label, hexColor) {
     `<rect width="64" height="64" rx="12" fill="#${hexColor}"/>` +
     `<text x="32" y="42" font-size="28" text-anchor="middle" fill="white" ` +
     `font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-weight="700">${label}</text>` +
-    `</svg>`;
+    '</svg>';
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
