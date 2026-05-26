@@ -122,11 +122,39 @@ function resolveProjectShortName(review) {
 
 /**
  * @param {Record<string, unknown>} review
+ * @returns {'gitlab' | 'github'}
+ */
+function resolvePlatform(review) {
+  const id = typeof review.id === 'string' ? review.id : '';
+  return id.startsWith('github') ? 'github' : 'gitlab';
+}
+
+/**
+ * @param {Record<string, unknown>} review
  * @returns {'!' | '#'}
  */
 function resolveMrPrefix(review) {
-  const id = typeof review.id === 'string' ? review.id : '';
-  return id.startsWith('github') ? '#' : '!';
+  return resolvePlatform(review) === 'github' ? '#' : '!';
+}
+
+const PLATFORM_ICONS = {
+  gitlab: buildPlatformIconDataUri('GL', 'FC6D26'),
+  github: buildPlatformIconDataUri('GH', '181717'),
+};
+
+/**
+ * @param {string} label
+ * @param {string} hexColor
+ * @returns {string}
+ */
+function buildPlatformIconDataUri(label, hexColor) {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">` +
+    `<rect width="64" height="64" rx="12" fill="#${hexColor}"/>` +
+    `<text x="32" y="42" font-size="28" text-anchor="middle" fill="white" ` +
+    `font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-weight="700">${label}</text>` +
+    `</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 /**
@@ -166,7 +194,7 @@ function buildBody(review) {
 /**
  * @param {{ kind: string, review: Record<string, unknown> }} notification
  * @param {(key: string, params?: Record<string, string | number>) => string} translate
- * @returns {{ title: string, body: string, tag: string } | null}
+ * @returns {{ title: string, body: string, tag: string, url: string | null, iconDataUri: string } | null}
  */
 export function getDesktopNotificationPayload(notification, translate) {
   const format = KIND_FORMATS[notification.kind];
@@ -175,10 +203,15 @@ export function getDesktopNotificationPayload(notification, translate) {
   const mrNumber = typeof notification.review.mrNumber === 'number'
     ? String(notification.review.mrNumber)
     : '?';
+  const url = typeof notification.review.mrUrl === 'string' && notification.review.mrUrl.length > 0
+    ? notification.review.mrUrl
+    : null;
 
   return {
     title: buildTitle(format, translate, notification.review),
     body: buildBody(notification.review),
     tag: `reviewflow-${notification.kind}-${mrNumber}`,
+    url,
+    iconDataUri: PLATFORM_ICONS[resolvePlatform(notification.review)],
   };
 }

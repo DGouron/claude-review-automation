@@ -664,10 +664,18 @@
 
       const desktopPayload = getDesktopNotificationPayload(notification, t);
       if (!desktopPayload) return;
-      new Notification(desktopPayload.title, {
+      const desktopNotif = new Notification(desktopPayload.title, {
         body: desktopPayload.body,
         tag: desktopPayload.tag,
+        icon: desktopPayload.iconDataUri,
       });
+      desktopNotif.onclick = () => {
+        window.focus();
+        if (desktopPayload.url) {
+          window.open(desktopPayload.url, '_blank', 'noopener');
+        }
+        desktopNotif.close();
+      };
     }
 
     function dispatchReviewNotifications(activeReviews, recentReviews) {

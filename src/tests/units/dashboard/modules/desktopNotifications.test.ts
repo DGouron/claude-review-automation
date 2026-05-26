@@ -63,7 +63,7 @@ describe('getDesktopNotificationPayload', () => {
       translate,
     );
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       title: '🔍 Review · Damien · !1234',
       body: 'feat(dashboard): add chart\nfrontend',
       tag: 'reviewflow-reviewStarted-1234',
@@ -86,7 +86,7 @@ describe('getDesktopNotificationPayload', () => {
       translate,
     );
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       title: '🔁 Follow-up · Alice · #42',
       body: 'fix(auth): token refresh\nrepo',
       tag: 'reviewflow-followupStarted-42',
@@ -310,6 +310,60 @@ describe('getDesktopNotificationPayload', () => {
     );
 
     expect(result?.body).toBe('fix: small\n🪶 3 files · repo');
+  });
+
+  it('includes mrUrl in payload when present', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 300,
+          mrUrl: 'https://gitlab.example.com/group/repo/-/merge_requests/300',
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.url).toBe('https://gitlab.example.com/group/repo/-/merge_requests/300');
+  });
+
+  it('omits url when mrUrl is missing', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: { mrNumber: 301, id: 'gitlab-x' },
+      },
+      translate,
+    );
+
+    expect(result?.url).toBeNull();
+  });
+
+  it('returns a GitLab-colored icon data URI for gitlab platform', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: { mrNumber: 400, id: 'gitlab-x' },
+      },
+      translate,
+    );
+
+    expect(result?.iconDataUri).toMatch(/^data:image\/svg\+xml/);
+    expect(result?.iconDataUri).toContain('FC6D26');
+  });
+
+  it('returns a GitHub-colored icon data URI for github platform', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: { mrNumber: 401, id: 'github-org-repo-401' },
+      },
+      translate,
+    );
+
+    expect(result?.iconDataUri).toMatch(/^data:image\/svg\+xml/);
+    expect(result?.iconDataUri).toContain('181717');
   });
 
   it('returns null for unknown notification kind', () => {
