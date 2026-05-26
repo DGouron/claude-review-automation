@@ -44,6 +44,9 @@ import { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPu
 import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import { GitLabNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.gitlab.cli.gateway.js';
+import { GitHubNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.github.cli.gateway.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
 import { tokenUsageRoutes } from '@/modules/token-accounting/interface-adapters/controllers/http/tokenUsage.routes.js';
 import { worktreeOverviewRoutes } from '@/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.js';
@@ -342,6 +345,9 @@ export async function registerRoutes(
       claudeInvokerDeps,
       gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
+      recordBypass: new RecordBypassUseCase(trackingGw),
+      noteCommentPostGateway: new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
+      now: () => new Date().toISOString(),
     });
   });
 
@@ -365,6 +371,9 @@ export async function registerRoutes(
       claudeInvokerDeps,
       gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
+      recordBypass: new RecordBypassUseCase(trackingGw),
+      noteCommentPostGateway: new GitHubNoteCommentPostCliGateway(defaultGitHubExecutor),
+      now: () => new Date().toISOString(),
     });
   });
 

@@ -92,6 +92,8 @@ import { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/recordPu
 import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import { StubNoteCommentPostGateway } from '@/tests/stubs/noteCommentPost.stub.js';
 
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({
@@ -164,6 +166,9 @@ function createDefaultDeps(trackingGateway: ReturnType<typeof createMockTracking
     broadcastBudgetExceeded: vi.fn(),
     getRepositories: vi.fn(() => []),
     removeWorktree: vi.fn(async () => ({ status: 'removed' as const })),
+    recordBypass: new RecordBypassUseCase(trackingGateway),
+    noteCommentPostGateway: new StubNoteCommentPostGateway(),
+    now: (): string => '2026-05-26T12:00:00.000Z',
   };
 }
 

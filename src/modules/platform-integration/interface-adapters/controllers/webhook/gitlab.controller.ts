@@ -2,7 +2,8 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
 import { verifyGitLabSignature, getGitLabEventType } from '@/security/verifier.js';
 import { gitLabMergeRequestEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
-import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
+import { gitLabNoteEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabNoteEvent.guard.js';
+import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove, filterGitLabNoteEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { findRepositoryByProjectPath, type RepositoryConfig } from '@/config/loader.js';
 import {
   enqueueReview,
@@ -22,6 +23,8 @@ import type { RecordPushUseCase } from '@/modules/tracking/usecases/tracking/rec
 import type { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
+import type { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js';
 import { loadProjectConfig, getProjectAgentsOrFocusDefaults, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
@@ -78,12 +81,78 @@ export interface GitLabWebhookDependencies {
   claudeInvokerDeps?: ClaudeInvokerDependencies;
   gateClaudeInvocation?: GateClaudeInvocationUseCase;
   removeWorktree: RemoveWorktreeAction;
+  recordBypass: RecordBypassUseCase;
+  noteCommentPostGateway: NoteCommentPostGateway;
+  now: () => string;
 }
 
 function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): string[] {
   return getRepositories()
     .filter((repository) => repository.enabled)
     .map((repository) => repository.localPath);
+}
+
+async function handleGitLabNoteHook(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  logger: Logger,
+  deps: GitLabWebhookDependencies,
+): Promise<void> {
+  const parseResult = gitLabNoteEventGuard.safeParse(request.body);
+  if (!parseResult.success) {
+    logger.debug({ errors: parseResult.error }, 'Invalid GitLab note payload (ignored)');
+    reply.status(200).send({ status: 'ignored', reason: 'Note payload not parseable' });
+    return;
+  }
+
+  const filterResult = filterGitLabNoteEvent(parseResult.data);
+  if (!filterResult.shouldProcess) {
+    reply.status(200).send({ status: 'ignored', reason: filterResult.reason });
+    return;
+  }
+
+  const repoConfig = findRepositoryByProjectPath(filterResult.projectPath);
+  if (!repoConfig) {
+    logger.debug({ projectPath: filterResult.projectPath }, 'Note for unconfigured project (ignored)');
+    reply.status(200).send({ status: 'ignored', reason: 'Repository not configured' });
+    return;
+  }
+
+  const mrId = `gitlab-${filterResult.projectPath}-${filterResult.mergeRequestNumber}`;
+  const result = deps.recordBypass.execute({
+    projectPath: repoConfig.localPath,
+    mrId,
+    commentBody: filterResult.commentBody,
+    author: filterResult.authorUsername,
+    now: deps.now,
+  });
+
+  if (result.kind === 'rejected-missing-reason') {
+    await deps.noteCommentPostGateway.postComment({
+      projectPath: filterResult.projectPath,
+      mrNumber: filterResult.mergeRequestNumber,
+      body: result.message,
+    });
+    logger.info({ mrId, author: filterResult.authorUsername }, 'Bypass marker without reason rejected');
+    reply.status(200).send({ status: 'bypass-rejected', reason: 'missing-reason' });
+    return;
+  }
+
+  if (result.kind === 'recorded') {
+    logger.info(
+      { mrId, author: result.bypass.author, reason: result.bypass.reason },
+      'Bypass recorded on tracked MR',
+    );
+    reply.status(200).send({ status: 'bypass-recorded' });
+    return;
+  }
+
+  if (result.kind === 'mr-not-found') {
+    reply.status(200).send({ status: 'ignored', reason: 'MR not tracked' });
+    return;
+  }
+
+  reply.status(200).send({ status: 'ignored', reason: 'No bypass marker' });
 }
 
 export async function handleGitLabWebhook(
@@ -104,6 +173,12 @@ export async function handleGitLabWebhook(
 
   // 2. Check event type
   const eventType = getGitLabEventType(request);
+
+  if (eventType === 'Note Hook') {
+    await handleGitLabNoteHook(request, reply, logger, deps);
+    return;
+  }
+
   if (eventType !== 'Merge Request Hook') {
     logger.debug({ eventType }, 'Ignoring non-MR event');
     reply.status(200).send({ status: 'ignored', reason: 'Not a MR event' });

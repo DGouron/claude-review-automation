@@ -242,6 +242,27 @@ describe('RecordReviewCompletionUseCase', () => {
     expect(result?.state).toBe('pending-fix');
   });
 
+  it('should clear an active bypass when a new completed review arrives', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({
+      id: 'mr-1',
+      state: 'pending-approval',
+      bypass: { author: 'alice', reason: 'hotfix', recordedAt: '2026-05-25T08:00:00.000Z' },
+    });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      reviewData: { ...reviewData, score: 8, blocking: 0, threadsOpened: 0 },
+      qualityThreshold: 7,
+    });
+
+    expect(result?.bypass).toBeNull();
+    expect(result?.state).toBe('pending-approval');
+  });
+
   it('should preserve legacy behavior when qualityThreshold is null', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'pending-review', openThreads: 0 });

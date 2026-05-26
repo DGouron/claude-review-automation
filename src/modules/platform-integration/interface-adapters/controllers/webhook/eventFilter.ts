@@ -1,6 +1,8 @@
 import { loadConfig } from '@/config/loader.js';
 import type { GitHubPullRequestEvent } from '@/modules/platform-integration/entities/github/githubPullRequestEvent.guard.js';
 import type { GitLabMergeRequestEvent } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
+import type { GitLabNoteEvent } from '@/modules/platform-integration/entities/gitlab/gitlabNoteEvent.guard.js';
+import type { GitHubIssueCommentEvent } from '@/modules/platform-integration/entities/github/githubIssueCommentEvent.guard.js';
 
 export type { GitHubPullRequestEvent, GitLabMergeRequestEvent };
 
@@ -18,6 +20,53 @@ export type FilterResult =
       targetBranch: string;
       isFollowup?: boolean;
     };
+
+export type NoteFilterResult =
+  | { shouldProcess: false; reason: string }
+  | {
+      shouldProcess: true;
+      reason: string;
+      mergeRequestNumber: number;
+      projectPath: string;
+      commentBody: string;
+      authorUsername: string;
+    };
+
+export function filterGitLabNoteEvent(event: GitLabNoteEvent): NoteFilterResult {
+  if (event.object_kind !== 'note') {
+    return { shouldProcess: false, reason: 'Not a note event' };
+  }
+  if (event.object_attributes.noteable_type !== 'MergeRequest') {
+    return { shouldProcess: false, reason: 'Note is not on a merge request' };
+  }
+
+  return {
+    shouldProcess: true,
+    reason: 'Note posted on a merge request',
+    mergeRequestNumber: event.merge_request.iid,
+    projectPath: event.project.path_with_namespace,
+    commentBody: event.object_attributes.note,
+    authorUsername: event.user.username,
+  };
+}
+
+export function filterGitHubIssueCommentEvent(event: GitHubIssueCommentEvent): NoteFilterResult {
+  if (event.action !== 'created') {
+    return { shouldProcess: false, reason: `Action is ${event.action}, not created` };
+  }
+  if (!event.issue.pull_request) {
+    return { shouldProcess: false, reason: 'Comment is not on a pull request' };
+  }
+
+  return {
+    shouldProcess: true,
+    reason: 'Comment posted on a pull request',
+    mergeRequestNumber: event.issue.number,
+    projectPath: event.repository.full_name,
+    commentBody: event.comment.body,
+    authorUsername: event.comment.user.login,
+  };
+}
 
 // GitLab Push Event type
 export interface GitLabPushEvent {
