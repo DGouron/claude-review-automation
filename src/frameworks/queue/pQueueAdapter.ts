@@ -28,6 +28,17 @@ export interface ReviewJob {
     username: string;
     displayName?: string;
   };
+  // The actual author of the MR/PR (distinct from assignedBy, which is the reviewer/assignee).
+  author?: {
+    username: string;
+    displayName?: string;
+  };
+  // Diff size metrics. Any field may be null when the platform does not provide it.
+  sizeMetrics?: {
+    additions: number | null;
+    deletions: number | null;
+    filesChanged: number | null;
+  };
   // SPEC-170 FR-8: clone URL of the source fork for cross-fork PRs (GitHub).
   // null/undefined means the MR/PR source is the same repository as the base.
   sourceForkCloneUrl?: string;
@@ -345,6 +356,8 @@ export function getJobsStatus(): {
     title?: string;
     description?: string;
     assignedBy?: { username: string; displayName?: string };
+    author?: { username: string; displayName?: string };
+    sizeMetrics?: { additions: number | null; deletions: number | null; filesChanged: number | null };
     jobType?: 'review' | 'followup';
   }>;
   recent: Array<{
@@ -359,6 +372,8 @@ export function getJobsStatus(): {
     progress?: ReviewProgress;
     title?: string;
     assignedBy?: { username: string; displayName?: string };
+    author?: { username: string; displayName?: string };
+    sizeMetrics?: { additions: number | null; deletions: number | null; filesChanged: number | null };
     jobType?: 'review' | 'followup';
   }>;
 } {
@@ -374,6 +389,8 @@ export function getJobsStatus(): {
       title: js.job.title,
       description: js.job.description,
       assignedBy: js.job.assignedBy,
+      author: js.job.author,
+      sizeMetrics: js.job.sizeMetrics,
       jobType: js.job.jobType || 'review',
     })),
     recent: completedJobs.map(js => ({
@@ -388,6 +405,8 @@ export function getJobsStatus(): {
       progress: js.progress,
       title: js.job.title,
       assignedBy: js.job.assignedBy,
+      author: js.job.author,
+      sizeMetrics: js.job.sizeMetrics,
       jobType: js.job.jobType || 'review',
     })),
   };

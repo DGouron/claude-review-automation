@@ -60,7 +60,7 @@ const translations = {
     'quality.trendFlat': 'Stable',
     'quality.trendUnknown': 'No trend yet',
 
-    // Notifications
+    // Notifications — toast labels (in-page)
     'notify.reviewStarted': 'Review started for !{{mrNumber}}',
     'notify.followupStarted': 'Follow-up started for !{{mrNumber}}',
     'notify.reviewCompleted': 'Review completed for !{{mrNumber}}',
@@ -69,6 +69,13 @@ const translations = {
     'notify.followupRequested': 'Follow-up requested for !{{mrNumber}}',
     'notify.reviewPendingConfirmation': 'Review awaiting your confirmation for !{{mrNumber}}',
     'notify.desktopTitle': 'Reviewflow alert',
+    // Notifications — desktop labels (short, used in rich payload)
+    'notify.label.reviewStarted': 'Review',
+    'notify.label.followupStarted': 'Follow-up',
+    'notify.label.reviewCompleted': 'Review done',
+    'notify.label.followupCompleted': 'Follow-up done',
+    'notify.label.reviewFailed': 'Review failed',
+    'notify.label.reviewPendingConfirmation': 'Awaiting confirmation',
 
     // Loading
     'loading.data': 'Syncing dashboard data...',
@@ -478,7 +485,7 @@ const translations = {
     'quality.trendFlat': 'Stable',
     'quality.trendUnknown': 'Pas de tendance',
 
-    // Notifications
+    // Notifications — toast labels (in-page)
     'notify.reviewStarted': 'Review démarrée pour !{{mrNumber}}',
     'notify.followupStarted': 'Follow-up démarré pour !{{mrNumber}}',
     'notify.reviewCompleted': 'Review terminée pour !{{mrNumber}}',
@@ -487,6 +494,13 @@ const translations = {
     'notify.followupRequested': 'Follow-up demandé pour !{{mrNumber}}',
     'notify.reviewPendingConfirmation': 'Review en attente de votre confirmation pour !{{mrNumber}}',
     'notify.desktopTitle': 'Alerte Reviewflow',
+    // Notifications — desktop labels (short, used in rich payload)
+    'notify.label.reviewStarted': 'Review',
+    'notify.label.followupStarted': 'Follow-up',
+    'notify.label.reviewCompleted': 'Review terminée',
+    'notify.label.followupCompleted': 'Follow-up terminé',
+    'notify.label.reviewFailed': 'Review échouée',
+    'notify.label.reviewPendingConfirmation': 'En attente',
 
     // Loading
     'loading.data': 'Synchronisation des données du dashboard...',
