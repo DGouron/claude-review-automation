@@ -14,6 +14,9 @@ import { InMemorySupervisorHealthGateway } from '@/modules/claude-invocation/int
 import { startSupervisorScheduler } from '@/frameworks/scheduler/supervisorScheduler.js';
 import { SupervisorCliGateway, createDefaultSupervisorProbe, createDefaultSupervisorSpawner } from '@/modules/supervisor-management/interface-adapters/gateways/supervisor.cli.gateway.js';
 import { SupervisorLockFileSystemGateway, createDefaultSupervisorLockFileSystem, getDefaultSupervisorLockFilePath } from '@/modules/supervisor-management/interface-adapters/gateways/supervisorLock.fileSystem.gateway.js';
+import { runReviewRecovery } from '@/modules/review-execution/services/reviewRecovery.service.js';
+import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
+import { defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -123,6 +126,34 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
     port,
     host: '0.0.0.0',
   });
+
+  // Recovery runs as a non-blocking background task so the HTTP listener is
+  // available immediately at boot. A long replay backlog can't delay health
+  // checks or webhook reception.
+  void runReviewRecovery({
+    repositories: config.repositories.filter((repo) => repo.enabled),
+    reviewContextGateway: deps.reviewContextGateway,
+    executeActions: async (context, localPath) => {
+      const result = await executeActionsFromContext(
+        context,
+        localPath,
+        deps.logger,
+        defaultCommandExecutor,
+      );
+      return { posted: result.succeeded, failed: result.failed };
+    },
+    now: () => Date.now(),
+    logger: deps.logger,
+  })
+    .then((summary) => {
+      deps.logger.info(summary, 'Review recovery completed in background');
+    })
+    .catch((error) => {
+      deps.logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Review recovery threw unexpectedly',
+      );
+    });
 
   const shutdown = async () => {
     deps.logger.info('Shutting down...');

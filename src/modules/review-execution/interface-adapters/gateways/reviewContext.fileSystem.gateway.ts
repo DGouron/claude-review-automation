@@ -1,4 +1,4 @@
-import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import type { ReviewContextGateway, UpdateResult } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js'
 import type {
@@ -116,4 +116,33 @@ export class ReviewContextFileSystemGateway implements ReviewContextGateway {
 
     return { success: true }
   }
+
+  listAll(localPath: string): ReviewContext[] {
+    const logsDir = join(localPath, '.claude', 'reviews', 'logs')
+    if (!existsSync(logsDir)) {
+      return []
+    }
+    return collectJsonFiles(logsDir).flatMap((path) => {
+      try {
+        return [JSON.parse(readFileSync(path, 'utf-8')) as ReviewContext]
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        process.stderr.write(
+          `[reviewContextGateway] malformed JSON skipped at ${path}: ${message}\n`,
+        )
+        return []
+      }
+    })
+  }
+}
+
+function collectJsonFiles(directory: string): string[] {
+  const entries = readdirSync(directory)
+  return entries.flatMap((entry) => {
+    const fullPath = join(directory, entry)
+    if (statSync(fullPath).isDirectory()) {
+      return collectJsonFiles(fullPath)
+    }
+    return entry.endsWith('.json') ? [fullPath] : []
+  })
 }

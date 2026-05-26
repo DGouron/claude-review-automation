@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js'
 
 describe('ReviewContextFileSystemGateway', () => {
@@ -211,6 +212,66 @@ describe('ReviewContextFileSystemGateway', () => {
     })
   })
 
+  describe('listAll', () => {
+    it('returns an empty array when no logs directory exists', () => {
+      expect(gateway.listAll(testDir)).toEqual([])
+    })
+
+    it('returns every context, even when mergeRequestId contains a slash (subdir)', () => {
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'github-owner/repo-1',
+        platform: 'github',
+        projectPath: 'owner/repo',
+        mergeRequestNumber: 1,
+      })
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'github-owner/repo-2',
+        platform: 'github',
+        projectPath: 'owner/repo',
+        mergeRequestNumber: 2,
+      })
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'gitlab-flat-id-3',
+        platform: 'gitlab',
+        projectPath: 'group/proj',
+        mergeRequestNumber: 3,
+      })
+
+      const all = gateway.listAll(testDir)
+      const ids = all.map((c) => c.mergeRequestId).sort()
+      expect(ids).toEqual(['github-owner/repo-1', 'github-owner/repo-2', 'gitlab-flat-id-3'])
+    })
+
+    it('skips malformed JSON files and writes a warning to stderr', () => {
+      const logsDir = join(testDir, '.claude', 'reviews', 'logs')
+      mkdirSync(logsDir, { recursive: true })
+      writeFileSync(join(logsDir, 'broken.json'), '{ not valid json')
+      gateway.create({
+        localPath: testDir,
+        mergeRequestId: 'github-owner/repo-1',
+        platform: 'github',
+        projectPath: 'owner/repo',
+        mergeRequestNumber: 1,
+      })
+
+      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+      try {
+        const all = gateway.listAll(testDir)
+        expect(all.map((c) => c.mergeRequestId)).toEqual(['github-owner/repo-1'])
+        expect(stderrSpy).toHaveBeenCalledOnce()
+        const message = stderrSpy.mock.calls[0]?.[0] as string
+        expect(message).toContain('malformed JSON skipped')
+        expect(message).toContain('broken.json')
+      } finally {
+        stderrSpy.mockRestore()
+      }
+    })
+  })
+
   describe('setResult', () => {
     it('should set the review result', () => {
       gateway.create({
@@ -222,6 +283,7 @@ describe('ReviewContextFileSystemGateway', () => {
       })
 
       const result = gateway.setResult(testDir, 'github-owner/repo-42', {
+        kind: 'measured',
         blocking: 0,
         warnings: 2,
         suggestions: 3,
@@ -232,8 +294,11 @@ describe('ReviewContextFileSystemGateway', () => {
       expect(result.success).toBe(true)
 
       const context = gateway.read(testDir, 'github-owner/repo-42')
-      expect(context?.result?.blocking).toBe(0)
-      expect(context?.result?.verdict).toBe('ready_to_merge')
+      expect(context?.result?.kind).toBe('measured')
+      if (context?.result?.kind === 'measured') {
+        expect(context.result.blocking).toBe(0)
+        expect(context.result.verdict).toBe('ready_to_merge')
+      }
     })
   })
 })

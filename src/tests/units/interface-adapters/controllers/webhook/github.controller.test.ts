@@ -52,6 +52,19 @@ vi.mock('../../../../../main/websocket.js', () => ({
   stopWatchingReviewContext: vi.fn(),
 }));
 
+vi.mock('@/modules/review-execution/services/contextActionsExecutor.js', () => ({
+  executeActionsFromContext: vi.fn(() => Promise.resolve({ total: 1, succeeded: 1, failed: 0, skipped: 0 })),
+}));
+
+vi.mock('@/modules/review-execution/services/threadActionsExecutor.js', () => ({
+  executeThreadActions: vi.fn(() => Promise.resolve({ total: 0, succeeded: 0, failed: 0, skipped: 0 })),
+  defaultCommandExecutor: vi.fn(),
+}));
+
+vi.mock('@/modules/review-execution/services/threadActionsParser.js', () => ({
+  parseThreadActions: vi.fn(() => []),
+}));
+
 vi.mock('../../../../../config/projectConfig.js', () => ({
   loadProjectConfig: vi.fn(() => null),
   getProjectAgents: vi.fn(() => null),
@@ -278,6 +291,60 @@ describe('handleGitHubWebhook', () => {
           }),
         })
       );
+    });
+
+    it('finalises the review-context with setResult after actions are posted', async () => {
+      const setResultMock = vi.fn(
+        (_localPath: string, _mergeRequestId: string, _result: unknown) => ({ success: true }),
+      );
+      const readMock = vi.fn(() => ({
+        version: '1.0',
+        mergeRequestId: 'github-test-owner/test-repo-123',
+        platform: 'github',
+        projectPath: 'test-owner/test-repo',
+        mergeRequestNumber: 123,
+        createdAt: '2026-05-26T00:00:00Z',
+        threads: [],
+        actions: [{ type: 'POST_COMMENT', body: 'review report' }],
+        progress: { phase: 'completed', currentStep: null },
+      }));
+      const depsWithReadAndSet = {
+        ...mockDeps,
+        reviewContextGateway: {
+          ...mockDeps.reviewContextGateway,
+          read: readMock,
+          setResult: setResultMock,
+        },
+      } as unknown as GitHubWebhookDependencies;
+
+      vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
+        await callback(job, new AbortController().signal);
+        return true;
+      });
+      vi.mocked(invokeClaudeReview).mockResolvedValue({
+        success: true,
+        cancelled: false,
+        stdout: '[REVIEW_STATS:blocking=3:warnings=1:suggestions=0:score=5]',
+        durationMs: 100,
+        exitCode: 0,
+        stderr: '',
+      });
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, depsWithReadAndSet);
+
+      expect(setResultMock).toHaveBeenCalledTimes(1);
+      const [, , passedResult] = setResultMock.mock.calls[0];
+      expect(passedResult).toEqual({
+        kind: 'measured',
+        blocking: 3,
+        warnings: 1,
+        suggestions: 0,
+        score: 5,
+        verdict: 'needs_fixes',
+      });
     });
 
     it('should not record stats when review is cancelled', async () => {

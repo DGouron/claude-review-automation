@@ -19,6 +19,7 @@ import type { TransitionStateUseCase } from '@/modules/tracking/usecases/trackin
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
+import { ReviewContextResultFactory } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.factory.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
 import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
@@ -365,6 +366,11 @@ export async function handleGitHubWebhook(
                   { ...contextActionResult, threadResolveCount, prNumber: j.mrNumber },
                   'Actions executed from context file for followup'
                 );
+                contextGateway.setResult(
+                  j.localPath,
+                  mergeRequestId,
+                  ReviewContextResultFactory.fromParsedReview(parsed),
+                );
               } else {
                 const threadActions = parseThreadActions(result.stdout);
                 if (threadActions.length > 0) {
@@ -663,6 +669,11 @@ export async function handleGitHubWebhook(
         logger.info(
           { ...contextActionResult, prNumber: j.mrNumber },
           'Actions executed from context file'
+        );
+        contextGateway.setResult(
+          j.localPath,
+          mergeRequestId,
+          ReviewContextResultFactory.fromParsedReview(parsed),
         );
       }
 
