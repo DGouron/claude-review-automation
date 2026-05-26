@@ -1,13 +1,15 @@
 # Block approval below quality threshold with comment-based bypass
 
-## Status: implementing
+## Status: implemented
+
+All three iterations shipped. Spec fully covered (scenarios 1-10).
 
 Iteration A — internal quality gate — **implemented** (scenarios 1, 2, 3, 7, 8).
 Iteration B — comment-based bypass — **implemented** (scenarios 4, 5, 9, 10).
-Iteration C — platform unapprove + explanatory comment — pending (scenario 6).
+Iteration C — platform unapprove + explanatory comment — **implemented** (scenario 6).
 
-See reports: [iter A](../reports/180-quality-threshold-block-approval.report.md), [iter B](../reports/180-quality-threshold-block-approval-iter-B.report.md).
-See plans: [iter A](../plans/180-quality-threshold-block-approval.plan.md), [iter B](../plans/180-quality-threshold-block-approval-iter-B.plan.md).
+See reports: [iter A](../reports/180-quality-threshold-block-approval.report.md), [iter B](../reports/180-quality-threshold-block-approval-iter-B.report.md), [iter C](../reports/180-quality-threshold-block-approval-iter-C.report.md).
+See plans: [iter A](../plans/180-quality-threshold-block-approval.plan.md), [iter B](../plans/180-quality-threshold-block-approval-iter-B.plan.md), [iter C](../plans/180-quality-threshold-block-approval-iter-C.plan.md).
 
 ## Implementation (Iteration A)
 
@@ -42,6 +44,22 @@ See plans: [iter A](../plans/180-quality-threshold-block-approval.plan.md), [ite
 - FR rejection message owned by the use case, not the parser (parser is context-free).
 - No separate "Bypass" entity — bypass is a value attached to `TrackedMr` (same lifecycle).
 - Separate `NoteCommentPostGateway` from `ReviewActionGateway` — different lifecycle (one-shot webhook context vs batched review actions).
+
+## Implementation (Iteration C)
+
+**Artefacts**:
+- Use case: `handlePlatformApproval.usecase.ts` (orchestration, discriminated union `{ allowed | bypass-active | mr-not-found | reverted }`; owns the FR explanatory message template).
+- Gateway contract: `approvalRevocation.gateway.ts` + CLI impls for GitLab (`glab api .../approvals/unapprove`) and GitHub (`gh api PUT .../reviews/<id>/dismissals`).
+- New GitHub `pull_request_review` event surface: Zod guard + `filterGitHubPullRequestReviewEvent` + controller branch.
+- GitLab approve branch: re-wrapped to delegate to the new use case; on `kind: 'reverted'`, orchestrates revoke + FR comment.
+- Reuses iter B's `NoteCommentPostGateway` — no duplicate comment gateway.
+- Best-effort I/O: both revoke and comment-post wrapped in try/catch + log; no retries.
+
+**Architectural decisions**:
+- Internal `state` is NOT reverted — iter A already prevents the bad internal transition. Iter C handles the platform-side side effect only.
+- The FR message template lives in the use case, not the gateway — gateway stays I/O-only.
+- GitHub's primitive for "revoke" is `dismissals` on a review (`event.review.id`); GitLab has a direct `unapprove` API.
+- `handlePlatformApproval` is a separate use case rather than inline controller logic — keeps controllers thin and the orchestration testable.
 
 ## Context
 

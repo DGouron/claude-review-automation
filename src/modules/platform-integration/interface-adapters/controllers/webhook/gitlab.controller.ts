@@ -24,7 +24,10 @@ import type { TransitionStateUseCase } from '@/modules/tracking/usecases/trackin
 import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tracking/checkFollowupNeeded.usecase.js';
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import type { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
+import type { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js';
+import type { ApprovalRevocationGateway } from '@/modules/platform-integration/entities/approvalRevocation/approvalRevocation.gateway.js';
+import { evaluateQualityGate } from '@/modules/tracking/entities/qualityGate/qualityGate.js';
 import { loadProjectConfig, getProjectAgentsOrFocusDefaults, getFollowupAgents, getProjectLanguage } from '@/config/projectConfig.js';
 import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execution/entities/progress/agentDefinition.type.js';
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
@@ -83,6 +86,9 @@ export interface GitLabWebhookDependencies {
   removeWorktree: RemoveWorktreeAction;
   recordBypass: RecordBypassUseCase;
   noteCommentPostGateway: NoteCommentPostGateway;
+  handlePlatformApproval: HandlePlatformApprovalUseCase;
+  approvalRevocationGateway: ApprovalRevocationGateway;
+  getQualityThreshold: (projectPath: string) => number | null;
   now: () => string;
 }
 
@@ -298,15 +304,99 @@ export async function handleGitLabWebhook(
     }
   }
 
-  // 3c. Check if MR was approved - update tracking state
+  // 3c. Check if MR was approved - run gate, revoke on platform if it fails
   const approveResult = filterGitLabMrApprove(event);
   if (approveResult.shouldProcess) {
     const repoConfig = findRepositoryByProjectPath(approveResult.projectPath);
     if (repoConfig) {
       const mrId = `gitlab-${approveResult.projectPath}-${approveResult.mergeRequestNumber}`;
-      transitionState.execute({ projectPath: repoConfig.localPath, mrId, targetState: 'approved' });
-      logger.info({ mrNumber: approveResult.mergeRequestNumber }, 'MR marked as approved');
-      reply.status(200).send({ status: 'approved', mrNumber: approveResult.mergeRequestNumber });
+      const threshold = deps.getQualityThreshold(repoConfig.localPath);
+      const transitionResult = transitionState.execute({
+        projectPath: repoConfig.localPath,
+        mrId,
+        targetState: 'approved',
+        qualityCheck: (mr) =>
+          evaluateQualityGate({
+            latestScore: mr.latestScore,
+            blockingIssues: mr.openThreads,
+            threshold,
+          }),
+      });
+
+      if (transitionResult.ok) {
+        logger.info({ mrNumber: approveResult.mergeRequestNumber }, 'MR marked as approved');
+        reply.status(200).send({ status: 'approved', mrNumber: approveResult.mergeRequestNumber });
+        return;
+      }
+
+      if (transitionResult.reason === 'quality-gate') {
+        const verdict = deps.handlePlatformApproval.execute({
+          projectPath: repoConfig.localPath,
+          mrId,
+          qualityThreshold: threshold,
+        });
+
+        if (verdict.kind === 'reverted') {
+          try {
+            await deps.approvalRevocationGateway.revoke({
+              projectPath: approveResult.projectPath,
+              mrNumber: approveResult.mergeRequestNumber,
+            });
+          } catch (error) {
+            logger.warn(
+              {
+                mrNumber: approveResult.mergeRequestNumber,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              'Failed to revoke GitLab approval; continuing with FR comment',
+            );
+          }
+
+          try {
+            await deps.noteCommentPostGateway.postComment({
+              projectPath: approveResult.projectPath,
+              mrNumber: approveResult.mergeRequestNumber,
+              body: verdict.message,
+            });
+          } catch (error) {
+            logger.warn(
+              {
+                mrNumber: approveResult.mergeRequestNumber,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              'Failed to post FR explanation comment after revoking GitLab approval',
+            );
+          }
+
+          logger.info(
+            { mrNumber: approveResult.mergeRequestNumber, reason: verdict.reason },
+            'Platform approval revoked on non-qualified MR',
+          );
+          reply.status(200).send({
+            status: 'unapproved',
+            mrNumber: approveResult.mergeRequestNumber,
+            reason: verdict.reason,
+          });
+          return;
+        }
+
+        reply.status(200).send({
+          status: 'ignored',
+          mrNumber: approveResult.mergeRequestNumber,
+          reason: verdict.kind,
+        });
+        return;
+      }
+
+      logger.info(
+        { mrNumber: approveResult.mergeRequestNumber, reason: transitionResult.reason },
+        'GitLab approval ignored (MR not tracked)',
+      );
+      reply.status(200).send({
+        status: 'ignored',
+        mrNumber: approveResult.mergeRequestNumber,
+        reason: transitionResult.reason,
+      });
       return;
     }
   }
