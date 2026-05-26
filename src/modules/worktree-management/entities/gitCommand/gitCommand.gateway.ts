@@ -3,7 +3,8 @@ export type GitCommandKind =
   | 'worktree-add'
   | 'worktree-remove'
   | 'worktree-prune'
-  | 'reset-hard';
+  | 'reset-hard'
+  | 'rev-parse-toplevel';
 
 export interface GitCommand {
   kind: GitCommandKind;
