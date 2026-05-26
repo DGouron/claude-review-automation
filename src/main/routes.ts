@@ -9,6 +9,7 @@ import { reviewRoutes } from '@/modules/review-execution/interface-adapters/cont
 import { statsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/stats.routes.js';
 import { overviewRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/overview.routes.js';
 import { mrTrackingRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.js';
+import { loadProjectConfig } from '@/config/projectConfig.js';
 import { mrTrackingAdvancedRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTrackingAdvanced.routes.js';
 import { logsRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/logs.routes.js';
 import { cliStatusRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/cliStatus.routes.js';
@@ -155,6 +156,8 @@ export async function registerRoutes(
 
   await app.register(mrTrackingRoutes, {
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
+    getQualityThreshold: (projectPath: string) =>
+      loadProjectConfig(projectPath)?.qualityThreshold ?? null,
   });
 
   const tokenUsageGateway = new FilesystemTokenUsageGateway();

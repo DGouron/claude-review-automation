@@ -294,6 +294,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
             threadsClosed: threadResolveCount,
             diffStats,
           },
+          qualityThreshold: loadProjectConfig(job.localPath)?.qualityThreshold ?? null,
         });
 
         logger.info(

@@ -25,6 +25,7 @@ export interface ProjectConfig {
   followupAgents?: AgentDefinition[];
   routingPolicy?: RoutingPolicy;
   externalLink?: string;
+  qualityThreshold?: number;
 }
 
 function parseExternalLink(value: unknown): string | undefined {
@@ -44,6 +45,16 @@ function parseRetentionDays(value: unknown): number {
     return value;
   }
   return DEFAULT_RETENTION_DAYS;
+}
+
+function parseQualityThreshold(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 10) {
+    throw new Error('Invalid qualityThreshold: must be an integer between 0 and 10');
+  }
+  return value;
 }
 
 function validateAgents(agents: unknown): agents is AgentDefinition[] {
@@ -192,6 +203,11 @@ export function parseProjectConfig(parsed: Record<string, unknown>): ProjectConf
   const externalLink = parseExternalLink(parsed.externalLink);
   if (externalLink !== undefined) {
     config.externalLink = externalLink;
+  }
+
+  const qualityThreshold = parseQualityThreshold(parsed.qualityThreshold);
+  if (qualityThreshold !== undefined) {
+    config.qualityThreshold = qualityThreshold;
   }
 
   return config;
