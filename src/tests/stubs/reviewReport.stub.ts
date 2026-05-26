@@ -10,17 +10,26 @@ export class StubReviewReportGateway implements ReviewReportGateway {
     content: '# Stub report',
     path: '/tmp/project/.claude/reviews/2026-05-22-MR-42-review.md',
   };
+  private readStrategy: ((location: ReviewReportLocation) => ReviewReportContent | null) | null = null;
 
   lastReadJobType: ClaudeSessionJobType | null = null;
   readCallCount = 0;
 
   setReport(report: ReviewReportContent | null): void {
     this.report = report;
+    this.readStrategy = null;
+  }
+
+  setReadStrategy(strategy: (location: ReviewReportLocation) => ReviewReportContent | null): void {
+    this.readStrategy = strategy;
   }
 
   read(location: ReviewReportLocation): ReviewReportContent | null {
     this.lastReadJobType = location.jobType;
     this.readCallCount += 1;
+    if (this.readStrategy !== null) {
+      return this.readStrategy(location);
+    }
     return this.report;
   }
 

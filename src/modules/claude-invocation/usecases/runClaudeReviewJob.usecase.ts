@@ -21,6 +21,7 @@ export interface RunClaudeReviewJobInput {
   prompt: string;
   flags: ClaudeDispatchFlags;
   localPath: string;
+  reportFallbackLocalPath?: string;
   mergeRequestId: string;
   mergeRequestNumber: number;
   attempt: number;
@@ -154,6 +155,7 @@ export async function runClaudeReviewJob(
       session,
       today: deps.now(),
       mergeRequestNumber: input.mergeRequestNumber,
+      fallbackLocalPath: input.reportFallbackLocalPath,
     },
     { reportGateway: deps.reportGateway },
   );

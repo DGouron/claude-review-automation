@@ -618,6 +618,7 @@ async function invokeViaBackgroundSession(
         prompt,
         flags,
         localPath: claudeCwd,
+        reportFallbackLocalPath: worktreePath,
         mergeRequestId,
         mergeRequestNumber: job.mrNumber,
         attempt,
