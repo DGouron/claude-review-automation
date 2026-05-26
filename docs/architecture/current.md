@@ -35,16 +35,20 @@ title: Technical Architecture
          │                           │                   │  (max 2)    │
          │                           │                   └──────┬──────┘
          │                           │                          │
-         │                           │                   6. spawn claude
+         │                           │                   6. ensureWorktree
+         │                           │                      (~/.reviewflow/worktrees/...)
+         │                           │                          │
+         │                           │                   7. claude --bg
          │                           │                          │
          │                           │                   ┌──────┴──────┐
-         │                           │                   │ Claude CLI  │
-         │                           │                   │ /skill MR#  │
+         │                           │                   │  Background │
+         │                           │                   │  Session    │
+         │                           │                   │  /skill MR# │
          │                           │                   └──────┬──────┘
          │                           │                          │
          │◄──────────────────────────┼──────────────────────────┤
-         │                           │                   7. Post comments
-         │ 8. Inline comments        │                      via glab api
+         │                           │                   8. Post comments
+         │ 9. Inline comments        │                      via glab/gh api
          │    on MR                  │                          │
          │                           │                          │
 ```
@@ -53,49 +57,43 @@ title: Technical Architecture
 
 ```
 src/
-├── server.ts                                      # Fastify entry point
+├── main/
+│   ├── server.ts                                  # Fastify entry point
+│   ├── routes.ts                                  # Composition root (DI wiring)
+│   └── dependencies.ts                            # Shared dependency construction
 ├── mcpServer.ts                                   # MCP server entry point
 │
-├── config/                                        # Config loading and validation
-├── security/                                      # Webhook signature verification
-├── entities/                                      # Domain entities and types
-│   ├── insight/                                   # Developer & team insights
-│   ├── stats/                                     # Review statistics
+├── modules/                                       # Bounded contexts (Clean Architecture per module)
+│   ├── claude-invocation/                         # `claude --bg` dispatch + completion + cleanup
+│   ├── worktree-management/                       # Pre-built worktree lifecycle (ensure/remove/sweep)
+│   ├── supervisor-management/                     # Claude agents supervisor health + respawn
+│   ├── review-execution/                          # Review job orchestration, model routing
+│   ├── platform-integration/                      # GitLab + GitHub webhook controllers
 │   ├── tracking/                                  # MR lifecycle tracking
-│   └── ...                                        # Other domain entities
-├── usecases/                                      # Business logic
-│   ├── insights/                                  # Insight computation & AI generation
-│   ├── stats/                                     # Stats recalculation & backfill
-│   └── ...                                        # Other use cases
-│
-├── interface-adapters/
-│   ├── controllers/
-│   │   ├── webhook/
-│   │   │   ├── gitlab.controller.ts               # GitLab webhook handler
-│   │   │   ├── github.controller.ts               # GitHub webhook handler
-│   │   │   └── eventFilter.ts                     # Filtering logic
-│   │   ├── http/                                  # REST API routes
-│   │   │   ├── insights.routes.ts                 # Developer & team insights
-│   │   │   ├── stats.routes.ts                    # Stats recalculation
-│   │   │   ├── version.routes.ts                  # Self-update mechanism
-│   │   │   └── ...                                # Other routes
-│   │   └── mcp/                                   # MCP tool handlers
-│   ├── presenters/                                # Domain → ViewModel transformation
-│   │   └── insights.presenter.ts                  # Insights presentation
-│   └── gateways/                                  # Gateway implementations
+│   ├── token-accounting/                          # Token usage + budget cap
+│   ├── statistics-insights/                       # Stats recalculation + developer insights
+│   ├── cli-configuration/                         # init, validate, discover commands
+│   ├── data-lifecycle/                            # Periodic cleanup of stale tracking data
+│   └── shared-kernel/                             # Cross-module shared types (diff stats, ...)
 │
 ├── frameworks/
-│   ├── claude/                                    # Claude CLI integration
-│   │   └── claudeInsightsInvoker.ts               # AI insights generation via Claude
+│   ├── claude/                                    # Claude CLI orchestration shim
+│   ├── queue/                                     # p-queue adapter with MR-scoped concurrency
+│   ├── scheduler/                                 # Cleanup + worktree sweep + supervisor schedulers
+│   ├── logging/                                   # Pino + log buffer
+│   ├── config/                                    # Config loader
 │   └── settings/                                  # Runtime settings (model, language)
 │
 ├── mcp/                                           # MCP server infrastructure
 │   ├── server.ts                                  # MCP server setup
 │   └── mcpServerStdio.ts                          # Stdio transport
 │
-├── queue/                                         # Review queue management
-└── shared/                                        # Shared services and utilities
+├── security/                                      # Webhook signature verification
+├── shared/                                        # Foundation utilities + cross-cutting services
+└── tests/                                         # Vitest tests mirroring src structure
 ```
+
+Each module follows Clean Architecture internally: `entities/` → `usecases/` → `interface-adapters/`. Dependency direction is always inward.
 
 ## Components
 
@@ -137,16 +135,43 @@ Filters events based on these criteria:
 - **Deduplication**: Map with TTL (default: 5 min)
 - **Tracking**: Active jobs and history of last 20
 
-### 6. Claude Invoker (claude/invoker.ts)
+### 6. Claude Invocation (`modules/claude-invocation/`)
+
+Reviewflow no longer streams Claude's output via `-p`. Each review runs as a **detached background session** dispatched with `claude --bg`. Completion is detected via three independent signals in first-wins semantics.
 
 ```bash
-claude --print --permission-mode dontAsk --model sonnet -p "/<skill> <MR_NUMBER>"
+claude --bg \
+  --model <sonnet|opus|haiku> \
+  --permission-mode auto \
+  --append-system-prompt "<job context + MCP directives>" \
+  --mcp-config <inline-json> \
+  --strict-mcp-config \
+  --allowedTools "Read,Glob,Grep,Bash,Edit,Task,Skill,Write,LSP,mcp__review-progress__*" \
+  --disallowedTools "EnterPlanMode,AskUserQuestion" \
+  -- "/<skill> <MR_NUMBER>"
 ```
 
-- **Spawn**: `child_process.spawn` (not exec, to handle large outputs)
-- **CWD**: Configured local repo path
-- **Timeout**: 30 minutes max
-- **Notifications**: `notify-send` at start and end
+- **CWD**: The pre-built worktree at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>` — see [Worktree Lifecycle](./worktree-lifecycle.md)
+- **Completion signals** (first wins):
+  1. MCP `set_phase('completed')` published via the in-memory completion bridge
+  2. `claude agents --json` poll every 30s reports `completed` / `failed` / `stopped`
+  3. Hard 15-minute timeout
+- **Report retrieval**: read from `<worktree>/.claude/reviews/report-<mrNumber>.md`
+- **Cleanup**: `claude stop <sessionId>` then `claude rm <sessionId>`
+- **Rate-limit handling**: stderr or stdout matching `RATE_LIMIT_DETECTION_REGEX` (exported from `claudeSession.cli.gateway.ts`) triggers exponential backoff retry
+- **Notifications**: `notify-send` at start and end (Linux)
+
+Source: `src/modules/claude-invocation/usecases/runClaudeReviewJob.usecase.ts` orchestrates `dispatchClaudeSession` → `awaitSessionCompletion` → `retrieveReviewReport` → `cleanupClaudeSession`.
+
+### 7. Worktree Management (`modules/worktree-management/`)
+
+Each MR runs in its own git worktree to isolate concurrent reviews and give followups a stable cwd. `ensureWorktree` is idempotent (creates on first review, fetch + reset on followup). `removeWorktree` runs on merge/close. A daily sweep reclaims worktrees of MRs closed >24h ago, untracked worktrees, and any directory with `mtime` >7d.
+
+See [Worktree Lifecycle](./worktree-lifecycle.md) for the full state machine, file paths, and operator commands.
+
+### 8. Supervisor Management (`modules/supervisor-management/`)
+
+The Claude agents supervisor (long-running `claude` daemon hosting background sessions) is probed every 60 seconds. If it is `down`, a detached spawn brings it back up under a PID-validated file lock at `~/.reviewflow/supervisor.lock`. The `/health` endpoint surfaces `supervisor: { state, reason, lastCheckedAt }` and reports `status: 'degraded'` when the supervisor is unreachable. Reviewflow shutdown does NOT kill the spawned supervisor (`detached: true` + `unref()`).
 
 ## Security
 

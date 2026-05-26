@@ -75,12 +75,83 @@ sudo systemctl restart cloudflared-review-flow
 - Verify the skill exists in the target project
 - Check Claude Code permissions (`settings.local.json`)
 
+### Session dispatch fails immediately
+
+Reviewflow dispatches with `claude --bg`. Check:
+
+- `claude` binary version: must support `--bg` (≥ v2.1.139)
+- `claude auth status` returns OAuth (no `ANTHROPIC_API_KEY` should be set — Reviewflow auto-pauses if it detects the API pool is in use)
+- Server logs for `dispatchClaudeSession` errors
+
+### Review hangs and never completes
+
+Three completion signals are wired (MCP `set_phase`, `claude agents --json` poll, 15-min timeout). If all three miss, the session is killed on timeout and the report is missing. Inspect:
+
+```bash
+claude agents --json                # is the session still listed?
+claude logs <sessionId>             # what is it doing?
+```
+
+If the session is healthy but unresponsive, `claude stop <sessionId>` clears it.
+
+## Worktree
+
+### "branch-not-found" error in review job logs
+
+The source branch was deleted upstream between webhook reception and worktree fetch. The review is aborted — re-push the branch or close the MR.
+
+### "worktree-add-failed" error
+
+Common causes:
+
+- A stale worktree pointer survived (`git worktree prune` from the source checkout fixes this — `ensureWorktree` already runs prune, but a corrupted `.git/worktrees/` may need manual cleanup)
+- Disk full on `~/.reviewflow/worktrees/` — check `du -sh ~/.reviewflow/worktrees/*`
+
+### Worktree directory missing on merge
+
+`removeWorktree` is idempotent — a missing path is logged as a warning and the merge completes normally. No action needed.
+
+### Manual cleanup
+
+```bash
+# Inspect
+ls -la ~/.reviewflow/worktrees/
+du -sh ~/.reviewflow/worktrees/*
+
+# Force-remove a specific worktree
+rm -rf ~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>
+# then prune from the source checkout
+cd /path/to/source/checkout && git worktree prune
+```
+
+The sweep (every 24h since server startup) normally reclaims stale worktrees automatically (closed >24h or `mtime` >7d).
+
+## Supervisor
+
+### `/health` returns `status: degraded`
+
+The Claude agents supervisor is unreachable. The 60-second scheduler will attempt to respawn it on the next tick. Check:
+
+```bash
+curl http://localhost:3847/health | jq .supervisor
+# { state: "down", reason: "...", lastCheckedAt: "..." }
+```
+
+Possible reasons:
+
+- `claude` binary not in `PATH`
+- `claude auth status` not authenticated
+- Lock file held by a dead PID at `~/.reviewflow/supervisor.lock` — the scheduler takes over automatically on the next tick
+
+### Supervisor keeps respawning
+
+Look for `spawn-unstable` in `/health` reason — the supervisor dies immediately after spawn. Usually means OAuth credentials are missing or `claude` is broken. Run `claude agents` manually to see the error.
+
 ## MCP Server
 
 ### No MCP logs created
 
 - The MCP server only starts when Claude actually calls a tool
-- Ensure `--print` mode and MCP server config are both set
 - Check `~/.review-flow/logs/mcp-server.log`
 
 ### "Workflow not found" error
@@ -101,3 +172,6 @@ sudo systemctl restart cloudflared-review-flow
 | MCP server | `~/.review-flow/logs/mcp-server.log` |
 | Review stats | `.claude/reviews/stats.json` (in project) |
 | MR tracking | `.claude/reviews/tracking.json` (in project) |
+| Claude session transcripts | `~/.claude/projects/<cwd-slug>/<sessionId>.jsonl` |
+| Worktrees | `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>/` |
+| Supervisor lock | `~/.reviewflow/supervisor.lock` |

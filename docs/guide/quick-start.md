@@ -126,11 +126,16 @@ reviewflow status
 3. Open `http://localhost:3847/dashboard/`
 4. Watch the review appear!
 
+::: info Where reviews actually run
+On first review of each MR, Reviewflow creates a dedicated git worktree at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>` and dispatches `claude --bg` against it. Your main checkout is never touched. Followups fast-forward the existing worktree; merge/close removes it; a daily sweep reclaims anything stale. See [Worktree Lifecycle](../architecture/worktree-lifecycle.md).
+:::
+
 ## Next steps
 
 - [Project Configuration](./project-config.md) - Configure review skills per project
 - [Deployment Guide](../deployment/index.md) - Run in production with systemd
 - [Architecture](../architecture/current.md) - Understand the codebase
+- [Worktree Lifecycle](../architecture/worktree-lifecycle.md) - How review isolation works
 
 ## Troubleshooting
 
