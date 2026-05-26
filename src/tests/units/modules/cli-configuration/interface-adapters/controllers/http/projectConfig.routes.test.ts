@@ -308,4 +308,52 @@ describe('projectConfigRoutes — PATCH /api/project-config', () => {
     expect(response.json().error).toBe('Échec de la sauvegarde');
     await app.close();
   });
+
+  it('accepts a numeric qualityThreshold in the patch body', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { qualityThreshold: 7 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.qualityThreshold).toBe(7);
+    await app.close();
+  });
+
+  it('returns 400 when qualityThreshold is out of range', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { qualityThreshold: 15 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toMatch(/qualityThreshold/);
+    await app.close();
+  });
+
+  it('clears qualityThreshold from the persisted config when patch sends null', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig({ qualityThreshold: 7 }));
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { qualityThreshold: null },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.qualityThreshold).toBeUndefined();
+    await app.close();
+  });
 });

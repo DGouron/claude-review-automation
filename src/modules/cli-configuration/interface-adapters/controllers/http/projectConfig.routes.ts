@@ -26,6 +26,7 @@ const patchBodySchema = z
     reviewSkill: z.unknown().optional(),
     reviewFollowupSkill: z.unknown().optional(),
     externalLink: z.unknown().optional(),
+    qualityThreshold: z.unknown().optional(),
   })
   .passthrough();
 
@@ -72,6 +73,16 @@ function extractPatch(body: Record<string, unknown>): ProjectConfigPatch {
   }
   if ('externalLink' in body && typeof body.externalLink === 'string') {
     patch.externalLink = body.externalLink;
+  }
+  if ('qualityThreshold' in body) {
+    const raw = body.qualityThreshold;
+    if (raw === null) {
+      patch.qualityThreshold = null;
+    } else if (typeof raw === 'number') {
+      patch.qualityThreshold = raw;
+    } else if (typeof raw === 'string' && raw.trim() === '') {
+      patch.qualityThreshold = null;
+    }
   }
   return patch;
 }

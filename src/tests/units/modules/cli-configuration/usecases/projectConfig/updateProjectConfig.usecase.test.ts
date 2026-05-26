@@ -172,4 +172,94 @@ describe('UpdateProjectConfigUseCase', () => {
     expect(observed).toHaveLength(1);
     expect(observed[0].language).toBe('en');
   });
+
+  it('merges a valid qualityThreshold (7) into the persisted config', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: 7 } });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.config.qualityThreshold).toBe(7);
+    }
+  });
+
+  it('accepts 0 as a valid qualityThreshold', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: 0 } });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.config.qualityThreshold).toBe(0);
+    }
+  });
+
+  it('accepts 10 as a valid qualityThreshold', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: 10 } });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.config.qualityThreshold).toBe(10);
+    }
+  });
+
+  it('rejects qualityThreshold below 0', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: -1 } });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'qualityThreshold must be an integer between 0 and 10',
+    });
+  });
+
+  it('rejects qualityThreshold above 10', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: 11 } });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'qualityThreshold must be an integer between 0 and 10',
+    });
+  });
+
+  it('rejects non-integer qualityThreshold', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: 7.5 } });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'qualityThreshold must be an integer between 0 and 10',
+    });
+  });
+
+  it('null qualityThreshold removes the key from the persisted config', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base({ qualityThreshold: 7 }));
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { qualityThreshold: null } });
+
+    expect(result.status).toBe('success');
+    const persisted = gateway.get('/repo/A');
+    expect(persisted?.qualityThreshold).toBeUndefined();
+  });
 });
