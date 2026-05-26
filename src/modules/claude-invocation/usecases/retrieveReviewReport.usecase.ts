@@ -8,6 +8,7 @@ export interface RetrieveReviewReportInput {
   session: ClaudeSession;
   today: Date;
   mergeRequestNumber: number;
+  fallbackLocalPath?: string;
 }
 
 export interface RetrieveReviewReportDependencies {
@@ -26,16 +27,28 @@ export function retrieveReviewReport(
   input: RetrieveReviewReportInput,
   deps: RetrieveReviewReportDependencies,
 ): RetrieveReviewReportResult {
-  const location: ReviewReportLocation = {
+  const primary: ReviewReportLocation = {
     localPath: input.session.localPath,
     isoDate: formatIsoDate(input.today),
     mergeRequestNumber: input.mergeRequestNumber,
     jobType: input.session.jobType,
   };
 
-  const found = deps.reportGateway.read(location);
-  if (found) {
-    return { status: 'found', content: found.content, path: found.path };
+  const primaryHit = deps.reportGateway.read(primary);
+  if (primaryHit) {
+    return { status: 'found', content: primaryHit.content, path: primaryHit.path };
   }
-  return { status: 'missing', expectedPath: deps.reportGateway.buildPath(location) };
+
+  if (
+    input.fallbackLocalPath !== undefined &&
+    input.fallbackLocalPath !== input.session.localPath
+  ) {
+    const fallback: ReviewReportLocation = { ...primary, localPath: input.fallbackLocalPath };
+    const fallbackHit = deps.reportGateway.read(fallback);
+    if (fallbackHit) {
+      return { status: 'found', content: fallbackHit.content, path: fallbackHit.path };
+    }
+  }
+
+  return { status: 'missing', expectedPath: deps.reportGateway.buildPath(primary) };
 }
