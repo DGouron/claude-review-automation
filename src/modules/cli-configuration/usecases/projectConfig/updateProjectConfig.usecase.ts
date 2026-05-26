@@ -9,17 +9,22 @@ export const EDITABLE_PROJECT_CONFIG_KEYS = [
   'reviewSkill',
   'reviewFollowupSkill',
   'externalLink',
+  'qualityThreshold',
 ] as const;
 
 export const EXTERNAL_LINK_PATTERN = /^https:\/\/.+/;
 const FORBIDDEN_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+const QUALITY_THRESHOLD_INVALID_MESSAGE =
+  'qualityThreshold must be an integer between 0 and 10';
 
 const SUPPORTED_LANGUAGES: readonly Language[] = ['en', 'fr'];
 const SUPPORTED_MODELS: readonly ProjectConfig['defaultModel'][] = ['haiku', 'sonnet', 'opus'];
 
 export type ProjectConfigPatch = Partial<
   Pick<ProjectConfig, 'language' | 'defaultModel' | 'reviewSkill' | 'reviewFollowupSkill' | 'externalLink'>
->;
+> & {
+  qualityThreshold?: number | null;
+};
 
 export interface UpdateProjectConfigInput {
   path: string;
@@ -43,6 +48,15 @@ function validateExternalLink(value: string): { ok: true } | { ok: false; reason
   }
   if (!EXTERNAL_LINK_PATTERN.test(value)) {
     return { ok: false, reason: 'URL invalide' };
+  }
+  return { ok: true };
+}
+
+function validateQualityThreshold(
+  value: number,
+): { ok: true } | { ok: false; reason: string } {
+  if (!Number.isInteger(value) || value < 0 || value > 10) {
+    return { ok: false, reason: QUALITY_THRESHOLD_INVALID_MESSAGE };
   }
   return { ok: true };
 }
@@ -92,6 +106,13 @@ function mergeConfig(current: ProjectConfig, patch: ProjectConfigPatch): Project
     }
     merged.externalLink = patch.externalLink;
   }
+  if (Object.prototype.hasOwnProperty.call(patch, 'qualityThreshold')) {
+    if (patch.qualityThreshold === null || patch.qualityThreshold === undefined) {
+      const { qualityThreshold: _omitted, ...withoutThreshold } = merged;
+      return withoutThreshold;
+    }
+    merged.qualityThreshold = patch.qualityThreshold;
+  }
   return merged;
 }
 
@@ -110,6 +131,13 @@ export class UpdateProjectConfigUseCase
       const linkValidation = validateExternalLink(sanitized.externalLink);
       if (!linkValidation.ok) {
         return { status: 'invalid', reason: linkValidation.reason };
+      }
+    }
+
+    if (typeof sanitized.qualityThreshold === 'number') {
+      const thresholdValidation = validateQualityThreshold(sanitized.qualityThreshold);
+      if (!thresholdValidation.ok) {
+        return { status: 'invalid', reason: thresholdValidation.reason };
       }
     }
 

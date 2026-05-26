@@ -3,6 +3,7 @@ import {
   buildSettingsViewModel,
   renderSettingsModalHtml,
   validateExternalLink,
+  validateQualityThreshold,
   extractFormPayload,
 } from '@/dashboard/modules/settingsModal.js';
 
@@ -72,6 +73,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -86,6 +88,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-back',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -101,6 +104,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: 'https://notion.so/x',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -115,6 +119,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'frontend',
     });
 
@@ -129,6 +134,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewSkill: 'review-front',
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
+      qualityThreshold: '',
       projectName: 'A',
     });
 
@@ -168,13 +174,14 @@ describe('settingsModal — validateExternalLink', () => {
 });
 
 describe('settingsModal — extractFormPayload', () => {
-  it('returns only the 5 whitelisted keys from a FormData-like object', () => {
+  it('returns the six whitelisted keys (incl. qualityThreshold) from a FormData-like object', () => {
     const fakeForm = new Map<string, string>([
       ['language', 'en'],
       ['defaultModel', 'sonnet'],
       ['reviewSkill', 'review-front'],
       ['reviewFollowupSkill', 'review-followup'],
       ['externalLink', 'https://notion.so/x'],
+      ['qualityThreshold', '7'],
       ['agents', '[{"name":"evil"}]'],
       ['retentionDays', '999'],
     ]);
@@ -185,10 +192,122 @@ describe('settingsModal — extractFormPayload', () => {
       'defaultModel',
       'externalLink',
       'language',
+      'qualityThreshold',
       'reviewFollowupSkill',
       'reviewSkill',
     ]);
     expect(payload.language).toBe('en');
     expect(payload.externalLink).toBe('https://notion.so/x');
+    expect(payload.qualityThreshold).toBe('7');
+  });
+});
+
+describe('settingsModal — buildSettingsViewModel with qualityThreshold', () => {
+  it('exposes qualityThreshold as a string when the config has a value', () => {
+    const viewModel = buildSettingsViewModel({
+      config: {
+        github: false,
+        gitlab: true,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        language: 'fr',
+        retentionDays: 14,
+        qualityThreshold: 7,
+      },
+      projectName: 'A',
+    });
+
+    expect(viewModel.qualityThreshold).toBe('7');
+  });
+
+  it('exposes an empty qualityThreshold when the config has none', () => {
+    const viewModel = buildSettingsViewModel({
+      config: {
+        github: false,
+        gitlab: true,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        language: 'fr',
+        retentionDays: 14,
+      },
+      projectName: 'A',
+    });
+
+    expect(viewModel.qualityThreshold).toBe('');
+  });
+});
+
+describe('settingsModal — renderSettingsModalHtml renders qualityThreshold input', () => {
+  it('renders a number input for qualityThreshold pre-filled with the current value', () => {
+    const html = renderSettingsModalHtml({
+      language: 'fr',
+      defaultModel: 'sonnet',
+      reviewSkill: 'review-front',
+      reviewFollowupSkill: 'review-followup',
+      externalLink: '',
+      qualityThreshold: '7',
+      projectName: 'A',
+    });
+
+    expect(html).toMatch(/<input[^>]+name="qualityThreshold"[^>]+type="number"/);
+    expect(html).toMatch(/<input[^>]+name="qualityThreshold"[^>]+min="0"/);
+    expect(html).toMatch(/<input[^>]+name="qualityThreshold"[^>]+max="10"/);
+    expect(html).toMatch(/<input[^>]+name="qualityThreshold"[^>]+value="7"/);
+  });
+
+  it('renders an empty value when no threshold is set', () => {
+    const html = renderSettingsModalHtml({
+      language: 'fr',
+      defaultModel: 'sonnet',
+      reviewSkill: 'review-front',
+      reviewFollowupSkill: 'review-followup',
+      externalLink: '',
+      qualityThreshold: '',
+      projectName: 'A',
+    });
+
+    expect(html).toMatch(/<input[^>]+name="qualityThreshold"[^>]+value=""/);
+  });
+});
+
+describe('settingsModal — validateQualityThreshold', () => {
+  it('accepts an empty string (means clear)', () => {
+    expect(validateQualityThreshold('')).toEqual({ ok: true });
+  });
+
+  it('accepts integer values 0 through 10', () => {
+    for (const value of ['0', '1', '5', '7', '10']) {
+      expect(validateQualityThreshold(value)).toEqual({ ok: true });
+    }
+  });
+
+  it('rejects values above 10', () => {
+    expect(validateQualityThreshold('11')).toEqual({
+      ok: false,
+      message: 'Le seuil doit être un entier entre 0 et 10',
+    });
+  });
+
+  it('rejects negative values', () => {
+    expect(validateQualityThreshold('-1')).toEqual({
+      ok: false,
+      message: 'Le seuil doit être un entier entre 0 et 10',
+    });
+  });
+
+  it('rejects non-integer values', () => {
+    expect(validateQualityThreshold('7.5')).toEqual({
+      ok: false,
+      message: 'Le seuil doit être un entier entre 0 et 10',
+    });
+  });
+
+  it('rejects non-numeric strings', () => {
+    expect(validateQualityThreshold('abc')).toEqual({
+      ok: false,
+      message: 'Le seuil doit être un entier entre 0 et 10',
+    });
   });
 });

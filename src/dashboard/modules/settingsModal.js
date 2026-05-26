@@ -18,10 +18,13 @@ const EDITABLE_KEYS = [
   'reviewSkill',
   'reviewFollowupSkill',
   'externalLink',
+  'qualityThreshold',
 ];
 
 const SUPPORTED_LANGUAGES = ['fr', 'en'];
 const SUPPORTED_MODELS = ['haiku', 'sonnet', 'opus'];
+
+const QUALITY_THRESHOLD_ERROR = 'Le seuil doit être un entier entre 0 et 10';
 
 /**
  * @typedef {Object} SettingsModalConfigInput
@@ -30,6 +33,7 @@ const SUPPORTED_MODELS = ['haiku', 'sonnet', 'opus'];
  * @property {string} reviewFollowupSkill
  * @property {'en' | 'fr'} language
  * @property {string} [externalLink]
+ * @property {number} [qualityThreshold]
  * @property {boolean} [github]
  * @property {boolean} [gitlab]
  * @property {number} [retentionDays]
@@ -48,6 +52,7 @@ const SUPPORTED_MODELS = ['haiku', 'sonnet', 'opus'];
  * @property {string} reviewSkill
  * @property {string} reviewFollowupSkill
  * @property {string} externalLink
+ * @property {string} qualityThreshold
  * @property {string} projectName
  */
 
@@ -63,6 +68,9 @@ export function buildSettingsViewModel(input) {
     reviewSkill: config.reviewSkill,
     reviewFollowupSkill: config.reviewFollowupSkill,
     externalLink: typeof config.externalLink === 'string' ? config.externalLink : '',
+    qualityThreshold: typeof config.qualityThreshold === 'number'
+      ? String(config.qualityThreshold)
+      : '',
     projectName: typeof input.projectName === 'string' && input.projectName.length > 0
       ? input.projectName
       : '—',
@@ -156,6 +164,12 @@ export function renderSettingsModalHtml(viewModel) {
         <input type="url" name="externalLink" value="${escapeHtml(viewModel.externalLink)}" placeholder="${escapeHtml(t('settings.externalLinkPlaceholder'))}" class="settings-modal__input" />
       </label>
 
+      <label class="settings-modal__field">
+        <span class="settings-modal__label">${escapeHtml(t('settings.qualityThreshold'))}</span>
+        <input name="qualityThreshold" type="number" value="${escapeHtml(viewModel.qualityThreshold)}" min="0" max="10" step="1" placeholder="${escapeHtml(t('settings.qualityThresholdPlaceholder'))}" class="settings-modal__input" />
+        <span class="settings-modal__hint">${escapeHtml(t('settings.qualityThresholdHint'))}</span>
+      </label>
+
       <p class="settings-modal__error" aria-live="polite"></p>
 
       <div class="settings-modal__actions">
@@ -164,6 +178,25 @@ export function renderSettingsModalHtml(viewModel) {
       </div>
     </form>
   `.trim();
+}
+
+/**
+ * Validates qualityThreshold input: empty string means "clear", otherwise must
+ * parse as an integer in [0, 10]. Mirrors server-side validation.
+ *
+ * @param {string} value
+ * @returns {{ ok: true } | { ok: false; message: string }}
+ */
+export function validateQualityThreshold(value) {
+  if (value === '') return { ok: true };
+  if (!/^-?\d+$/.test(value)) {
+    return { ok: false, message: QUALITY_THRESHOLD_ERROR };
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10) {
+    return { ok: false, message: QUALITY_THRESHOLD_ERROR };
+  }
+  return { ok: true };
 }
 
 /**
