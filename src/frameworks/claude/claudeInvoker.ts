@@ -47,6 +47,8 @@ import type { WorktreeGateway } from '@/modules/worktree-management/entities/wor
 import type { MrSource } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
 import { WorktreeFileSystemGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktree.fileSystem.gateway.js';
 import { GitCommandCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/gitCommand.cli.gateway.js';
+import type { GitCommandExecutor } from '@/modules/worktree-management/entities/gitCommand/gitCommand.gateway.js';
+import { resolveClaudeCwd } from '@/modules/worktree-management/services/claudeCwd.js';
 
 /**
  * Bundle of gateways needed by runClaudeReviewJob. Built in the composition
@@ -82,6 +84,7 @@ export interface ClaudeInvokerDependencies {
   getEnabledLocalPaths?: () => string[];
   invocation: ClaudeInvocationDeps;
   worktreeGateway: WorktreeGateway;
+  gitExecutor: GitCommandExecutor;
 }
 
 /**
@@ -159,6 +162,7 @@ export function createDefaultClaudeInvocationDeps(): ClaudeInvocationDeps {
 export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependencies {
   const tokenUsageGateway = new FilesystemTokenUsageGateway();
   const budgetGateway = new FilesystemBudgetGateway();
+  const gitExecutor = new GitCommandCliGateway();
   return {
     diffStatsFetchFactory: platform =>
       platform === 'github'
@@ -172,7 +176,8 @@ export function createDefaultClaudeInvokerDependencies(): ClaudeInvokerDependenc
     budgetStatusPresenter: new BudgetStatusPresenter(),
     broadcastBudgetStatus: () => {},
     invocation: createDefaultClaudeInvocationDeps(),
-    worktreeGateway: new WorktreeFileSystemGateway({ executor: new GitCommandCliGateway() }),
+    worktreeGateway: new WorktreeFileSystemGateway({ executor: gitExecutor }),
+    gitExecutor,
   };
 }
 
@@ -578,6 +583,17 @@ async function invokeViaBackgroundSession(
   }
 
   const worktreePath = ensureResult.path;
+  const claudeCwd = await resolveClaudeCwd({
+    localPath: job.localPath,
+    worktreePath,
+    executor: deps.gitExecutor,
+  });
+  if (claudeCwd !== worktreePath) {
+    logger.info(
+      { jobId: job.id, worktreePath, claudeCwd },
+      'Claude cwd points to a sub-path of the worktree (monorepo source checkout)',
+    );
+  }
   // attempt counter is reserved for the queue layer to re-enqueue with backoff
   // when status === 'retry' is returned. Until that wiring exists, every
   // invocation is treated as attempt 0 and a single retry signal surfaces back
@@ -601,7 +617,7 @@ async function invokeViaBackgroundSession(
         jobType,
         prompt,
         flags,
-        localPath: worktreePath,
+        localPath: claudeCwd,
         mergeRequestId,
         mergeRequestNumber: job.mrNumber,
         attempt,
@@ -696,7 +712,7 @@ async function invokeViaBackgroundSession(
       }
     } else {
       logger.warn(
-        { jobId: job.id, sessionContext: worktreePath },
+        { jobId: job.id, sessionContext: claudeCwd },
         'Token usage unavailable for --bg review (missing or unparseable JSONL transcript)',
       );
     }
