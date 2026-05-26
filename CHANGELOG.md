@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.24.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.23.0...reviewflow-v3.24.0) (2026-05-26)
+
+
+### Added
+
+* **dashboard:** expose qualityThreshold in settings + read-only display ([#214](https://github.com/DGouron/review-flow/issues/214)) ([2d65635](https://github.com/DGouron/review-flow/commit/2d65635b1a24d4d6e30b52f79c21d1ab131e5cf8))
+* **dashboard:** rich, interactive desktop notifications ([#213](https://github.com/DGouron/review-flow/issues/213)) ([3c2580a](https://github.com/DGouron/review-flow/commit/3c2580a104147da67c7bd71bd943a47f9f6517b2))
+
+
+### Fixed
+
+* **worktree:** preserve sub-path between localPath and gitRoot when launching Claude ([#216](https://github.com/DGouron/review-flow/issues/216)) ([b4867c8](https://github.com/DGouron/review-flow/commit/b4867c8c8809dd93e72980357aad309cdd82e1e6))
+
 ## [3.23.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.22.0...reviewflow-v3.23.0) (2026-05-26)
 
 
