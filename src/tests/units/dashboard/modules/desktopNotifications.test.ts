@@ -186,6 +186,132 @@ describe('getDesktopNotificationPayload', () => {
     expect(result?.title.startsWith('⏳ Awaiting confirmation')).toBe(true);
   });
 
+  it('uses author.displayName in title when present (priority over assignedBy)', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 100,
+          title: 'feat: x',
+          project: 'org/repo',
+          assignedBy: { displayName: 'Reviewer' },
+          author: { displayName: 'Author', username: 'author' },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.title).toBe('🔍 Review · Author · !100');
+  });
+
+  it('falls back to author.username when displayName missing', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 101,
+          title: 'feat: x',
+          project: 'org/repo',
+          author: { username: 'alice' },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.title).toBe('🔍 Review · alice · !101');
+  });
+
+  it('falls back to assignedBy when author missing', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 102,
+          project: 'org/repo',
+          assignedBy: { displayName: 'Bob' },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.title).toBe('🔍 Review · Bob · !102');
+  });
+
+  it('renders 🪶 emoji and stats line for small size (additions+deletions < 50)', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 200,
+          title: 'docs: update',
+          project: 'org/repo',
+          sizeMetrics: { additions: 20, deletions: 10, filesChanged: 2 },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.body).toBe('docs: update\n🪶 +20/-10 · 2 files · repo');
+  });
+
+  it('renders 🚀 emoji for medium size (50-300 lines)', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 201,
+          title: 'feat: middle',
+          project: 'org/repo',
+          sizeMetrics: { additions: 120, deletions: 45, filesChanged: 8 },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.body).toBe('feat: middle\n🚀 +120/-45 · 8 files · repo');
+  });
+
+  it('renders 🐘 emoji for big size (>300 lines)', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 202,
+          title: 'refactor: huge',
+          project: 'org/repo',
+          sizeMetrics: { additions: 700, deletions: 300, filesChanged: 25 },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.body).toBe('refactor: huge\n🐘 +700/-300 · 25 files · repo');
+  });
+
+  it('renders size emoji even when additions/deletions are null but filesChanged is known', () => {
+    const result = getDesktopNotificationPayload(
+      {
+        kind: 'reviewStarted',
+        review: {
+          mrNumber: 203,
+          title: 'fix: small',
+          project: 'org/repo',
+          sizeMetrics: { additions: null, deletions: null, filesChanged: 3 },
+          id: 'gitlab-x',
+        },
+      },
+      translate,
+    );
+
+    expect(result?.body).toBe('fix: small\n🪶 3 files · repo');
+  });
+
   it('returns null for unknown notification kind', () => {
     const result = getDesktopNotificationPayload(
       {

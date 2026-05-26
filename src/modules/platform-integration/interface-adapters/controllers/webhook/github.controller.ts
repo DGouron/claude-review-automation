@@ -705,6 +705,19 @@ export async function handleGitHubWebhook(
     username: prAssignee?.login || event.sender?.login || 'unknown',
     displayName: prAssignee?.login || event.sender?.login,
   };
+  const prAuthorLogin = event.pull_request?.user?.login;
+  const author = prAuthorLogin
+    ? { username: prAuthorLogin, displayName: prAuthorLogin }
+    : undefined;
+  const sizeMetrics = (event.pull_request?.additions !== undefined
+    || event.pull_request?.deletions !== undefined
+    || event.pull_request?.changed_files !== undefined)
+    ? {
+        additions: event.pull_request?.additions ?? null,
+        deletions: event.pull_request?.deletions ?? null,
+        filesChanged: event.pull_request?.changed_files ?? null,
+      }
+    : undefined;
 
   trackAssignment.execute({
     projectPath: repoConfig.localPath,
@@ -742,6 +755,8 @@ export async function handleGitHubWebhook(
     title: prTitle,
     description: event.pull_request?.body,
     assignedBy,
+    author,
+    sizeMetrics,
     sourceForkCloneUrl: computeSourceForkCloneUrl(event.pull_request),
   };
 

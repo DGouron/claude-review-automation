@@ -719,6 +719,11 @@ export async function handleGitLabWebhook(
     username: mrAssignee?.username || event.user?.username || 'unknown',
     displayName: mrAssignee?.name || event.user?.name,
   };
+  // Best-effort author from the GitLab webhook (event.user is the actor that opened/updated the MR).
+  // The GitLab webhook does not expose diff size stats, so sizeMetrics stays undefined here.
+  const author = event.user?.username
+    ? { username: event.user.username, displayName: event.user.name }
+    : undefined;
 
   trackAssignment.execute({
     projectPath: repoConfig.localPath,
@@ -757,6 +762,7 @@ export async function handleGitLabWebhook(
     title: mrTitle,
     description: event.object_attributes?.description,
     assignedBy,
+    author,
   };
 
   const budgetDecision = await deps.enforceBudget.execute({
