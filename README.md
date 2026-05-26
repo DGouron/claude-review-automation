@@ -26,7 +26,11 @@ GitLab/GitHub webhook ──► Review server receives event
                           Queue deduplicates & schedules
                                     │
                                     ▼
-                          Claude Code runs review skill
+                          Pre-built worktree ensured
+                          (~/.reviewflow/worktrees/...)
+                                    │
+                                    ▼
+                          Claude Code dispatched in --bg mode
                                     │
                           ┌─────────┼─────────┐
                           ▼         ▼         ▼
@@ -45,6 +49,7 @@ GitLab/GitHub webhook ──► Review server receives event
                                     │
                                     ▼
                           Dev pushes fixes ──► Auto follow-up
+                                              (same worktree, fast-forwarded)
 ```
 
 ---
@@ -148,6 +153,43 @@ Review behavior is defined by [Claude Code skills](https://docs.anthropic.com/en
 
 ---
 
+## Under the Hood
+
+For contributors and curious operators — what actually happens between the webhook and the posted review.
+
+### Background sessions, not foreground spawn
+
+Earlier versions of Reviewflow invoked `claude -p` and streamed JSON in the foreground. The server now dispatches each review as a **detached background session** with `claude --bg`. The Fastify process returns the session ID immediately and observes completion asynchronously.
+
+Completion is detected via **three independent signals in first-wins semantics**:
+
+1. **MCP `set_phase('completed')`** — Claude's skill calls the MCP server when the review finishes
+2. **`claude agents --json` polling** — every 30s, looks for `completed` / `failed` / `stopped`
+3. **15-minute hard timeout** — backstop if the other two miss
+
+Whichever fires first wins; the other two are cancelled. The review report is then read from `<worktree>/.claude/reviews/report-<mrNumber>.md` and the session is cleaned with `claude stop` + `claude rm`.
+
+### Isolated git worktrees
+
+Each MR runs in its own pre-built git worktree at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>`. This:
+
+- **Isolates concurrent reviews** so they cannot step on each other's index
+- **Keeps your main checkout untouched** — `git checkout` inside Claude no longer pollutes your working branch
+- **Speeds up followups** — the worktree is fetched + reset to the new HEAD, never recreated from scratch
+- **Self-cleans** — `removeWorktree` runs on merge/close, plus a daily sweep reclaims worktrees of MRs closed >24h ago or with `mtime` >7 days
+
+Full state machine: [Worktree Lifecycle](https://dgouron.github.io/review-flow/architecture/worktree-lifecycle).
+
+### Supervisor health
+
+The Claude agents supervisor (long-running daemon that hosts background sessions) is probed every 60 seconds. If it dies, a detached spawn brings it back under a PID-validated file lock at `~/.reviewflow/supervisor.lock`. The `/health` endpoint surfaces the live state and reports `status: degraded` when the supervisor is down — Reviewflow keeps booting, but reviews will fail fast.
+
+### Token budget cap
+
+Every session's token usage is parsed from the Claude transcript and persisted. A configurable monthly budget caps further dispatch and broadcasts a budget panel update over WebSocket whenever a session completes. The hourly billing audit calls `claude /usage` and pauses dispatch if it detects unexpected API-pool usage (the OAuth subscription is the only billing path that should be active).
+
+---
+
 ## Quick Start
 
 ### 1. Install
@@ -219,6 +261,7 @@ For detailed setup, see the **[Quick Start Guide](https://dgouron.github.io/revi
 | Review Skills Guide | [guide/review-skills](https://dgouron.github.io/review-flow/guide/review-skills) |
 | MCP Tools Reference | [reference/mcp-tools](https://dgouron.github.io/review-flow/reference/mcp-tools) |
 | Architecture | [architecture](https://dgouron.github.io/review-flow/architecture/) |
+| Worktree Lifecycle | [architecture/worktree-lifecycle](https://dgouron.github.io/review-flow/architecture/worktree-lifecycle) |
 | Deployment | [deployment](https://dgouron.github.io/review-flow/deployment/) |
 | Troubleshooting | [guide/troubleshooting](https://dgouron.github.io/review-flow/guide/troubleshooting) |
 

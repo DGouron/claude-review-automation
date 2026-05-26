@@ -35,6 +35,7 @@ const architectureSidebar: DefaultTheme.SidebarItem[] = [
 		items: [
 			{ text: "Overview", link: "/architecture/" },
 			{ text: "Current Architecture", link: "/architecture/current" },
+			{ text: "Worktree Lifecycle", link: "/architecture/worktree-lifecycle" },
 			{ text: "Target Architecture", link: "/architecture/target" },
 		],
 	},

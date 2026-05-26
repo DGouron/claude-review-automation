@@ -16,8 +16,11 @@ This guide covers:
 
 - Linux server with systemd (Ubuntu, Debian, etc.)
 - Node.js 20+ installed
+- `claude` CLI ≥ v2.1.139 (the `--bg` background dispatch mode is required)
+- `claude auth status` returns OAuth — **never** set `ANTHROPIC_API_KEY` in the systemd environment, Reviewflow auto-pauses dispatch if it detects the API pool is in use
 - `cloudflared` installed ([download](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/))
 - A domain on Cloudflare (for permanent URL)
+- Disk headroom on `$HOME` for `~/.reviewflow/worktrees/` — one full project checkout per active MR (typical: a few hundred MB per worktree, reclaimed automatically by the daily sweep)
 
 ## Quick Test (Temporary Tunnel)
 
@@ -111,12 +114,31 @@ sudo systemctl enable --now cloudflared-review-flow
 sudo systemctl status review-flow
 sudo systemctl status cloudflared-review-flow
 
-# Test endpoint
-curl https://review.your-domain.com/health
+# Test endpoint — expect status: "ok" and supervisor.state: "up"
+curl https://review.your-domain.com/health | jq .
+
+# If supervisor.state is "down", the 60s scheduler will respawn it on
+# the next tick. Persistent "down" usually means `claude` is not in
+# PATH or OAuth is not configured for the systemd user.
 
 # View logs
 journalctl -u review-flow -f
 ```
+
+The `/health` payload includes a `supervisor` block reporting the live state of the Claude agents daemon:
+
+```json
+{
+  "status": "ok",
+  "supervisor": {
+    "state": "up",
+    "reason": null,
+    "lastCheckedAt": "2026-05-26T10:42:00.000Z"
+  }
+}
+```
+
+When `supervisor.state === "down"`, overall `status` becomes `"degraded"` — Reviewflow still accepts webhooks but reviews will fail dispatch until the supervisor is back up. See the [Supervisor troubleshooting section](../guide/troubleshooting.md#supervisor).
 
 ## Templates
 
@@ -140,6 +162,25 @@ yarn build
 # Restart
 sudo systemctl start review-flow
 ```
+
+::: tip Worktrees survive restarts
+The worktree state lives at `~/.reviewflow/worktrees/` (independent of the source checkout). A restart does not invalidate active worktrees; in-flight reviews resume on the next webhook with `ensureWorktree` fast-forwarding the existing worktree.
+:::
+
+## Operating worktrees
+
+Each active MR has a dedicated worktree at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>`. They are created on first review, fast-forwarded on followup, removed on merge/close, and a daily sweep at 02:00 reclaims anything stale.
+
+```bash
+# Disk usage overview
+du -sh ~/.reviewflow/worktrees/*
+
+# Manual cleanup (rare — sweep handles this)
+rm -rf ~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>
+cd /path/to/source/checkout && git worktree prune
+```
+
+Full state machine: [Worktree Lifecycle](../architecture/worktree-lifecycle.md).
 
 ## Troubleshooting
 

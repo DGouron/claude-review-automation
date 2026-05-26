@@ -117,4 +117,12 @@ cat docs/feature-tracker.md | head -5
 
 ---
 
-_Last updated: 2026-05-15_
+## Runtime mental model
+
+Reviews no longer spawn `claude -p` in your checkout. Each MR runs in a **dedicated pre-built git worktree** at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>`, dispatched with `claude --bg` (detached background session). Completion is detected via three first-wins signals: MCP `set_phase`, `claude agents --json` polling, 15-min timeout. Worktrees are reused on followup, removed on merge/close, and a daily sweep reclaims stale ones (>24h closed or >7d mtime).
+
+Full state machine: [Worktree Lifecycle](./architecture/worktree-lifecycle.md). When in doubt about operator behaviour, that page documents the ground truth.
+
+---
+
+_Last updated: 2026-05-26_
