@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.24.1](https://github.com/DGouron/review-flow/compare/reviewflow-v3.24.0...reviewflow-v3.24.1) (2026-05-26)
+
+
+### Fixed
+
+* **claude-invocation:** fall back to worktree root when looking up review report ([#217](https://github.com/DGouron/review-flow/issues/217)) ([3ea9dba](https://github.com/DGouron/review-flow/commit/3ea9dbac979f90830b6a88e59f803e1819e7fc46))
+
 ## [3.24.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.23.0...reviewflow-v3.24.0) (2026-05-26)
 
 
