@@ -169,7 +169,7 @@ The worktree state lives at `~/.reviewflow/worktrees/` (independent of the sourc
 
 ## Operating worktrees
 
-Each active MR has a dedicated worktree at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>`. They are created on first review, fast-forwarded on followup, removed on merge/close, and a daily sweep at 02:00 reclaims anything stale.
+Each active MR has a dedicated worktree at `~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>`. They are created on first review, fast-forwarded on followup, removed on merge/close, and a sweep every 24h (anchored to server startup, also fires immediately on boot) reclaims anything stale.
 
 ```bash
 # Disk usage overview

@@ -59,7 +59,7 @@ Webhook ──► Queue ──► ensureWorktree ──► dispatchClaudeSession
                         on followup)                   cleanupClaudeSession
 
 On merge / close ──► removeWorktree
-Daily 02:00     ──► sweepStaleWorktrees
+Every 24h (since startup) ──► sweepStaleWorktrees
 ```
 
 ## `ensureWorktree` — create or fast-forward
@@ -110,6 +110,8 @@ A worktree is reclaimed when **any** of these is true:
 | Worktree directory `mtime` older than 7 days | `STALE_THRESHOLD_MS = 7 * ONE_DAY_MS` |
 
 The sweep walks every directory under `~/.reviewflow/worktrees/` that matches the naming pattern, cross-references the tracking gateway across all enabled repositories, and removes the matches. Failures are counted but do not abort the sweep.
+
+The scheduler (`src/frameworks/scheduler/worktreeSweepScheduler.ts`) fires an immediate first sweep at server startup, then re-runs every 24 hours from that point — there is no wall-clock cron. The next-sweep ETA is exposed via `getNextSweepEta()` and surfaced on the dashboard worktree panel (SPEC-173).
 
 ## Concurrency
 

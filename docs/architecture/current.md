@@ -68,11 +68,12 @@ src/
 │   ├── worktree-management/                       # Pre-built worktree lifecycle (ensure/remove/sweep)
 │   ├── supervisor-management/                     # Claude agents supervisor health + respawn
 │   ├── review-execution/                          # Review job orchestration, model routing
-│   ├── platform-integration/                     # GitLab + GitHub webhook controllers
+│   ├── platform-integration/                      # GitLab + GitHub webhook controllers
 │   ├── tracking/                                  # MR lifecycle tracking
 │   ├── token-accounting/                          # Token usage + budget cap
 │   ├── statistics-insights/                       # Stats recalculation + developer insights
 │   ├── cli-configuration/                         # init, validate, discover commands
+│   ├── data-lifecycle/                            # Periodic cleanup of stale tracking data
 │   └── shared-kernel/                             # Cross-module shared types (diff stats, ...)
 │
 ├── frameworks/
@@ -157,7 +158,7 @@ claude --bg \
   3. Hard 15-minute timeout
 - **Report retrieval**: read from `<worktree>/.claude/reviews/report-<mrNumber>.md`
 - **Cleanup**: `claude stop <sessionId>` then `claude rm <sessionId>`
-- **Rate-limit handling**: stderr pattern `/rate|429|throttle/i` triggers exponential backoff retry
+- **Rate-limit handling**: stderr or stdout matching `RATE_LIMIT_DETECTION_REGEX` (exported from `claudeSession.cli.gateway.ts`) triggers exponential backoff retry
 - **Notifications**: `notify-send` at start and end (Linux)
 
 Source: `src/modules/claude-invocation/usecases/runClaudeReviewJob.usecase.ts` orchestrates `dispatchClaudeSession` → `awaitSessionCompletion` → `retrieveReviewReport` → `cleanupClaudeSession`.

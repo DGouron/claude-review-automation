@@ -124,7 +124,7 @@ rm -rf ~/.reviewflow/worktrees/<platform>-<slug>-<mrNumber>
 cd /path/to/source/checkout && git worktree prune
 ```
 
-The daily sweep at 02:00 normally reclaims stale worktrees automatically (closed >24h or `mtime` >7d).
+The sweep (every 24h since server startup) normally reclaims stale worktrees automatically (closed >24h or `mtime` >7d).
 
 ## Supervisor
 
