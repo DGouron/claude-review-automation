@@ -399,6 +399,7 @@
       buildSettingsViewModel,
       renderSettingsModalHtml,
       validateExternalLink,
+      validateQualityThreshold,
       extractFormPayload,
     } from './modules/settingsModal.js';
 
@@ -2577,13 +2578,21 @@
           if (errorEl) errorEl.textContent = linkValidation.message;
           return;
         }
+        const thresholdRaw = payload.qualityThreshold ?? '';
+        const thresholdValidation = validateQualityThreshold(thresholdRaw);
+        if (!thresholdValidation.ok) {
+          if (errorEl) errorEl.textContent = thresholdValidation.message;
+          return;
+        }
+        const requestBody = { ...payload };
+        requestBody.qualityThreshold = thresholdRaw === '' ? null : Number(thresholdRaw);
         try {
           const response = await fetch(
             `${API_URL}/api/project-config?path=${encodeURIComponent(activeTabId)}`,
             {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
+              body: JSON.stringify(requestBody),
             },
           );
           if (!response.ok) {
