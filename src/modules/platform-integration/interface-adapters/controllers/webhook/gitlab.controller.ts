@@ -475,6 +475,7 @@ export async function handleGitLabWebhook(
                   threadsClosed: threadResolveCount,
                   diffStats: followupDiffStats,
                 },
+                qualityThreshold: loadProjectConfig(j.localPath)?.qualityThreshold ?? null,
               });
               logger.info(
                 {
@@ -825,6 +826,7 @@ export function buildGitLabReviewProcessor(
             threadsOpened: parsed.blocking,
             diffStats: reviewDiffStats,
           },
+          qualityThreshold: loadProjectConfig(j.localPath)?.qualityThreshold ?? null,
         });
 
         logger.info(

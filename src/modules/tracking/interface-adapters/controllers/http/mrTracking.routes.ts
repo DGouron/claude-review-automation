@@ -1,10 +1,12 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { ReviewRequestTrackingGateway } from '../../gateways/reviewRequestTracking.gateway.js';
 import { TransitionStateUseCase } from '@/modules/tracking/usecases/tracking/transitionState.usecase.js';
+import { evaluateQualityGate } from '@/modules/tracking/entities/qualityGate/qualityGate.js';
 import { logInfo, logError } from '@/frameworks/logging/logBuffer.js';
 
 interface MrTrackingRoutesOptions {
   reviewRequestTrackingGateway: ReviewRequestTrackingGateway;
+  getQualityThreshold?: (projectPath: string) => number | null;
 }
 
 function validateProjectPath(path: string | undefined): { valid: false; error: string } | { valid: true; path: string } {
@@ -24,7 +26,7 @@ export const mrTrackingRoutes: FastifyPluginAsync<MrTrackingRoutesOptions> = asy
   fastify,
   opts
 ) => {
-  const { reviewRequestTrackingGateway } = opts;
+  const { reviewRequestTrackingGateway, getQualityThreshold } = opts;
 
   fastify.get('/api/mr-tracking', async (request, reply) => {
     const query = request.query as { path?: string };
@@ -66,15 +68,27 @@ export const mrTrackingRoutes: FastifyPluginAsync<MrTrackingRoutesOptions> = asy
     }
 
     const transitionState = new TransitionStateUseCase(reviewRequestTrackingGateway);
-    const approved = transitionState.execute({
+    const threshold = getQualityThreshold?.(validation.path) ?? null;
+    const result = transitionState.execute({
       projectPath: validation.path,
       mrId,
       targetState: 'approved',
+      qualityCheck: (mr) =>
+        evaluateQualityGate({
+          latestScore: mr.latestScore,
+          blockingIssues: mr.openThreads,
+          threshold,
+        }),
     });
 
-    if (approved) {
+    if (result.ok) {
       logInfo('MR approuvée', { mrId });
       return { success: true, mrId, message: 'MR marquée comme approuvée' };
+    }
+
+    if (result.reason === 'quality-gate') {
+      reply.code(409);
+      return { success: false, error: result.message };
     }
 
     reply.code(404);

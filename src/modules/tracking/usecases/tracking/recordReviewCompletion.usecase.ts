@@ -3,6 +3,7 @@ import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-
 import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 import type { ReviewEvent } from '@/modules/tracking/entities/tracking/reviewEvent.js';
 import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffStats.js';
+import { evaluateQualityGate } from '@/modules/tracking/entities/qualityGate/qualityGate.js';
 
 interface RecordReviewCompletionInput {
   projectPath: string;
@@ -18,6 +19,7 @@ interface RecordReviewCompletionInput {
     threadsClosed?: number;
     diffStats?: DiffStats | null;
   };
+  qualityThreshold?: number | null;
 }
 
 export class RecordReviewCompletionUseCase implements UseCase<RecordReviewCompletionInput, TrackedMr | null> {
@@ -60,12 +62,20 @@ export class RecordReviewCompletionUseCase implements UseCase<RecordReviewComple
     }
 
     const hasBlockingIssues = reviewData.blocking > 0 || openThreads > 0;
+    const threshold = input.qualityThreshold ?? null;
+    const gateResult = evaluateQualityGate({
+      latestScore,
+      blockingIssues: reviewData.blocking + openThreads,
+      threshold,
+    });
+    const nextState: TrackedMr['state'] =
+      hasBlockingIssues || !gateResult.allowed ? 'pending-fix' : 'pending-approval';
 
     this.trackingGateway.update(projectPath, mrId, {
       openThreads,
       totalThreads,
       latestScore,
-      state: hasBlockingIssues ? 'pending-fix' : 'pending-approval',
+      state: nextState,
     });
 
     return this.trackingGateway.getById(projectPath, mrId);

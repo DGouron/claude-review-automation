@@ -74,6 +74,91 @@ describe('loadProjectConfig', () => {
     expect(config?.retentionDays).toBe(14);
   });
 
+  it('should leave qualityThreshold undefined when not specified', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.qualityThreshold).toBeUndefined();
+  });
+
+  it('should accept integer qualityThreshold between 0 and 10', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        qualityThreshold: 7,
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.qualityThreshold).toBe(7);
+  });
+
+  it('should reject qualityThreshold outside 0-10 range', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        qualityThreshold: 11,
+      }),
+    );
+
+    expect(() => loadProjectConfig('/fake/path')).toThrow(/qualityThreshold/);
+  });
+
+  it('should reject non-integer qualityThreshold', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        qualityThreshold: 7.5,
+      }),
+    );
+
+    expect(() => loadProjectConfig('/fake/path')).toThrow(/qualityThreshold/);
+  });
+
+  it('should accept qualityThreshold of 0 (lowest allowed)', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      JSON.stringify({
+        github: true,
+        gitlab: false,
+        defaultModel: 'sonnet',
+        reviewSkill: 'review-front',
+        reviewFollowupSkill: 'review-followup',
+        qualityThreshold: 0,
+      }),
+    );
+
+    const config = loadProjectConfig('/fake/path');
+
+    expect(config?.qualityThreshold).toBe(0);
+  });
+
   it('should use custom retentionDays when specified', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.readFileSync).mockReturnValue(

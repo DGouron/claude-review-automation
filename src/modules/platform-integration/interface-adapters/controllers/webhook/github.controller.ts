@@ -417,6 +417,7 @@ export async function handleGitHubWebhook(
                   threadsClosed: threadResolveCount,
                   diffStats: followupDiffStats,
                 },
+                qualityThreshold: loadProjectConfig(j.localPath)?.qualityThreshold ?? null,
               });
               logger.info(
                 {
@@ -697,6 +698,7 @@ export async function handleGitHubWebhook(
           threadsOpened: parsed.blocking,
           diffStats: reviewDiffStats,
         },
+        qualityThreshold: loadProjectConfig(j.localPath)?.qualityThreshold ?? null,
       });
 
       logger.info(

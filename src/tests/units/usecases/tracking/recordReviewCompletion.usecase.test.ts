@@ -192,4 +192,69 @@ describe('RecordReviewCompletionUseCase', () => {
 
     expect(result).toBeNull();
   });
+
+  it('should stay in pending-fix when score is below threshold even without blockers', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'pending-review', openThreads: 0 });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      reviewData: { ...reviewData, score: 6, blocking: 0, threadsOpened: 0 },
+      qualityThreshold: 7,
+    });
+
+    expect(result?.state).toBe('pending-fix');
+    expect(result?.latestScore).toBe(6);
+  });
+
+  it('should transition to pending-approval when score meets threshold and no blockers', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'pending-review', openThreads: 0 });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      reviewData: { ...reviewData, score: 8, blocking: 0, threadsOpened: 0 },
+      qualityThreshold: 7,
+    });
+
+    expect(result?.state).toBe('pending-approval');
+  });
+
+  it('should stay in pending-fix when blockers are present even with score above threshold', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'pending-review', openThreads: 0 });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      reviewData: { ...reviewData, score: 9, blocking: 1, threadsOpened: 1 },
+      qualityThreshold: 7,
+    });
+
+    expect(result?.state).toBe('pending-fix');
+  });
+
+  it('should preserve legacy behavior when qualityThreshold is null', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'pending-review', openThreads: 0 });
+    gateway.create('/project', mr);
+    const useCase = new RecordReviewCompletionUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      reviewData: { ...reviewData, score: 3, blocking: 0, threadsOpened: 0 },
+      qualityThreshold: null,
+    });
+
+    expect(result?.state).toBe('pending-approval');
+  });
 });
