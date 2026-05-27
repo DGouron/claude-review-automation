@@ -372,7 +372,7 @@
     } from './modules/animations.js';
     import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from './modules/html.js';
     import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
-    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
+    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, STORAGE_KEY_NOW_LANE_COLLAPSED, QUALITY_TARGET_SCORE } from './modules/constants.js';
     import { buildTabBarModel, renderTabBarHtml, readActiveTab, writeActiveTab } from './modules/tabBar.js';
     import { buildManagePanelModel, renderManagePanelHtml, buildOptimisticAddedRow, validateLocalPathInput } from './modules/managePanel.js';
     import { renderOverviewHtml } from './modules/overview.js';
@@ -400,6 +400,7 @@
       renderWorktreeSection,
       fetchWorktreeOverview,
       triggerManualSweep,
+      triggerForceCleanup,
       snapshotTotals,
       computeChangedMetricKeys,
     } from './modules/worktreePanel.js';
@@ -439,6 +440,7 @@
     let hasLoadedStatusOnce = false;
     const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section'];
     const sectionExpandedState = Object.fromEntries(secondarySections.map((sectionIdentifier) => [sectionIdentifier, false]));
+    let nowLaneCollapsed = false;
     const quietRefreshSections = [
       'active-reviews-section',
       'active-followups-section',
@@ -504,6 +506,30 @@
       if (!(sectionIdentifier in sectionExpandedState)) return;
       sectionExpandedState[sectionIdentifier] = !sectionExpandedState[sectionIdentifier];
       applySectionExpansion(sectionIdentifier);
+      refreshIcons();
+    }
+
+    function applyNowLaneCollapsed() {
+      const lane = document.getElementById('queue-lane-now');
+      if (!lane) return;
+      const body = document.getElementById('queue-lane-now-body');
+      const header = lane.querySelector('.queue-lane-header');
+      const toggle = lane.querySelector('.queue-lane-toggle');
+      if (body) body.classList.toggle('hidden', nowLaneCollapsed);
+      if (toggle) toggle.classList.toggle('collapsed', nowLaneCollapsed);
+      if (header) header.setAttribute('aria-expanded', nowLaneCollapsed ? 'false' : 'true');
+    }
+
+    function loadNowLaneCollapsed() {
+      const value = localStorage.getItem(STORAGE_KEY_NOW_LANE_COLLAPSED);
+      nowLaneCollapsed = value === 'collapsed';
+      applyNowLaneCollapsed();
+    }
+
+    function toggleNowLane() {
+      nowLaneCollapsed = !nowLaneCollapsed;
+      localStorage.setItem(STORAGE_KEY_NOW_LANE_COLLAPSED, nowLaneCollapsed ? 'collapsed' : 'expanded');
+      applyNowLaneCollapsed();
       refreshIcons();
     }
 
@@ -1847,14 +1873,18 @@
           )
         : `<div class="empty-state">${t('queueLane.emptyReadyToApprove')}</div>`;
 
+      const nowLaneCollapsedClass = nowLaneCollapsed ? 'collapsed' : '';
       return `
         <div class="queue-lanes-grid">
-          <div class="queue-lane">
-            <div class="queue-lane-header">
+          <div class="queue-lane" id="queue-lane-now">
+            <div class="queue-lane-header clickable" onclick="toggleNowLane()" role="button" tabindex="0" aria-expanded="${nowLaneCollapsed ? 'false' : 'true'}" aria-controls="queue-lane-now-body" onkeydown="activateOnKeydown(event)">
               <span class="queue-lane-title">${t('queueLane.now')}</span>
-              <span class="queue-lane-count">${queueLanesModel.nowLaneCount}</span>
+              <span class="queue-lane-header-right">
+                <span class="queue-lane-count">${queueLanesModel.nowLaneCount}</span>
+                <span class="queue-lane-toggle ${nowLaneCollapsedClass}"><i data-lucide="chevron-down"></i></span>
+              </span>
             </div>
-            <div class="queue-lane-body">${nowLaneContent}</div>
+            <div class="queue-lane-body ${nowLaneCollapsed ? 'hidden' : ''}" id="queue-lane-now-body">${nowLaneContent}</div>
           </div>
           <div class="queue-lane">
             <div class="queue-lane-header">
@@ -3395,6 +3425,7 @@
     window.confirmMarkAsMerged = confirmMarkAsMerged;
     window.toggleFocusStripMode = toggleFocusStripMode;
     window.toggleSection = toggleSection;
+    window.toggleNowLane = toggleNowLane;
     window.onUsefulLinkAction = onUsefulLinkAction;
     window.activateOnKeydown = activateOnKeydown;
     window.handleCleanupClick = handleCleanupClick;
@@ -3423,6 +3454,7 @@
       Notification.requestPermission().catch(() => {});
     }
     loadFocusStripMode();
+    loadNowLaneCollapsed();
     renderStaticLabels();
     updateSessionMetricsUI();
     connectWebSocket();
@@ -3566,6 +3598,32 @@
       }).catch(() => {});
     }
 
+    function bindForceCleanupButtons() {
+      if (worktreeSection === null) return;
+      const buttons = worktreeSection.querySelectorAll('[data-action="force-cleanup"]');
+      buttons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (button.dataset.busy === '1') return;
+          const platform = button.dataset.platform;
+          const projectPath = button.dataset.projectPath;
+          const mrNumber = Number(button.dataset.mrNumber);
+          if (!platform || !projectPath || Number.isNaN(mrNumber)) return;
+
+          button.dataset.busy = '1';
+          try {
+            const result = await triggerForceCleanup({ platform, projectPath, mrNumber });
+            if (result.status !== 'ok') {
+              button.classList.add('worktree-cleanup-failed');
+              window.setTimeout(() => button.classList.remove('worktree-cleanup-failed'), 1200);
+            }
+          } finally {
+            button.dataset.busy = '0';
+            await refreshWorktreeSection({ animate: true });
+          }
+        });
+      });
+    }
+
     async function refreshWorktreeSection({ animate } = { animate: false }) {
       if (worktreeSection === null) return;
       try {
@@ -3573,6 +3631,7 @@
         const totals = snapshotTotals(viewModel);
         worktreeSection.innerHTML = renderWorktreeSection(viewModel);
         bindWorktreeSweepButton();
+        bindForceCleanupButtons();
         if (animate) animateWorktreeMetrics();
         flashChangedMetrics(totals);
         lastWorktreeTotals = totals;

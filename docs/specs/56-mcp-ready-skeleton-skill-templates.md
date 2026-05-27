@@ -4,7 +4,10 @@ issue: https://github.com/DGouron/review-flow/issues/56
 labels: enhancement, cli, P1-critical, skills
 milestone: Project Bootstrapping
 blocked_by: https://github.com/DGouron/review-flow/issues/30
-status: DRAFT
+status: superseded
+superseded_by: "183-setup-wizard-cli-orchestrator"
+superseded_at: "2026-05-27"
+superseded_reason: "Skeleton templates become assets used by step 7 of the unified Setup Wizard. The templates themselves are preserved in templates/ but the standalone command no longer exists."
 ---
 
 # SPEC-056: MCP-Ready Skeleton Skill Templates

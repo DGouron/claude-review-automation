@@ -1,6 +1,9 @@
 ---
 title: "SPEC-052: Automated Webhook Secret Generation"
-status: in-progress
+status: superseded
+superseded_by: "183-setup-wizard-cli-orchestrator"
+superseded_at: "2026-05-27"
+superseded_reason: "Mostly already implemented inside reviewflow init. Remaining items (.gitignore check, rotation warning, placeholder detection) are absorbed into step 4 of the unified Setup Wizard."
 issue: "#52"
 blocked-by: "#29 (closed)"
 milestone: "Setup Wizard"

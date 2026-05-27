@@ -5,6 +5,8 @@ import {
   renderWorktreeStatusBadge,
   fetchWorktreeOverview,
   triggerManualSweep,
+  renderDegradedAlerts,
+  triggerForceCleanup,
   formatBytes,
   formatRelativeAge,
   snapshotTotals,
@@ -23,7 +25,38 @@ function buildViewModel(overrides = {}) {
     nextSweepAt: '2026-05-24T03:00:00.000Z',
     lastSweep: null,
     groups: [],
+    degradedCount: 0,
+    degraded: [],
     ...overrides,
+  };
+}
+
+interface DegradedRowFactoryOverrides {
+  mrNumber?: number;
+  platform?: 'gitlab' | 'github';
+  projectPath?: string;
+  path?: string;
+  reasonCode?: 'stale' | 'orphan-git-lock' | 'unresolved-conflict' | 'missing-build-artifacts';
+  reasonLabel?: string;
+  detectedAtIso?: string;
+  recommendedAction?: string;
+  cleanupEndpointPayload?: { platform: 'gitlab' | 'github'; projectPath: string; mrNumber: number };
+}
+
+function buildDegradedRow(overrides: DegradedRowFactoryOverrides = {}) {
+  const platform = overrides.platform ?? 'gitlab';
+  const projectPath = overrides.projectPath ?? 'group/project';
+  const mrNumber = overrides.mrNumber ?? 42;
+  return {
+    mrNumber,
+    platform,
+    projectPath,
+    path: overrides.path ?? '/tmp/worktrees/gitlab-group-project-42',
+    reasonCode: overrides.reasonCode ?? 'stale',
+    reasonLabel: overrides.reasonLabel ?? 'Worktree inactif depuis 26h',
+    detectedAtIso: overrides.detectedAtIso ?? NOW_ISO,
+    recommendedAction: overrides.recommendedAction ?? 'Cleanup forcé recommandé',
+    cleanupEndpointPayload: overrides.cleanupEndpointPayload ?? { platform, projectPath, mrNumber },
   };
 }
 
@@ -347,5 +380,142 @@ describe('computeChangedMetricKeys', () => {
     const next = { total: 5, active: 5, idle: 0, stale: 0 };
 
     expect(computeChangedMetricKeys(previous, next)).toEqual([]);
+  });
+});
+
+describe('renderDegradedAlerts', () => {
+  it('returns empty string when no degraded rows are provided', () => {
+    const html = renderDegradedAlerts([]);
+
+    expect(html).toBe('');
+  });
+
+  it('renders one alert block per degraded row with the French reason label', () => {
+    const html = renderDegradedAlerts([
+      buildDegradedRow({ mrNumber: 1, reasonLabel: 'Worktree inactif depuis 26h' }),
+      buildDegradedRow({ mrNumber: 2, reasonLabel: 'Lock git orphelin depuis 2h', reasonCode: 'orphan-git-lock' }),
+    ]);
+
+    expect(html).toContain('Worktree inactif depuis 26h');
+    expect(html).toContain('Lock git orphelin depuis 2h');
+  });
+
+  it('emits a FORCE CLEANUP button with platform / projectPath / mrNumber data attributes', () => {
+    const html = renderDegradedAlerts([
+      buildDegradedRow({ platform: 'github', projectPath: 'org/repo', mrNumber: 99 }),
+    ]);
+
+    expect(html).toContain('FORCE CLEANUP');
+    expect(html).toMatch(/data-action="force-cleanup"/);
+    expect(html).toContain('data-platform="github"');
+    expect(html).toContain('data-project-path="org/repo"');
+    expect(html).toContain('data-mr-number="99"');
+  });
+
+  it('escapes the project path so HTML injection in URLs is neutralised', () => {
+    const html = renderDegradedAlerts([
+      buildDegradedRow({ projectPath: '<script>alert(1)</script>' }),
+    ]);
+
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('shows the recommended action text', () => {
+    const html = renderDegradedAlerts([
+      buildDegradedRow({ recommendedAction: 'Cleanup forcé recommandé' }),
+    ]);
+
+    expect(html).toContain('Cleanup forcé recommandé');
+  });
+});
+
+describe('renderWorktreeSection with degraded alerts', () => {
+  it('injects the degraded alerts block above the table when degradedCount > 0', () => {
+    const viewModel = buildViewModel({
+      totalCount: 1,
+      degradedCount: 1,
+      degraded: [buildDegradedRow()],
+      groups: [
+        {
+          platform: 'gitlab',
+          projectPath: 'group/project',
+          worktrees: [
+            {
+              mrNumber: 42,
+              path: '/tmp/x',
+              mtime: NOW_ISO,
+              ageSeconds: 60,
+              sizeBytes: 512,
+              status: 'stale',
+            },
+          ],
+        },
+      ],
+    });
+
+    const html = renderWorktreeSection(viewModel);
+
+    expect(html).toContain('FORCE CLEANUP');
+    expect(html).toContain('Worktree inactif depuis 26h');
+  });
+
+  it('does not render the degraded block when degradedCount is zero', () => {
+    const html = renderWorktreeSection(buildViewModel({ totalCount: 1 }));
+
+    expect(html).not.toContain('FORCE CLEANUP');
+  });
+});
+
+describe('triggerForceCleanup', () => {
+  it('POSTs /api/worktrees/cleanup with the JSON payload and returns ok on 200', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'removed' }),
+    });
+
+    const result = await triggerForceCleanup(
+      { platform: 'gitlab', projectPath: 'group/project', mrNumber: 42 },
+      fetchImpl,
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith('/api/worktrees/cleanup', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(result.status).toBe('ok');
+  });
+
+  it('returns conflict on 409', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: 'cleanup-in-progress' }),
+    });
+
+    const result = await triggerForceCleanup(
+      { platform: 'gitlab', projectPath: 'group/project', mrNumber: 42 },
+      fetchImpl,
+    );
+
+    expect(result.status).toBe('conflict');
+  });
+
+  it('returns error with reason on 500', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'cleanup-failed', warning: 'EACCES' }),
+    });
+
+    const result = await triggerForceCleanup(
+      { platform: 'gitlab', projectPath: 'group/project', mrNumber: 42 },
+      fetchImpl,
+    );
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.reason).toContain('EACCES');
+    }
   });
 });

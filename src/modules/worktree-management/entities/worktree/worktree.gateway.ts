@@ -16,6 +16,7 @@ export interface EnsureWorktreeRequest {
 export interface RemoveWorktreeRequest {
   identity: WorktreeIdentity;
   sourceCheckoutPath: string;
+  force?: boolean;
 }
 
 export interface WorktreeGateway {
