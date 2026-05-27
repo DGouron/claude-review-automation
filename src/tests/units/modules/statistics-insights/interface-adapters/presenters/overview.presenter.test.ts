@@ -327,6 +327,54 @@ describe('OverviewPresenter', () => {
     });
   });
 
+  describe('headerCapacity (SPEC-183)', () => {
+    it('formats label as "running / max" and marks saturation when running >= max', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+        capacity: { running: 5, max: 5 },
+      });
+
+      expect(viewModel.headerCapacity.label).toBe('5 / 5');
+      expect(viewModel.headerCapacity.runningCount).toBe(5);
+      expect(viewModel.headerCapacity.totalCapacity).toBe(5);
+      expect(viewModel.headerCapacity.isSaturated).toBe(true);
+    });
+
+    it('marks not saturated when running < max', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+        capacity: { running: 3, max: 5 },
+      });
+
+      expect(viewModel.headerCapacity.label).toBe('3 / 5');
+      expect(viewModel.headerCapacity.isSaturated).toBe(false);
+    });
+
+    it('defaults to "0 / 0" not saturated when capacity is not provided', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+      });
+
+      expect(viewModel.headerCapacity.label).toBe('0 / 0');
+      expect(viewModel.headerCapacity.isSaturated).toBe(false);
+    });
+  });
+
   describe('externalLink propagation (SPEC-179)', () => {
     it('forwards externalLink from the input projectConfigs into the matching project card', () => {
       const presenter = new OverviewPresenter({ now: () => NOW });

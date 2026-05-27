@@ -18,6 +18,7 @@ interface OverviewRoutesOptions {
   statsGateway: StatsGateway;
   reviewFileGateway: ReviewFileGateway;
   projectConfigGateway?: ProjectConfigGateway;
+  getCapacity?: () => { running: number; max: number };
 }
 
 function buildSummary(stats: ProjectStats): OverviewProjectStatsSummary {
@@ -73,6 +74,7 @@ export const overviewRoutes: FastifyPluginAsync<OverviewRoutesOptions> = async (
     }
 
     const projectConfigs = collectProjectConfigs(options.projectConfigGateway, repositories);
+    const capacity = options.getCapacity ? options.getCapacity() : { running: 0, max: 0 };
 
     return presenter.present({
       repositories,
@@ -80,6 +82,7 @@ export const overviewRoutes: FastifyPluginAsync<OverviewRoutesOptions> = async (
       projectStats,
       recentReviews,
       projectConfigs,
+      capacity,
     });
   });
 };

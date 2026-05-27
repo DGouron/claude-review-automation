@@ -35,6 +35,7 @@
         <button id="toggle-logs-btn" class="btn btn-secondary" onclick="toggleLogs()">
           <i data-lucide="scroll-text"></i> <span id="i18n-logs-btn"></span>
         </button>
+        <span id="header-capacity-badge-slot"></span>
         <div id="server-status" class="status-indicator connecting">
           <span class="status-dot"></span>
           <span id="i18n-server-status"></span>
@@ -416,8 +417,13 @@
       renderSettingsModalHtml,
       validateExternalLink,
       validateQualityThreshold,
+      validateMaxConcurrentReviews,
       extractFormPayload,
     } from './modules/settingsModal.js';
+    import {
+      buildHeaderCapacityViewModel,
+      renderHeaderCapacityBadgeHtml,
+    } from './modules/headerCapacityBadge.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -2648,8 +2654,15 @@
           if (errorEl) errorEl.textContent = thresholdValidation.message;
           return;
         }
+        const capRaw = payload.maxConcurrentReviews ?? '';
+        const capValidation = validateMaxConcurrentReviews(capRaw);
+        if (!capValidation.ok) {
+          if (errorEl) errorEl.textContent = capValidation.message;
+          return;
+        }
         const requestBody = { ...payload };
         requestBody.qualityThreshold = thresholdRaw === '' ? null : Number(thresholdRaw);
+        requestBody.maxConcurrentReviews = Number(capRaw);
         try {
           const response = await fetch(
             `${API_URL}/api/project-config?path=${encodeURIComponent(activeTabId)}`,
@@ -2670,6 +2683,7 @@
           }
           closeSettingsModal();
           refreshOverviewSection();
+          refreshHeaderCapacityBadge();
         } catch {
           if (errorEl) errorEl.textContent = 'Échec de la sauvegarde';
         }
@@ -2694,13 +2708,39 @@
       });
     }
 
-    async function refreshOverviewSection() {
-      const container = document.getElementById('overview-section');
-      if (!container) return;
-      if (activeTabId !== 'overview') return;
+    function applyHeaderCapacityViewModel(viewModel) {
+      const slot = document.getElementById('header-capacity-badge-slot');
+      if (!slot || !viewModel) return;
+      const safeViewModel = viewModel.label && typeof viewModel.label === 'string'
+        ? viewModel
+        : buildHeaderCapacityViewModel({
+            running: viewModel.runningCount ?? 0,
+            max: viewModel.totalCapacity ?? 0,
+          });
+      slot.innerHTML = renderHeaderCapacityBadgeHtml(safeViewModel);
+    }
+
+    async function refreshHeaderCapacityBadge() {
       try {
         const response = await fetch(`${API_URL}/api/overview`);
         const viewModel = await response.json();
+        if (viewModel && viewModel.headerCapacity) {
+          applyHeaderCapacityViewModel(viewModel.headerCapacity);
+        }
+      } catch {
+        // Silent: next refresh will retry
+      }
+    }
+
+    async function refreshOverviewSection() {
+      const container = document.getElementById('overview-section');
+      try {
+        const response = await fetch(`${API_URL}/api/overview`);
+        const viewModel = await response.json();
+        if (viewModel && viewModel.headerCapacity) {
+          applyHeaderCapacityViewModel(viewModel.headerCapacity);
+        }
+        if (!container || activeTabId !== 'overview') return;
         container.innerHTML = renderOverviewHtml(viewModel);
         container.querySelectorAll('.overview-project-card').forEach((card) => {
           card.addEventListener('click', () => {
@@ -2729,6 +2769,7 @@
       } else {
         activateOverviewTab();
       }
+      refreshHeaderCapacityBadge();
     }
 
     let isManagePanelOpen = false;

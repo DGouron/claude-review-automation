@@ -356,4 +356,116 @@ describe('projectConfigRoutes — PATCH /api/project-config', () => {
     expect(response.json().config.qualityThreshold).toBeUndefined();
     await app.close();
   });
+
+  it('accepts a numeric maxConcurrentReviews in the patch body', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: 4 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.maxConcurrentReviews).toBe(4);
+    await app.close();
+  });
+
+  it('accepts a string integer "4" for maxConcurrentReviews', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: '4' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.maxConcurrentReviews).toBe(4);
+    await app.close();
+  });
+
+  it('returns 400 with French range message when maxConcurrentReviews is 0', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: 0 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('La valeur doit être comprise entre 1 et 10');
+    await app.close();
+  });
+
+  it('returns 400 with French range message when maxConcurrentReviews is 11', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: 11 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('La valeur doit être comprise entre 1 et 10');
+    await app.close();
+  });
+
+  it('returns 400 with French integer message when maxConcurrentReviews is "abc"', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: 'abc' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('La valeur doit être un nombre entier');
+    await app.close();
+  });
+
+  it('returns 400 with French required message when maxConcurrentReviews is empty string', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: '' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('La valeur est obligatoire');
+    await app.close();
+  });
+
+  it('clears maxConcurrentReviews from persisted config when patch sends null', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig({ maxConcurrentReviews: 4 }));
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: null },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.maxConcurrentReviews).toBeUndefined();
+    await app.close();
+  });
 });

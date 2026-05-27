@@ -31,7 +31,18 @@ import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters
 import { registerWebSocketRoutes } from '@/main/websocket.js';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
-import { cancelJob, getJobStatus, enqueueReview, getJobsStatus } from '@/frameworks/queue/pQueueAdapter.js';
+import {
+  cancelJob,
+  getJobStatus,
+  enqueueReview,
+  getJobsStatus,
+  setProjectConcurrencyCap,
+  setGlobalConcurrency,
+  getRunningCount,
+  getTotalCapacity,
+} from '@/frameworks/queue/pQueueAdapter.js';
+import { RecomputeGlobalConcurrencyUseCase } from '@/modules/cli-configuration/usecases/projectConfig/recomputeGlobalConcurrency.usecase.js';
+import { RepositoriesListRuntimeConfigGateway } from '@/modules/cli-configuration/interface-adapters/gateways/repositoriesList.runtimeConfig.gateway.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
@@ -143,6 +154,16 @@ export async function registerRoutes(
   const projectConfigGateway = new ProjectConfigFileSystemGateway();
   const updateProjectConfig = new UpdateProjectConfigUseCase(projectConfigGateway);
 
+  const recomputeGlobalConcurrency = new RecomputeGlobalConcurrencyUseCase({
+    repositoriesListGateway: new RepositoriesListRuntimeConfigGateway(() => deps.config.repositories),
+    projectConfigGateway,
+    queueCapacityPort: {
+      setGlobalConcurrency,
+      setProjectConcurrencyCap,
+    },
+  });
+  recomputeGlobalConcurrency.execute({});
+
   await app.register(overviewRoutes, {
     getRepositories: () => deps.config.repositories,
     getActiveJobs: () => getJobsStatus().active.map((job) => ({
@@ -158,6 +179,7 @@ export async function registerRoutes(
     statsGateway: deps.statsGateway,
     reviewFileGateway: deps.reviewFileGateway,
     projectConfigGateway,
+    getCapacity: () => ({ running: getRunningCount(), max: getTotalCapacity() }),
   });
 
   await app.register(mrTrackingRoutes, {
@@ -314,7 +336,12 @@ export async function registerRoutes(
 
   await app.register(logsRoutes);
   await app.register(cliStatusRoutes);
-  await app.register(projectConfigRoutes, { updateProjectConfig });
+  await app.register(projectConfigRoutes, {
+    updateProjectConfig,
+    onSaved: () => {
+      recomputeGlobalConcurrency.execute({});
+    },
+  });
 
   await registerWebSocketRoutes(app, deps);
 

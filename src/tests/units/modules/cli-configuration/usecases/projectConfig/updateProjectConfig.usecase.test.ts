@@ -262,4 +262,103 @@ describe('UpdateProjectConfigUseCase', () => {
     const persisted = gateway.get('/repo/A');
     expect(persisted?.qualityThreshold).toBeUndefined();
   });
+
+  it('merges a valid maxConcurrentReviews (4) into the persisted config', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { maxConcurrentReviews: 4 } });
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.config.maxConcurrentReviews).toBe(4);
+    }
+  });
+
+  it('rejects maxConcurrentReviews 0 with French range message', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { maxConcurrentReviews: 0 } });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'La valeur doit être comprise entre 1 et 10',
+    });
+  });
+
+  it('rejects maxConcurrentReviews 11 with French range message', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { maxConcurrentReviews: 11 } });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'La valeur doit être comprise entre 1 et 10',
+    });
+  });
+
+  it('rejects non-integer maxConcurrentReviews with French integer message', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({ path: '/repo/A', patch: { maxConcurrentReviews: 2.5 } });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'La valeur doit être un nombre entier',
+    });
+  });
+
+  it('rejects non-numeric maxConcurrentReviews with French integer message', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({
+      path: '/repo/A',
+      patch: { maxConcurrentReviews: 'abc' as never },
+    });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'La valeur doit être un nombre entier',
+    });
+  });
+
+  it('rejects empty string maxConcurrentReviews with French required message', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base());
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({
+      path: '/repo/A',
+      patch: { maxConcurrentReviews: '' as never },
+    });
+
+    expect(result).toEqual({
+      status: 'invalid',
+      reason: 'La valeur est obligatoire',
+    });
+  });
+
+  it('null maxConcurrentReviews removes the key from the persisted config', () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', base({ maxConcurrentReviews: 4 }));
+    const usecase = new UpdateProjectConfigUseCase(gateway);
+
+    const result = usecase.execute({
+      path: '/repo/A',
+      patch: { maxConcurrentReviews: null },
+    });
+
+    expect(result.status).toBe('success');
+    const persisted = gateway.get('/repo/A');
+    expect(persisted?.maxConcurrentReviews).toBeUndefined();
+  });
 });

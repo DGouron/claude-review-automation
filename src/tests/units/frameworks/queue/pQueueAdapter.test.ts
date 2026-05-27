@@ -146,3 +146,76 @@ describe('pQueueAdapter - MR-scoped concurrency chain', () => {
     expect(__getMrChainsSize()).toBe(0);
   });
 });
+
+describe('pQueueAdapter - SPEC-183 per-project concurrency cap', () => {
+  beforeEach(async () => {
+    initQueue(createStubLogger());
+    const { __resetProjectConcurrencyState } = await import('@/frameworks/queue/pQueueAdapter.js');
+    __resetProjectConcurrencyState();
+  });
+
+  it('exposes getRunningCount and getTotalCapacity that reflect setProjectConcurrencyCap', async () => {
+    const { setProjectConcurrencyCap, getRunningCount, getTotalCapacity } = await import(
+      '@/frameworks/queue/pQueueAdapter.js'
+    );
+    setProjectConcurrencyCap('/repos/A', 3);
+    setProjectConcurrencyCap('/repos/B', 2);
+
+    expect(getTotalCapacity()).toBe(5);
+    expect(getRunningCount()).toBe(0);
+  });
+
+  it('queues a third review for a project capped at 2 while the first two run', async () => {
+    const { setProjectConcurrencyCap, setGlobalConcurrency, getRunningCount } = await import(
+      '@/frameworks/queue/pQueueAdapter.js'
+    );
+    setProjectConcurrencyCap('test-org/cap-2', 2);
+    setGlobalConcurrency(10);
+
+    const releases: Array<() => void> = [];
+    const completed: string[] = [];
+
+    const makeProcessor = (label: string) => async () => {
+      await new Promise<void>(resolve => releases.push(resolve));
+      completed.push(label);
+    };
+
+    const jobA = createJob({
+      id: 'gitlab:test-org/cap-2:1',
+      projectPath: 'test-org/cap-2',
+      mrNumber: 1,
+    });
+    const jobB = createJob({
+      id: 'gitlab:test-org/cap-2:2',
+      projectPath: 'test-org/cap-2',
+      mrNumber: 2,
+    });
+    const jobC = createJob({
+      id: 'gitlab:test-org/cap-2:3',
+      projectPath: 'test-org/cap-2',
+      mrNumber: 3,
+    });
+
+    await enqueueReview(jobA, makeProcessor('A'));
+    await enqueueReview(jobB, makeProcessor('B'));
+    await enqueueReview(jobC, makeProcessor('C'));
+
+    await new Promise<void>(resolve => setTimeout(resolve, 40));
+
+    expect(getRunningCount()).toBe(2);
+    expect(completed).toEqual([]);
+
+    releases[0]?.();
+    releases[1]?.();
+    await new Promise<void>(resolve => setTimeout(resolve, 40));
+
+    expect(completed.sort()).toEqual(['A', 'B']);
+    expect(getRunningCount()).toBe(1);
+
+    releases[2]?.();
+    await new Promise<void>(resolve => setTimeout(resolve, 40));
+
+    expect(completed.sort()).toEqual(['A', 'B', 'C']);
+    expect(getRunningCount()).toBe(0);
+  });
+});
