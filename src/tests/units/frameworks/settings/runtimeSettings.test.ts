@@ -1,22 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   configureSettingsPath,
+  configureSettingsLogger,
   loadSettingsFromDisk,
   getDefaultLanguage,
   setDefaultLanguage,
   getModel,
   setModel,
   getSettings,
-  resetSettingsForTesting,
+  __resetForTestsOnly,
+  type ClaudeModel,
 } from '@/frameworks/settings/runtimeSettings.js';
 
 describe('runtimeSettings', () => {
   describe('in-memory API (no path configured)', () => {
     beforeEach(() => {
-      resetSettingsForTesting();
+      __resetForTestsOnly();
     });
 
     it('defaults language to "en"', () => {
@@ -41,12 +43,12 @@ describe('runtimeSettings', () => {
     beforeEach(() => {
       directory = mkdtempSync(join(tmpdir(), 'reviewflow-settings-'));
       settingsPath = join(directory, 'settings.json');
-      resetSettingsForTesting();
+      __resetForTestsOnly();
       configureSettingsPath(settingsPath);
     });
 
     afterEach(() => {
-      resetSettingsForTesting();
+      __resetForTestsOnly();
       rmSync(directory, { recursive: true, force: true });
     });
 
@@ -118,12 +120,60 @@ describe('runtimeSettings', () => {
         await setDefaultLanguage('fr');
         await setModel('sonnet');
 
-        resetSettingsForTesting();
+        __resetForTestsOnly();
         configureSettingsPath(settingsPath);
         await loadSettingsFromDisk();
 
         expect(getDefaultLanguage()).toBe('fr');
         expect(getModel()).toBe('sonnet');
+      });
+
+      it('writes atomically (no .tmp leftover after persist)', async () => {
+        await loadSettingsFromDisk();
+
+        await setDefaultLanguage('fr');
+
+        const entries = readdirSync(directory);
+        expect(entries.filter((name) => name.endsWith('.tmp'))).toEqual([]);
+      });
+
+      it('preserves both fields across concurrent setModel and setDefaultLanguage', async () => {
+        await loadSettingsFromDisk();
+
+        await Promise.all([setModel('sonnet'), setDefaultLanguage('fr')]);
+
+        const written = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+        expect(written).toEqual({ language: 'fr', model: 'sonnet' });
+      });
+    });
+
+    describe('validation', () => {
+      it('throws when setModel receives an unknown model', async () => {
+        await expect(setModel('gpt-5' as ClaudeModel)).rejects.toThrow(/Invalid model/);
+      });
+    });
+
+    describe('logger injection', () => {
+      it('reports malformed JSON via the injected logger instead of console', async () => {
+        const warnings: string[] = [];
+        configureSettingsLogger({ warn: (message: string) => warnings.push(message) });
+        writeFileSync(settingsPath, '{ not valid json');
+
+        await loadSettingsFromDisk();
+
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toMatch(/malformed json/i);
+      });
+
+      it('reports schema violation via the injected logger', async () => {
+        const warnings: string[] = [];
+        configureSettingsLogger({ warn: (message: string) => warnings.push(message) });
+        writeFileSync(settingsPath, JSON.stringify({ language: 'es', model: 'opus' }));
+
+        await loadSettingsFromDisk();
+
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toMatch(/invalid settings/i);
       });
     });
   });
