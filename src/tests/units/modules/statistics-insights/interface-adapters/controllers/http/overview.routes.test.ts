@@ -248,7 +248,7 @@ describe('overviewRoutes — GET /api/overview', () => {
     await app.close();
   });
 
-  it('exposes headerCapacity from the injected getCapacity option (SPEC-183)', async () => {
+  it('exposes headerCapacity from the injected getCapacity option (SPEC-186)', async () => {
     const app = await buildApp({
       repositories: [
         RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', enabled: true }),

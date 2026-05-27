@@ -91,7 +91,7 @@ function createMrConcurrencyKey(platform: string, projectPath: string, mrNumber:
   return `${platform}:${projectPath}:${mrNumber}`;
 }
 
-// SPEC-183: per-project semaphore gates concurrent reviews for a given project.
+// SPEC-186: per-project semaphore gates concurrent reviews for a given project.
 // Sits between the MR-chain wait and PQueue.add(): waits for available cap,
 // then proceeds. Decrement happens in the same finally block as activeJobs cleanup.
 const projectSemaphore = new ProjectSemaphore();
@@ -251,7 +251,7 @@ export async function enqueueReview(
   // SPEC-170 FR-9: MR-scoped serialization. fresh + followup on the same MR
   // queue behind each other; different MRs still run in parallel within PQueue
   // concurrency.
-  // SPEC-183: after the MR-chain wait, the per-project semaphore gates entry
+  // SPEC-186: after the MR-chain wait, the per-project semaphore gates entry
   // into PQueue.add() so a single project cannot saturate the global queue.
   const mrKey = createMrConcurrencyKey(job.platform, job.projectPath, job.mrNumber);
   const previousTail = mrChains.get(mrKey) ?? Promise.resolve();
@@ -296,7 +296,7 @@ export async function enqueueReview(
         if (completedJobs.length > MAX_COMPLETED_JOBS) {
           completedJobs.pop();
         }
-        // SPEC-183: release the per-project slot in the same finally block as
+        // SPEC-186: release the per-project slot in the same finally block as
         // the MR-chain teardown so a project never holds a phantom slot after a
         // crash or abort.
         projectSemaphore.release(job.projectPath);

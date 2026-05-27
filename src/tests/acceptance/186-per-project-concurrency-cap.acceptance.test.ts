@@ -1,10 +1,10 @@
 /**
- * SPEC-183 — Per-project concurrency cap for reviews.
+ * SPEC-186 — Per-project concurrency cap for reviews.
  *
  * Outer-loop acceptance test (SDD). Stays RED while the inside-out
  * implementation is in progress, flips GREEN once all layers are wired.
  *
- * Source of truth: docs/specs/183-per-project-concurrency-cap.md (17 DSL scenarios).
+ * Source of truth: docs/specs/186-per-project-concurrency-cap.md (17 DSL scenarios).
  *
  * The scenarios are grouped by Rule:
  *   - Cap validation (range + integer + empty) → 7 scenarios.
@@ -59,7 +59,7 @@ async function buildPatchApp(gateway: StubProjectConfigGateway): Promise<Fastify
   return app;
 }
 
-describe('Acceptance — SPEC-183: Per-project concurrency cap', () => {
+describe('Acceptance — SPEC-186: Per-project concurrency cap', () => {
   describe('Rule: cap validation (range 1-10, integer, required) — server PATCH', () => {
     it('valid update {maxConcurrentReviews: 4} → 200 + persisted "4"', async () => {
       const gateway = new StubProjectConfigGateway();

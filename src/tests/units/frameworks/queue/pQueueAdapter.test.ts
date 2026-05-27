@@ -147,7 +147,7 @@ describe('pQueueAdapter - MR-scoped concurrency chain', () => {
   });
 });
 
-describe('pQueueAdapter - SPEC-183 per-project concurrency cap', () => {
+describe('pQueueAdapter - SPEC-186 per-project concurrency cap', () => {
   beforeEach(async () => {
     initQueue(createStubLogger());
     const { __resetProjectConcurrencyState } = await import('@/frameworks/queue/pQueueAdapter.js');

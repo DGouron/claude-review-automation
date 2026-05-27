@@ -2,7 +2,7 @@
 
 ## Status: implemented
 
-See [report](../reports/183-per-project-concurrency-cap.report.md) and [plan](../plans/183-per-project-concurrency-cap.plan.md).
+See [report](../reports/186-per-project-concurrency-cap.report.md) and [plan](../plans/186-per-project-concurrency-cap.plan.md).
 
 ## Implementation
 

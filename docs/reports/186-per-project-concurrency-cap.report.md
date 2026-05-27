@@ -1,8 +1,8 @@
-# Spec 183 — Per-project concurrency cap — Implementation report
+# Spec 186 — Per-project concurrency cap — Implementation report
 
 ## Status
 
-**Complete.** All 17 DSL scenarios from the spec are covered by an outer-loop acceptance test (`src/tests/acceptance/183-per-project-concurrency-cap.acceptance.test.ts`) that flips RED → GREEN as the inside-out layers wire together. Final pipeline state: `yarn verify` = 309 test files, 2460 tests, zero typecheck/lint failures.
+**Complete.** All 17 DSL scenarios from the spec are covered by an outer-loop acceptance test (`src/tests/acceptance/186-per-project-concurrency-cap.acceptance.test.ts`) that flips RED → GREEN as the inside-out layers wire together. Final pipeline state: `yarn verify` = 309 test files, 2460 tests, zero typecheck/lint failures.
 
 ## Files created
 
@@ -19,7 +19,7 @@
 | `src/tests/factories/projectConcurrencyCap.factory.ts` | Test factory for cap inputs. |
 | `src/tests/stubs/repositoriesListGateway.stub.ts` | Stub for `RepositoriesListGateway`. |
 | `src/tests/stubs/queueCapacityPort.stub.ts` | Stub for the queue capacity port (records calls). |
-| `src/tests/acceptance/183-per-project-concurrency-cap.acceptance.test.ts` | Outer-loop SDD test grouping the 17 DSL scenarios into 7 `describe` blocks. |
+| `src/tests/acceptance/186-per-project-concurrency-cap.acceptance.test.ts` | Outer-loop SDD test grouping the 17 DSL scenarios into 7 `describe` blocks. |
 | `src/tests/units/modules/cli-configuration/entities/projectConcurrencyCap/projectConcurrencyCap.valueObject.test.ts` | Value object unit tests. |
 | `src/tests/units/modules/cli-configuration/entities/projectConcurrencyCap/projectConcurrencyCap.guard.test.ts` | Guard unit tests. |
 | `src/tests/units/modules/cli-configuration/interface-adapters/gateways/repositoriesList.runtimeConfig.gateway.test.ts` | Runtime gateway unit tests. |
@@ -48,7 +48,7 @@
 | `src/tests/units/modules/statistics-insights/interface-adapters/controllers/http/overview.routes.test.ts` | Asserts `capacity` is forwarded from the option. |
 | `src/tests/units/modules/statistics-insights/interface-adapters/presenters/overview.presenter.test.ts` | Asserts the `headerCapacity` viewmodel shape and saturation logic. |
 | `src/tests/units/frameworks/queue/pQueueAdapter.test.ts` | New cases for the per-project semaphore behaviour inside the queue adapter. |
-| `docs/feature-tracker.md` | Spec 183 appended (`drafted` → `planned` → `implemented`). |
+| `docs/feature-tracker.md` | Spec 186 appended (`drafted` → `planned` → `implemented`). |
 
 ## Tests
 
@@ -66,7 +66,7 @@
 
 ## Spec coverage
 
-| Rule (spec 183) | Covered by |
+| Rule (spec 186) | Covered by |
 |-----------------|------------|
 | Each project owns a `maxConcurrentReviews` setting | `projectConfig.ts` extension + acceptance `valid update` scenario. |
 | Default 2 when absent | `effectiveProjectConcurrencyCap` + acceptance `missing key falls back`. |

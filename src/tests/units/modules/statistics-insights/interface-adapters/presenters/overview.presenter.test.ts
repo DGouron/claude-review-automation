@@ -327,7 +327,7 @@ describe('OverviewPresenter', () => {
     });
   });
 
-  describe('headerCapacity (SPEC-183)', () => {
+  describe('headerCapacity (SPEC-186)', () => {
     it('formats label as "running / max" and marks saturation when running >= max', () => {
       const presenter = new OverviewPresenter({ now: () => NOW });
 

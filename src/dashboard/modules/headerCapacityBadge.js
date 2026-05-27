@@ -1,5 +1,5 @@
 /**
- * Dashboard module — Header capacity badge (SPEC-183).
+ * Dashboard module — Header capacity badge (SPEC-186).
  *
  * Pure functions, no global state, no DOM access. Builds a viewmodel for the
  * "running / total" reviews badge displayed in the dashboard header, and

@@ -1,4 +1,4 @@
-# Plan — Per-project concurrency cap for reviews (spec 183)
+# Plan — Per-project concurrency cap for reviews (spec 186)
 
 ## Scope
 
@@ -19,7 +19,7 @@ A new `maxConcurrentReviews` setting (default 2, range 1-10) is added to project
 ## ACCEPTANCE_TEST
 
 ```
-file: src/tests/acceptance/183-per-project-concurrency-cap.acceptance.test.ts
+file: src/tests/acceptance/186-per-project-concurrency-cap.acceptance.test.ts
 note: "SDD outer loop — written FIRST by the implementer, stays RED during impl, GREEN at the end.
        Covers the 17 DSL scenarios: cap validation (range, integer, empty), runtime enforcement
        (held/released/lowered/raised), dashboard header arithmetic (sum, saturation, add/remove project)."
@@ -272,7 +272,7 @@ None of these block kick-off; (1)-(4) are recommendations the implementer can ad
 
 Inside-out, walking-skeleton bias. Each step is testable in isolation.
 
-1. **Acceptance test skeleton** — `src/tests/acceptance/183-per-project-concurrency-cap.acceptance.test.ts` written FIRST, RED. Translates the 17 DSL scenarios into assertions. Will remain RED until step 11.
+1. **Acceptance test skeleton** — `src/tests/acceptance/186-per-project-concurrency-cap.acceptance.test.ts` written FIRST, RED. Translates the 17 DSL scenarios into assertions. Will remain RED until step 11.
 2. **ProjectConcurrencyCap value object + schema + guard + factory + tests** — pure domain, no deps. Establishes the validation contract and French messages. Walking-skeleton entry point.
 3. **`parseMaxConcurrentReviews` in `projectConfig.ts` + `parseProjectConfig` integration + tests** — boundary parsing for the file format.
 4. **Extend `UpdateProjectConfigUseCase`** (whitelist + validation + merge) + extend its tests with the 7 cap-validation DSL scenarios (valid update, too low, too high, negative, non-integer, non-numeric, empty, missing-key-fallback).
