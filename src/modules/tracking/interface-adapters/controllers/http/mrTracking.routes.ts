@@ -116,8 +116,6 @@ export const mrTrackingRoutes: FastifyPluginAsync<MrTrackingRoutesOptions> = asy
       mrId,
       targetState: 'merged',
       requireCurrentState: 'pending-fix',
-      invalidCurrentStateMessage:
-        'Seules les MR en correction peuvent être marquées comme mergées',
     });
 
     if (result.ok) {
@@ -125,12 +123,23 @@ export const mrTrackingRoutes: FastifyPluginAsync<MrTrackingRoutesOptions> = asy
       return { success: true, mrId, message: 'MR marquée comme mergée' };
     }
 
-    if (result.reason === 'invalid-current-state') {
-      reply.code(409);
-      return { success: false, error: result.message };
+    switch (result.reason) {
+      case 'not-found':
+        reply.code(404);
+        return { success: false, error: 'MR non trouvée' };
+      case 'invalid-current-state':
+        reply.code(409);
+        return {
+          success: false,
+          error: 'Seules les MR en correction peuvent être marquées comme mergées',
+        };
+      case 'quality-gate':
+        reply.code(409);
+        return { success: false, error: result.message };
+      default: {
+        const _exhaustive: never = result;
+        throw new Error(`Unhandled transition rejection: ${JSON.stringify(_exhaustive)}`);
+      }
     }
-
-    reply.code(404);
-    return { success: false, error: 'MR non trouvée' };
   });
 };

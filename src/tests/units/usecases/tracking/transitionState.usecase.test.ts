@@ -137,16 +137,13 @@ describe('TransitionStateUseCase', () => {
       mrId: 'mr-1',
       targetState: 'merged',
       requireCurrentState: 'pending-fix',
-      invalidCurrentStateMessage: 'Seules les MR en correction peuvent être marquées comme mergées',
     });
 
     expect(result.ok).toBe(false);
     if (result.ok || result.reason !== 'invalid-current-state') {
       throw new Error('Expected invalid-current-state rejection');
     }
-    expect(result.message).toBe(
-      'Seules les MR en correction peuvent être marquées comme mergées'
-    );
+    expect(result.currentState).toBe('approved');
     const untouched = gateway.getById('/project', 'mr-1');
     expect(untouched?.state).toBe('approved');
     expect(untouched?.mergedAt).toBeNull();
@@ -163,7 +160,6 @@ describe('TransitionStateUseCase', () => {
       mrId: 'mr-1',
       targetState: 'merged',
       requireCurrentState: 'pending-fix',
-      invalidCurrentStateMessage: 'unused',
     });
 
     expect(result.ok).toBe(true);

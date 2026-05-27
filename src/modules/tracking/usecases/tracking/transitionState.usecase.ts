@@ -10,14 +10,13 @@ interface TransitionStateInput {
   targetState: 'approved' | 'merged' | 'closed';
   qualityCheck?: (mr: TrackedMr) => QualityGateResult;
   requireCurrentState?: ReviewRequestStateValue;
-  invalidCurrentStateMessage?: string;
 }
 
 export type TransitionStateResult =
   | { ok: true }
   | { ok: false; reason: 'not-found' }
   | { ok: false; reason: 'quality-gate'; message: string }
-  | { ok: false; reason: 'invalid-current-state'; message: string };
+  | { ok: false; reason: 'invalid-current-state'; currentState: ReviewRequestStateValue };
 
 const TIMESTAMP_BY_STATE: Partial<Record<TransitionStateInput['targetState'], keyof TrackedMr>> = {
   approved: 'approvedAt',
@@ -35,7 +34,7 @@ export class TransitionStateUseCase implements UseCase<TransitionStateInput, Tra
       return {
         ok: false,
         reason: 'invalid-current-state',
-        message: input.invalidCurrentStateMessage ?? '',
+        currentState: mr.state,
       };
     }
 

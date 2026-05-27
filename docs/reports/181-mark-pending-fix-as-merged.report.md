@@ -77,3 +77,16 @@ Two unrelated failures in `src/tests/units/cli/cli.integration.test.ts` — thes
 ## Deviations from plan
 
 None. All ordered TDD steps executed; all i18n strings and file paths match the plan exactly.
+
+## Post-review corrections (2026-05-27)
+
+Addressed three Important findings + one Nit from the PR review:
+
+| # | File | Change |
+|---|------|--------|
+| 1 | `transitionState.usecase.ts` | Removed `invalidCurrentStateMessage` from input; the `invalid-current-state` branch now returns `currentState: ReviewRequestStateValue` instead of `message: string`. Use case no longer carries UI strings. |
+| 2 | `mrTracking.routes.ts` | Replaced if/fallthrough with an exhaustive `switch (result.reason)` + `assertNever`. New `quality-gate` branch handled. Compile-time error if the union grows. |
+| 3 | (resolved by #1) | The silent `?? ''` fallback is gone — the field is no longer in the contract. |
+| 4 | `transitionState.usecase.test.ts` | Removed `'unused'` sentinel; optional parameter omitted in the happy-path scenario. |
+
+Acceptance and route tests pass unchanged — the controller still emits the same French rejection text at the HTTP boundary.
