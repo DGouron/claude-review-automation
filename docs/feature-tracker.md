@@ -52,3 +52,4 @@
 | Setup Wizard CLI orchestrator (Jarvis end-to-end) | [183-setup-wizard-cli-orchestrator](specs/183-setup-wizard-cli-orchestrator.md) | drafted | 2026-05-27 |
 | Setup Wizard Dashboard (Jarvis HUD) | [184-setup-wizard-dashboard-jarvis](specs/184-setup-wizard-dashboard-jarvis.md) | drafted | 2026-05-27 |
 | Setup Wizard MCP agent fallback (deferred) | [185-setup-wizard-mcp-agent-fallback](specs/185-setup-wizard-mcp-agent-fallback.md) | drafted (deferred) | 2026-05-27 |
+| Cap parallel reviews per project | [186-per-project-concurrency-cap](specs/186-per-project-concurrency-cap.md) — [plan](plans/186-per-project-concurrency-cap.plan.md) — [report](reports/186-per-project-concurrency-cap.report.md) | implemented | 2026-05-27 |

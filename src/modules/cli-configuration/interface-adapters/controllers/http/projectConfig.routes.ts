@@ -15,6 +15,7 @@ import type {
 
 interface ProjectConfigRoutesOptions {
   updateProjectConfig?: UpdateProjectConfigUseCase;
+  onSaved?: (projectPath: string) => void;
 }
 
 const querySchema = z.object({ path: z.string().optional() }).passthrough();
@@ -27,6 +28,7 @@ const patchBodySchema = z
     reviewFollowupSkill: z.unknown().optional(),
     externalLink: z.unknown().optional(),
     qualityThreshold: z.unknown().optional(),
+    maxConcurrentReviews: z.unknown().optional(),
   })
   .passthrough();
 
@@ -82,6 +84,25 @@ function extractPatch(body: Record<string, unknown>): ProjectConfigPatch {
       patch.qualityThreshold = raw;
     } else if (typeof raw === 'string' && raw.trim() === '') {
       patch.qualityThreshold = null;
+    }
+  }
+  if ('maxConcurrentReviews' in body) {
+    const raw = body.maxConcurrentReviews;
+    if (raw === null) {
+      patch.maxConcurrentReviews = null;
+    } else if (typeof raw === 'number') {
+      patch.maxConcurrentReviews = raw;
+    } else if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      if (trimmed === '') {
+        Object.assign(patch, { maxConcurrentReviews: '' });
+      } else if (/^-?\d+$/.test(trimmed)) {
+        patch.maxConcurrentReviews = Number(trimmed);
+      } else {
+        Object.assign(patch, { maxConcurrentReviews: raw });
+      }
+    } else {
+      Object.assign(patch, { maxConcurrentReviews: raw });
     }
   }
   return patch;
@@ -228,6 +249,7 @@ export const projectConfigRoutes: FastifyPluginAsync<ProjectConfigRoutesOptions>
     });
 
     if (result.status === 'success') {
+      options?.onSaved?.(validation.path);
       return { success: true, config: result.config };
     }
     if (result.status === 'invalid') {

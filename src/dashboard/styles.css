@@ -510,6 +510,30 @@ input:focus-visible,
 .status-indicator.offline { background: rgba(217, 101, 106, 0.12); color: var(--danger); border: 1px solid rgba(217, 101, 106, 0.2); }
 .status-indicator.connecting { background: var(--accent-ghost); color: var(--accent); border: 1px solid rgba(244, 169, 61, 0.2); }
 
+.header-capacity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 9999px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(244, 169, 61, 0.08);
+  color: var(--accent);
+  border: 1px solid rgba(244, 169, 61, 0.2);
+  cursor: default;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.header-capacity-badge--saturated {
+  background: rgba(217, 101, 106, 0.12);
+  color: var(--danger);
+  border-color: rgba(217, 101, 106, 0.25);
+  animation: pulse 2s infinite;
+}
+
 .status-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
