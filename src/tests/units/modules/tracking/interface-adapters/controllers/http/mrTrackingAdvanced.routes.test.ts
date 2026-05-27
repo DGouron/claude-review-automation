@@ -30,17 +30,21 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { mrTrackingAdvancedRoutes } from '@/modules/tracking/interface-adapters/controllers/http/mrTrackingAdvanced.routes.js';
 import { enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
+import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
+import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 
 interface BuildAppOptions {
   enforceBudgetAccepted: boolean;
   consumedUsd?: number;
   limitUsd?: number;
+  trackedMr?: TrackedMr | null;
 }
 
 interface AppBundle {
   app: FastifyInstance;
   broadcastBudgetExceeded: ReturnType<typeof vi.fn>;
   enforceBudgetExecute: ReturnType<typeof vi.fn>;
+  getByNumber: ReturnType<typeof vi.fn>;
 }
 
 async function buildApp(options: BuildAppOptions): Promise<AppBundle> {
@@ -59,6 +63,9 @@ async function buildApp(options: BuildAppOptions): Promise<AppBundle> {
     },
   }));
 
+  const trackedMrValue = options.trackedMr === undefined ? null : options.trackedMr;
+  const getByNumber = vi.fn(() => trackedMrValue);
+
   const app = Fastify();
   await app.register(mrTrackingAdvancedRoutes, {
     getRepositories: () => [
@@ -73,7 +80,7 @@ async function buildApp(options: BuildAppOptions): Promise<AppBundle> {
     ],
     reviewRequestTrackingGateway: {
       getById: vi.fn(() => null),
-      getByNumber: vi.fn(() => null),
+      getByNumber,
       create: vi.fn(),
       update: vi.fn(),
       getByState: vi.fn(() => []),
@@ -96,7 +103,7 @@ async function buildApp(options: BuildAppOptions): Promise<AppBundle> {
     logger: createStubLogger(),
   });
 
-  return { app, broadcastBudgetExceeded, enforceBudgetExecute };
+  return { app, broadcastBudgetExceeded, enforceBudgetExecute, getByNumber };
 }
 
 describe('mrTrackingAdvancedRoutes POST /api/mr-tracking/followup', () => {
@@ -109,6 +116,13 @@ describe('mrTrackingAdvancedRoutes POST /api/mr-tracking/followup', () => {
       enforceBudgetAccepted: false,
       consumedUsd: 200.1,
       limitUsd: 200,
+      trackedMr: TrackedMrFactory.create({
+        id: 'gitlab-test-org/test-project-42',
+        mrNumber: 42,
+        project: 'test-org/test-project',
+        sourceBranch: 'feature/refresh',
+        targetBranch: 'main',
+      }),
     });
 
     const response = await app.inject({
@@ -136,9 +150,16 @@ describe('mrTrackingAdvancedRoutes POST /api/mr-tracking/followup', () => {
     await app.close();
   });
 
-  it('enqueues the followup when enforceBudget accepts', async () => {
-    const { app, broadcastBudgetExceeded, enforceBudgetExecute } = await buildApp({
+  it('enqueues the followup with sourceBranch and targetBranch from TrackedMr when MR is tracked', async () => {
+    const { app, broadcastBudgetExceeded, enforceBudgetExecute, getByNumber } = await buildApp({
       enforceBudgetAccepted: true,
+      trackedMr: TrackedMrFactory.create({
+        id: 'gitlab-test-org/test-project-42',
+        mrNumber: 42,
+        project: 'test-org/test-project',
+        sourceBranch: 'feature/refresh',
+        targetBranch: 'main',
+      }),
     });
 
     await app.inject({
@@ -150,9 +171,40 @@ describe('mrTrackingAdvancedRoutes POST /api/mr-tracking/followup', () => {
       },
     });
 
+    expect(getByNumber).toHaveBeenCalledWith('/home/user/projects/test', 42, 'gitlab');
     expect(enforceBudgetExecute).toHaveBeenCalled();
-    expect(enqueueReview).toHaveBeenCalled();
+    expect(enqueueReview).toHaveBeenCalledTimes(1);
+    const enqueuedJob = (enqueueReview as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(enqueuedJob).toMatchObject({
+      mrNumber: 42,
+      sourceBranch: 'feature/refresh',
+      targetBranch: 'main',
+      jobType: 'followup',
+    });
     expect(broadcastBudgetExceeded).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it('rejects with 404 and does not enqueue when the MR is not tracked', async () => {
+    const { app, enforceBudgetExecute } = await buildApp({
+      enforceBudgetAccepted: true,
+      trackedMr: null,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/mr-tracking/followup',
+      payload: {
+        mrId: 'gitlab-test-org/test-project-42',
+        projectPath: '/home/user/projects/test',
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ success: false, error: 'MR not tracked' });
+    expect(enforceBudgetExecute).not.toHaveBeenCalled();
+    expect(enqueueReview).not.toHaveBeenCalled();
 
     await app.close();
   });
