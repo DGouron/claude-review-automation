@@ -47,6 +47,12 @@ describe('ReviewRequestState', () => {
       const merged = ReviewRequestState.create('merged');
       expect(() => merged.transitionTo('closed')).toThrow();
     });
+
+    it('should allow transition from pending-fix to merged', () => {
+      const state = ReviewRequestState.pendingFix();
+      const newState = state.transitionTo('merged');
+      expect(newState.current).toBe('merged');
+    });
   });
 
   describe('canTransitionTo', () => {

@@ -317,6 +317,17 @@
     </div>
   </div>
 
+  <div id="mark-merged-modal" class="modal-overlay hidden" onclick="closeMarkMergedModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-title" id="mark-merged-modal-title"></div>
+      <div class="modal-message" id="i18n-mark-merged-modal-message"></div>
+      <div class="modal-actions">
+        <button class="btn-modal-back" onclick="closeMarkMergedModal()" id="i18n-mark-merged-modal-back"></button>
+        <button class="btn-modal-confirm" id="mark-merged-modal-confirm" onclick="confirmMarkAsMerged()"></button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
   <div id="mr-sheet-overlay" class="sheet-overlay" onclick="closeMrSheet()"></div>
@@ -1620,13 +1631,16 @@
       const autoFollowupChecked = mr.autoFollowup !== false ? 'checked' : '';
       const showFollowupActions = type === 'pending-fix' ||
         (type === 'pending-approval' && mr.totalWarnings > 0);
+      const markMergedBtn = type === 'pending-fix'
+        ? `<button class="btn-action" onclick="showMarkMergedModal('${encodedMrId}', ${mr.mrNumber})"><i data-lucide="git-merge"></i> ${t('button.markAsMerged')}</button>`
+        : '';
 
       const actions = showFollowupActions
         ? `<label class="auto-followup-toggle" onclick="event.stopPropagation()" title="${t('button.autoFollowup')}">
              <input type="checkbox" ${autoFollowupChecked} onchange="toggleAutoFollowup('${encodedMrId}', this.checked)">
              ${t('button.autoFollowup')}
            </label>
-           <button class="btn-action" onclick="triggerFollowup('${encodedMrId}')"><i data-lucide="refresh-cw"></i> ${t('button.followup')}</button>${openBtn}`
+           <button class="btn-action" onclick="triggerFollowup('${encodedMrId}')"><i data-lucide="refresh-cw"></i> ${t('button.followup')}</button>${markMergedBtn}${openBtn}`
         : openBtn;
 
       const statsBadges = [];
@@ -2932,6 +2946,56 @@
       }
     }
 
+    let markMergedModalMrId = null;
+
+    function showMarkMergedModal(encodedMrId, mrNumber) {
+      markMergedModalMrId = safeDecodeURIComponent(encodedMrId);
+      document.getElementById('mark-merged-modal-title').textContent = t('modal.markMerged.title', { label: getMrLabel(), number: mrNumber });
+      const modal = document.getElementById('mark-merged-modal');
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => modal.classList.add('visible'));
+    }
+
+    function closeMarkMergedModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      const modal = document.getElementById('mark-merged-modal');
+      modal.classList.remove('visible');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+      markMergedModalMrId = null;
+    }
+
+    async function confirmMarkAsMerged() {
+      if (!markMergedModalMrId) return;
+      trackUsefulAction('markAsMerged');
+
+      const mrId = markMergedModalMrId;
+      closeMarkMergedModal();
+
+      try {
+        const response = await fetch(`${API_URL}/api/mr-tracking/mark-as-merged`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mrId,
+            projectPath: currentProjectPath || undefined,
+          }),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          const card = document.querySelector(`.mr-item-accordion[data-mr-id="${mrId}"]`);
+          if (card) card.remove();
+          showToast(t('success.markedAsMerged'), 'success');
+          fetchStatus();
+        } else {
+          showToast(data.error || t('error.markAsMerged'), 'error');
+        }
+      } catch (error) {
+        console.error('Error marking as merged:', error);
+        showToast(t('error.markAsMerged'), 'error');
+      }
+    }
+
     function showToast(message, type) {
       const container = document.getElementById('toast-container');
       const iconName = type === 'success' ? 'check-circle' : type === 'info' ? 'info' : 'alert-circle';
@@ -3111,6 +3175,15 @@
 
       const modalConfirm = document.getElementById('cancel-modal-confirm');
       if (modalConfirm) modalConfirm.textContent = t('modal.confirm');
+
+      const markMergedModalMessage = document.getElementById('i18n-mark-merged-modal-message');
+      if (markMergedModalMessage) markMergedModalMessage.textContent = t('modal.markMerged.message');
+
+      const markMergedModalBack = document.getElementById('i18n-mark-merged-modal-back');
+      if (markMergedModalBack) markMergedModalBack.textContent = t('modal.markMerged.back');
+
+      const markMergedModalConfirm = document.getElementById('mark-merged-modal-confirm');
+      if (markMergedModalConfirm) markMergedModalConfirm.textContent = t('modal.markMerged.confirm');
     }
 
     async function checkForUpdates() {
@@ -3279,6 +3352,9 @@
     window.showCancelModal = showCancelModal;
     window.closeCancelModal = closeCancelModal;
     window.confirmCancelReview = confirmCancelReview;
+    window.showMarkMergedModal = showMarkMergedModal;
+    window.closeMarkMergedModal = closeMarkMergedModal;
+    window.confirmMarkAsMerged = confirmMarkAsMerged;
     window.toggleFocusStripMode = toggleFocusStripMode;
     window.toggleSection = toggleSection;
     window.onUsefulLinkAction = onUsefulLinkAction;
