@@ -4,7 +4,10 @@ issue: https://github.com/DGouron/review-flow/issues/57
 labels: enhancement, cli, P1-critical
 milestone: Project Bootstrapping
 blocked_by: "#30 (init-project command)"
-status: DRAFT
+status: superseded
+superseded_by: "183-setup-wizard-cli-orchestrator"
+superseded_at: "2026-05-27"
+superseded_reason: "Agent preset selection becomes step 6 of the unified Setup Wizard. The agent catalog and preset definitions are preserved as input to SPEC-183 implementation."
 ---
 
 

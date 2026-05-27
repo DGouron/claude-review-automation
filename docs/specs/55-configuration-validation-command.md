@@ -4,7 +4,10 @@ issue: https://github.com/DGouron/review-flow/issues/55
 labels: enhancement, cli, P2-important
 milestone: Setup Wizard
 blocked-by: "#29 (closed)"
-status: DRAFT
+status: superseded
+superseded_by: "183-setup-wizard-cli-orchestrator"
+superseded_at: "2026-05-27"
+superseded_reason: "Validation becomes step 9 of the unified Setup Wizard, run automatically at the end of every setup and on demand via `reviewflow setup --validate-only`."
 ---
 
 

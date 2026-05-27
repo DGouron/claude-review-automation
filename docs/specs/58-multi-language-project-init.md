@@ -4,7 +4,10 @@ issue: https://github.com/DGouron/review-flow/issues/58
 labels: enhancement, cli, P2-important, i18n
 milestone: Project Bootstrapping
 blocked_by: https://github.com/DGouron/review-flow/issues/30
-status: DRAFT
+status: superseded
+superseded_by: "183-setup-wizard-cli-orchestrator"
+superseded_at: "2026-05-27"
+superseded_reason: "Language selection (EN/FR) for generated SKILL.md is part of step 6 of the unified Setup Wizard."
 ---
 
 
