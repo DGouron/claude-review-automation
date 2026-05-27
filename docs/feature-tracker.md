@@ -41,7 +41,7 @@
 | Claude agents supervisor lifecycle | [172-claude-agents-supervisor-lifecycle](specs/172-claude-agents-supervisor-lifecycle.md) | implemented | 2026-05-23 |
 | Dashboard worktree panel | [173-dashboard-worktree-panel](specs/173-dashboard-worktree-panel.md) — [plan](plans/173-dashboard-worktree-panel.plan.md) — [report](reports/173-dashboard-worktree-panel.report.md) | implemented | 2026-05-23 |
 | Semi-automatic review trigger mode | [174-semi-auto-review-trigger-mode](specs/174-semi-auto-review-trigger-mode.md) — [plan](plans/174-semi-auto-review-trigger-mode.plan.md) | implemented | 2026-05-23 |
-| Worktree failure visibility & force-cleanup | [175-worktree-failure-visibility](specs/175-worktree-failure-visibility.md) | drafted | 2026-05-24 |
+| Worktree failure visibility & force-cleanup | [175-worktree-failure-visibility](specs/175-worktree-failure-visibility.md) — [plan](plans/175-worktree-failure-visibility.plan.md) — [report](reports/175-worktree-failure-visibility.report.md) | implemented | 2026-05-27 |
 | Job history persistence | [176-job-history-persistence](specs/176-job-history-persistence.md) | drafted | 2026-05-24 |
 | Dashboard project CRUD UI + animations | [177-dashboard-add-project-ui](specs/177-dashboard-add-project-ui.md) — [plan](plans/177-dashboard-add-project-ui.plan.md) — [report](reports/177-dashboard-add-project-ui.report.md) | implemented | 2026-05-25 |
 | Reposition project tabs above cards + contextual counters | [178-dashboard-tabs-reposition](specs/178-dashboard-tabs-reposition.md) — [plan](plans/178-dashboard-tabs-reposition.plan.md) — [report](reports/178-dashboard-tabs-reposition.report.md) | implemented | 2026-05-25 |

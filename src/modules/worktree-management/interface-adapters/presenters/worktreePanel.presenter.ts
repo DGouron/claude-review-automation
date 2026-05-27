@@ -4,6 +4,10 @@ import type {
   WorktreeEntry,
   WorktreePlatform,
 } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+import type {
+  DegradedReason,
+  WorktreeHealthReport,
+} from '@/modules/worktree-management/entities/worktree/worktreeHealth.schema.js';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
@@ -32,6 +36,24 @@ export interface LastSweepViewModel {
   scanned: number;
 }
 
+export type DegradedReasonCode = DegradedReason['kind'];
+
+export interface DegradedRowViewModel {
+  mrNumber: number;
+  platform: WorktreePlatform;
+  projectPath: string;
+  path: string;
+  reasonCode: DegradedReasonCode;
+  reasonLabel: string;
+  detectedAtIso: string;
+  recommendedAction: string;
+  cleanupEndpointPayload: {
+    platform: WorktreePlatform;
+    projectPath: string;
+    mrNumber: number;
+  };
+}
+
 export interface WorktreePanelViewModel {
   totalCount: number;
   totalSizeBytes: number;
@@ -41,12 +63,15 @@ export interface WorktreePanelViewModel {
   nextSweepAt: string;
   lastSweep: LastSweepViewModel | null;
   groups: WorktreeGroupViewModel[];
+  degradedCount: number;
+  degraded: DegradedRowViewModel[];
 }
 
 export interface WorktreePanelPresenterInput {
   worktrees: WorktreeEntry[];
   lastSweep: LastSweepSummary | null;
   nextSweepAt: Date;
+  healthReports?: WorktreeHealthReport[];
 }
 
 export interface WorktreePanelPresenterDependencies {
@@ -65,6 +90,56 @@ function computeStatus(ageSeconds: number): WorktreeRowStatus {
   if (ageMs < ONE_DAY_MS) return 'active';
   if (ageMs <= SEVEN_DAYS_MS) return 'idle';
   return 'stale';
+}
+
+function formatHours(ms: number): string {
+  return String(Math.max(1, Math.round(ms / (60 * 60 * 1000))));
+}
+
+function describeReason(reason: DegradedReason): { label: string; action: string } {
+  if (reason.kind === 'stale') {
+    return {
+      label: `Worktree inactif depuis ${formatHours(reason.ageMs)}h`,
+      action: 'Cleanup forcé recommandé',
+    };
+  }
+  if (reason.kind === 'orphan-git-lock') {
+    return {
+      label: `Lock git orphelin depuis ${formatHours(reason.lockAgeMs)}h`,
+      action: 'Cleanup forcé recommandé',
+    };
+  }
+  if (reason.kind === 'unresolved-conflict') {
+    return {
+      label: 'Conflit git non résolu',
+      action: 'Cleanup forcé recommandé',
+    };
+  }
+  return {
+    label: 'Artefacts de build manquants',
+    action: 'Cleanup forcé recommandé',
+  };
+}
+
+function buildDegradedRow(report: WorktreeHealthReport): DegradedRowViewModel | null {
+  if (report.health.status !== 'degraded') return null;
+  const { entry, health } = report;
+  const description = describeReason(health.reason);
+  return {
+    mrNumber: entry.identity.mrNumber,
+    platform: entry.identity.platform,
+    projectPath: entry.identity.projectPath,
+    path: entry.path,
+    reasonCode: health.reason.kind,
+    reasonLabel: description.label,
+    detectedAtIso: health.detectedAt.toISOString(),
+    recommendedAction: description.action,
+    cleanupEndpointPayload: {
+      platform: entry.identity.platform,
+      projectPath: entry.identity.projectPath,
+      mrNumber: entry.identity.mrNumber,
+    },
+  };
 }
 
 function groupKey(platform: WorktreePlatform, projectPath: string): string {
@@ -133,6 +208,14 @@ export class WorktreePanelPresenter {
         groupKey(a.platform, a.projectPath).localeCompare(groupKey(b.platform, b.projectPath)),
       );
 
+    const degraded: DegradedRowViewModel[] = [];
+    if (input.healthReports) {
+      for (const report of input.healthReports) {
+        const row = buildDegradedRow(report);
+        if (row !== null) degraded.push(row);
+      }
+    }
+
     return {
       totalCount: input.worktrees.length,
       totalSizeBytes,
@@ -150,6 +233,8 @@ export class WorktreePanelPresenter {
               scanned: input.lastSweep.scanned,
             },
       groups,
+      degradedCount: degraded.length,
+      degraded,
     };
   }
 

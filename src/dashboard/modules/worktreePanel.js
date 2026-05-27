@@ -36,6 +36,30 @@
  */
 
 /**
+ * @typedef {'stale' | 'orphan-git-lock' | 'unresolved-conflict' | 'missing-build-artifacts'} DegradedReasonCode
+ */
+
+/**
+ * @typedef {Object} CleanupEndpointPayload
+ * @property {'gitlab' | 'github'} platform
+ * @property {string} projectPath
+ * @property {number} mrNumber
+ */
+
+/**
+ * @typedef {Object} DegradedRowViewModel
+ * @property {number} mrNumber
+ * @property {'gitlab' | 'github'} platform
+ * @property {string} projectPath
+ * @property {string} path
+ * @property {DegradedReasonCode} reasonCode
+ * @property {string} reasonLabel
+ * @property {string} detectedAtIso
+ * @property {string} recommendedAction
+ * @property {CleanupEndpointPayload} cleanupEndpointPayload
+ */
+
+/**
  * @typedef {Object} WorktreePanelViewModel
  * @property {number} totalCount
  * @property {number} totalSizeBytes
@@ -45,6 +69,15 @@
  * @property {string} nextSweepAt
  * @property {LastSweepViewModel | null} lastSweep
  * @property {WorktreeGroupViewModel[]} groups
+ * @property {number} degradedCount
+ * @property {DegradedRowViewModel[]} degraded
+ */
+
+/**
+ * @typedef {{ status: 'ok' }
+ *        | { status: 'conflict' }
+ *        | { status: 'not-found' }
+ *        | { status: 'error'; reason?: string }} ForceCleanupResult
  */
 
 /**
@@ -275,11 +308,50 @@ function renderNextSweep(nextSweepAt) {
 }
 
 /**
+ * @param {DegradedRowViewModel} row
+ * @returns {string}
+ */
+function renderDegradedAlertBlock(row) {
+  return `
+    <div class="worktree-alert" data-severity="critical" data-reason="${escapeHtml(row.reasonCode)}">
+      <div class="worktree-alert-frame">
+        <span class="worktree-alert-label">// ALERT</span>
+        <span class="worktree-alert-reason">${escapeHtml(row.reasonLabel)}</span>
+      </div>
+      <div class="worktree-alert-body">
+        <span class="worktree-alert-identity">${escapeHtml(row.platform)} · ${escapeHtml(row.projectPath)} · #${escapeHtml(row.mrNumber)}</span>
+        <span class="worktree-alert-action">${escapeHtml(row.recommendedAction)}</span>
+      </div>
+      <button
+        class="worktree-cleanup-button"
+        type="button"
+        data-action="force-cleanup"
+        data-platform="${escapeHtml(row.platform)}"
+        data-project-path="${escapeHtml(row.projectPath)}"
+        data-mr-number="${escapeHtml(row.mrNumber)}"
+      >FORCE CLEANUP</button>
+    </div>
+  `;
+}
+
+/**
+ * @param {DegradedRowViewModel[]} degraded
+ * @returns {string}
+ */
+export function renderDegradedAlerts(degraded) {
+  if (!Array.isArray(degraded) || degraded.length === 0) return '';
+  return `<div class="worktree-alerts">${degraded.map(renderDegradedAlertBlock).join('')}</div>`;
+}
+
+/**
  * @param {WorktreePanelViewModel} viewModel
  * @returns {string}
  */
 export function renderWorktreeSection(viewModel) {
   const isEmpty = viewModel.totalCount === 0;
+  const degradedCount = typeof viewModel.degradedCount === 'number' ? viewModel.degradedCount : 0;
+  const degraded = Array.isArray(viewModel.degraded) ? viewModel.degraded : [];
+  const alertsBlock = degradedCount > 0 ? renderDegradedAlerts(degraded) : '';
 
   const body = isEmpty
     ? renderWorktreeEmptyState()
@@ -327,7 +399,7 @@ export function renderWorktreeSection(viewModel) {
           <span class="worktree-sweep-label">SWEEP NOW</span>
         </button>
       </div>
-      <div class="worktree-panel-body">${body}</div>
+      <div class="worktree-panel-body">${alertsBlock}${body}</div>
       <div class="worktree-panel-footer">
         <div class="worktree-footer-block">
           <span class="worktree-footer-label">// LAST SWEEP</span>
@@ -370,4 +442,29 @@ export async function triggerManualSweep(fetchImpl = fetch) {
   }
   const body = await response.json().catch(() => ({}));
   return { status: 'error', reason: body.error };
+}
+
+/**
+ * @param {CleanupEndpointPayload} payload
+ * @param {typeof fetch} [fetchImpl]
+ * @returns {Promise<ForceCleanupResult>}
+ */
+export async function triggerForceCleanup(payload, fetchImpl = fetch) {
+  const response = await fetchImpl('/api/worktrees/cleanup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (response.ok) {
+    return { status: 'ok' };
+  }
+  if (response.status === 409) {
+    return { status: 'conflict' };
+  }
+  if (response.status === 404) {
+    return { status: 'not-found' };
+  }
+  const body = await response.json().catch(() => ({}));
+  const reason = body.warning ?? body.error ?? '';
+  return { status: 'error', reason };
 }

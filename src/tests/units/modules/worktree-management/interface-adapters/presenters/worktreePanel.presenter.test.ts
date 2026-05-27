@@ -3,10 +3,12 @@ import { WorktreePanelPresenter } from '@/modules/worktree-management/interface-
 import { StubWorktreeSizeProbeGateway } from '@/tests/stubs/worktreeSizeProbe.stub.js';
 import { LastSweepSummaryFactory } from '@/tests/factories/lastSweepSummary.factory.js';
 import { createWorktreePath } from '@/modules/worktree-management/entities/worktree/worktree.js';
+import { WorktreeHealthFactory } from '@/tests/factories/worktreeHealth.factory.js';
 import type {
   WorktreeEntry,
   WorktreeIdentity,
 } from '@/modules/worktree-management/entities/worktree/worktree.schema.js';
+import type { WorktreeHealthReport } from '@/modules/worktree-management/entities/worktree/worktreeHealth.schema.js';
 
 const NOW = new Date('2026-05-23T12:00:00.000Z');
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -312,6 +314,165 @@ describe('WorktreePanelPresenter', () => {
       expect(viewModel.idleCount).toBe(1);
       expect(viewModel.staleCount).toBe(1);
       expect(viewModel.totalCount).toBe(4);
+    });
+  });
+
+  describe('degraded health reports', () => {
+    it('defaults degradedCount to 0 and degraded to [] when no healthReports are provided', async () => {
+      const viewModel = await presenter.present({
+        worktrees: [],
+        lastSweep: null,
+        nextSweepAt: NOW,
+      });
+
+      expect(viewModel.degradedCount).toBe(0);
+      expect(viewModel.degraded).toEqual([]);
+    });
+
+    it('produces one DegradedRowViewModel per degraded report with French stale label', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/project', mrNumber: 12 };
+      const path = '/tmp/worktrees/gitlab-group-project-12';
+      const mtime = new Date(NOW.getTime() - 26 * ONE_HOUR_MS);
+      const entry = buildEntry(identity, mtime, path);
+      const report: WorktreeHealthReport = {
+        entry,
+        health: WorktreeHealthFactory.stale({ ageMs: 26 * ONE_HOUR_MS, thresholdMs: 24 * ONE_HOUR_MS, detectedAt: NOW }),
+      };
+
+      const viewModel = await presenter.present({
+        worktrees: [entry],
+        lastSweep: null,
+        nextSweepAt: NOW,
+        healthReports: [report],
+      });
+
+      expect(viewModel.degradedCount).toBe(1);
+      const row = viewModel.degraded[0];
+      expect(row?.mrNumber).toBe(12);
+      expect(row?.platform).toBe('gitlab');
+      expect(row?.projectPath).toBe('group/project');
+      expect(row?.path).toBe(path);
+      expect(row?.reasonCode).toBe('stale');
+      expect(row?.reasonLabel).toContain('Worktree inactif');
+      expect(row?.reasonLabel).toContain('26');
+      expect(row?.detectedAtIso).toBe(NOW.toISOString());
+      expect(row?.recommendedAction.length).toBeGreaterThan(0);
+      expect(row?.cleanupEndpointPayload).toEqual({
+        platform: 'gitlab',
+        projectPath: 'group/project',
+        mrNumber: 12,
+      });
+    });
+
+    it('formats orphan-git-lock with French lock label and lock age in hours', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/lock', mrNumber: 5 };
+      const path = '/tmp/worktrees/gitlab-group-lock-5';
+      const entry = buildEntry(identity, new Date(NOW.getTime() - 60_000), path);
+      const report: WorktreeHealthReport = {
+        entry,
+        health: WorktreeHealthFactory.orphanLock({
+          lockPath: '/main/.git/worktrees/abc/index.lock',
+          lockAgeMs: 2 * ONE_HOUR_MS,
+          detectedAt: NOW,
+        }),
+      };
+
+      const viewModel = await presenter.present({
+        worktrees: [entry],
+        lastSweep: null,
+        nextSweepAt: NOW,
+        healthReports: [report],
+      });
+
+      const row = viewModel.degraded[0];
+      expect(row?.reasonCode).toBe('orphan-git-lock');
+      expect(row?.reasonLabel).toContain('Lock git orphelin');
+      expect(row?.reasonLabel).toContain('2');
+    });
+
+    it('formats unresolved-conflict with a static French label', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/conflict', mrNumber: 6 };
+      const path = '/tmp/worktrees/gitlab-group-conflict-6';
+      const entry = buildEntry(identity, new Date(NOW.getTime() - 60_000), path);
+      const report: WorktreeHealthReport = {
+        entry,
+        health: WorktreeHealthFactory.unresolvedConflict({ detectedAt: NOW }),
+      };
+
+      const viewModel = await presenter.present({
+        worktrees: [entry],
+        lastSweep: null,
+        nextSweepAt: NOW,
+        healthReports: [report],
+      });
+
+      const row = viewModel.degraded[0];
+      expect(row?.reasonCode).toBe('unresolved-conflict');
+      expect(row?.reasonLabel).toBe('Conflit git non résolu');
+    });
+
+    it('formats missing-build-artifacts with a static French label', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/no-deps', mrNumber: 7 };
+      const path = '/tmp/worktrees/gitlab-group-no-deps-7';
+      const entry = buildEntry(identity, new Date(NOW.getTime() - 60_000), path);
+      const report: WorktreeHealthReport = {
+        entry,
+        health: WorktreeHealthFactory.missingArtifacts({
+          expectedPath: `${path}/node_modules`,
+          detectedAt: NOW,
+        }),
+      };
+
+      const viewModel = await presenter.present({
+        worktrees: [entry],
+        lastSweep: null,
+        nextSweepAt: NOW,
+        healthReports: [report],
+      });
+
+      const row = viewModel.degraded[0];
+      expect(row?.reasonCode).toBe('missing-build-artifacts');
+      expect(row?.reasonLabel).toBe('Artefacts de build manquants');
+    });
+
+    it('excludes healthy reports from the degraded list', async () => {
+      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/healthy', mrNumber: 8 };
+      const path = '/tmp/worktrees/gitlab-group-healthy-8';
+      const entry = buildEntry(identity, new Date(NOW.getTime() - 60_000), path);
+      const report: WorktreeHealthReport = {
+        entry,
+        health: WorktreeHealthFactory.healthy(),
+      };
+
+      const viewModel = await presenter.present({
+        worktrees: [entry],
+        lastSweep: null,
+        nextSweepAt: NOW,
+        healthReports: [report],
+      });
+
+      expect(viewModel.degradedCount).toBe(0);
+      expect(viewModel.degraded).toEqual([]);
+    });
+
+    it('produces N independent rows for N degraded entries (scenario 10)', async () => {
+      const stale = WorktreeHealthFactory.stale({ ageMs: 30 * ONE_HOUR_MS, thresholdMs: 24 * ONE_HOUR_MS, detectedAt: NOW });
+      const entries: WorktreeEntry[] = [
+        buildEntry({ platform: 'gitlab', projectPath: 'group/a', mrNumber: 1 }, new Date(NOW.getTime() - 30 * ONE_HOUR_MS), '/tmp/worktrees/gitlab-group-a-1'),
+        buildEntry({ platform: 'gitlab', projectPath: 'group/b', mrNumber: 2 }, new Date(NOW.getTime() - 30 * ONE_HOUR_MS), '/tmp/worktrees/gitlab-group-b-2'),
+        buildEntry({ platform: 'gitlab', projectPath: 'group/c', mrNumber: 3 }, new Date(NOW.getTime() - 30 * ONE_HOUR_MS), '/tmp/worktrees/gitlab-group-c-3'),
+      ];
+      const reports: WorktreeHealthReport[] = entries.map(entry => ({ entry, health: stale }));
+
+      const viewModel = await presenter.present({
+        worktrees: entries,
+        lastSweep: null,
+        nextSweepAt: NOW,
+        healthReports: reports,
+      });
+
+      expect(viewModel.degradedCount).toBe(3);
+      expect(viewModel.degraded).toHaveLength(3);
     });
   });
 

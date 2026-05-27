@@ -57,7 +57,11 @@ export class WorktreeFileSystemGateway implements WorktreeGateway {
   async remove(request: RemoveWorktreeRequest): Promise<RemoveResult> {
     try {
       return await removeWorktree(
-        { identity: request.identity, sourceCheckoutPath: request.sourceCheckoutPath },
+        {
+          identity: request.identity,
+          sourceCheckoutPath: request.sourceCheckoutPath,
+          force: request.force === true,
+        },
         {
           executor: this.executor,
           worktreeExists: async path => existsSync(path),

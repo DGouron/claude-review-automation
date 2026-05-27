@@ -9,6 +9,7 @@ import type { GitCommandExecutor } from '@/modules/worktree-management/entities/
 export interface RemoveWorktreeInput {
   identity: WorktreeIdentity;
   sourceCheckoutPath: string;
+  force?: boolean;
 }
 
 export interface RemoveWorktreeDependencies {
@@ -21,6 +22,7 @@ export async function removeWorktree(
   deps: RemoveWorktreeDependencies,
 ): Promise<RemoveResult> {
   const targetPath = deriveWorktreePath(input.identity);
+  const isForced = input.force === true;
 
   await deps.executor.execute({
     kind: 'worktree-prune',
@@ -30,7 +32,7 @@ export async function removeWorktree(
 
   const exists = await deps.worktreeExists(targetPath);
   if (!exists) {
-    return { status: 'absent' };
+    return isForced ? { status: 'removed' } : { status: 'absent' };
   }
 
   const removeResult = await deps.executor.execute({

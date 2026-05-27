@@ -400,6 +400,7 @@
       renderWorktreeSection,
       fetchWorktreeOverview,
       triggerManualSweep,
+      triggerForceCleanup,
       snapshotTotals,
       computeChangedMetricKeys,
     } from './modules/worktreePanel.js';
@@ -3560,6 +3561,32 @@
       }).catch(() => {});
     }
 
+    function bindForceCleanupButtons() {
+      if (worktreeSection === null) return;
+      const buttons = worktreeSection.querySelectorAll('[data-action="force-cleanup"]');
+      buttons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (button.dataset.busy === '1') return;
+          const platform = button.dataset.platform;
+          const projectPath = button.dataset.projectPath;
+          const mrNumber = Number(button.dataset.mrNumber);
+          if (!platform || !projectPath || Number.isNaN(mrNumber)) return;
+
+          button.dataset.busy = '1';
+          try {
+            const result = await triggerForceCleanup({ platform, projectPath, mrNumber });
+            if (result.status !== 'ok') {
+              button.classList.add('worktree-cleanup-failed');
+              window.setTimeout(() => button.classList.remove('worktree-cleanup-failed'), 1200);
+            }
+          } finally {
+            button.dataset.busy = '0';
+            await refreshWorktreeSection({ animate: true });
+          }
+        });
+      });
+    }
+
     async function refreshWorktreeSection({ animate } = { animate: false }) {
       if (worktreeSection === null) return;
       try {
@@ -3567,6 +3594,7 @@
         const totals = snapshotTotals(viewModel);
         worktreeSection.innerHTML = renderWorktreeSection(viewModel);
         bindWorktreeSweepButton();
+        bindForceCleanupButtons();
         if (animate) animateWorktreeMetrics();
         flashChangedMetrics(totals);
         lastWorktreeTotals = totals;
