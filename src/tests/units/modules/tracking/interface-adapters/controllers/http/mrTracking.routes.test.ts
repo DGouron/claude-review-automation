@@ -144,3 +144,56 @@ describe('mrTrackingRoutes — POST /api/mr-tracking/approve quality gate', () =
     expect(response.statusCode).toBe(400);
   });
 });
+
+describe('mrTrackingRoutes — POST /api/mr-tracking/mark-as-merged', () => {
+  const projectPath = '/repo/project';
+  let gateway: InMemoryReviewRequestTrackingGateway;
+
+  beforeEach(() => {
+    gateway = new InMemoryReviewRequestTrackingGateway();
+  });
+
+  it('returns 200 and transitions a pending-fix MR to merged', async () => {
+    gateway.create(
+      projectPath,
+      TrackedMrFactory.create({ id: 'mr-1', state: 'pending-fix' }),
+    );
+    const app = await buildApp({ gateway, qualityThreshold: null });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/mr-tracking/mark-as-merged',
+      payload: { mrId: 'mr-1', projectPath },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { success: boolean; mrId: string };
+    expect(body.success).toBe(true);
+    expect(body.mrId).toBe('mr-1');
+    const updated = gateway.getById(projectPath, 'mr-1');
+    expect(updated?.state).toBe('merged');
+    expect(updated?.mergedAt).not.toBeNull();
+  });
+
+  it('returns 409 when the MR is not in pending-fix state', async () => {
+    gateway.create(
+      projectPath,
+      TrackedMrFactory.create({ id: 'mr-1', state: 'approved' }),
+    );
+    const app = await buildApp({ gateway, qualityThreshold: null });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/mr-tracking/mark-as-merged',
+      payload: { mrId: 'mr-1', projectPath },
+    });
+
+    expect(response.statusCode).toBe(409);
+    const body = response.json() as { success: boolean; error: string };
+    expect(body.success).toBe(false);
+    expect(body.error).toBe(
+      'Seules les MR en correction peuvent être marquées comme mergées'
+    );
+    expect(gateway.getById(projectPath, 'mr-1')?.state).toBe('approved');
+  });
+});
