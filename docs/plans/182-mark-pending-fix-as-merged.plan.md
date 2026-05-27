@@ -1,5 +1,5 @@
 PLAN:
-  scope: SPEC-181 — Manually mark a pending-fix MR as merged
+  scope: SPEC-182 — Manually mark a pending-fix MR as merged
   is_new_module: false
 
   ANTI-OVERENGINEERING_CHECK:
@@ -39,7 +39,7 @@ PLAN:
         - When provided, after the not-found check, compare `mr.state` to it; mismatch → return
           `{ ok: false, reason: 'invalid-current-state', message: <French> }`. No gateway write.
         - Caller is responsible for the French message (passed in or constant) — keeping the
-          use case agnostic to UI language. For SPEC-181 the controller passes the literal
+          use case agnostic to UI language. For SPEC-182 the controller passes the literal
           "Seules les MR en correction peuvent être marquées comme mergées".
         - Decision rationale (vs new MarkPendingFixAsMergedUseCase):
             * Reuse: the existing use case already does the gateway read, the timestamp
@@ -185,7 +185,7 @@ PLAN:
   NEW_FILES_SUMMARY:
     1. src/tests/units/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.test.ts
        (light coverage — exhaustive coverage lives in the acceptance test)
-    2. src/tests/acceptance/181-mark-pending-fix-as-merged.acceptance.test.ts
+    2. src/tests/acceptance/182-mark-pending-fix-as-merged.acceptance.test.ts
 
   TOTAL_FILE_COUNT:
     new: 2
@@ -193,7 +193,7 @@ PLAN:
     total: 9
 
   ACCEPTANCE_TEST:
-    file: src/tests/acceptance/181-mark-pending-fix-as-merged.acceptance.test.ts
+    file: src/tests/acceptance/182-mark-pending-fix-as-merged.acceptance.test.ts
     note: |
       SDD outer loop — written FIRST (step 1), stays RED through every inner step, GREEN
       after the HTTP route lands (step 5). Mirrors the structure of
@@ -212,7 +212,7 @@ PLAN:
       - invalid project path: 400, error="Chemin invalide"
 
   IMPLEMENTATION_ORDER (TDD, inside-out):
-    1. RED — write src/tests/acceptance/181-mark-pending-fix-as-merged.acceptance.test.ts
+    1. RED — write src/tests/acceptance/182-mark-pending-fix-as-merged.acceptance.test.ts
        covering the 8 scenarios above. Fails with 404 (route does not exist).
     2. RED — add test "should allow transition pending-fix → merged" in
        src/tests/units/entities/reviewRequest/reviewRequestState.valueObject.test.ts.
@@ -241,7 +241,7 @@ PLAN:
     9. Update docs/feature-tracker.md line 50: status `drafted` → `planned`, append plan link.
 
   REFERENCE_FILES:
-    - docs/specs/181-mark-pending-fix-as-merged.md — spec, source of truth for rules + scenarios
+    - docs/specs/182-mark-pending-fix-as-merged.md — spec, source of truth for rules + scenarios
     - docs/plans/180-quality-threshold-block-approval.plan.md — plan template for SDD/TDD layout
     - src/modules/review-execution/entities/reviewRequest/reviewRequestState.valueObject.ts — the line to edit
     - src/modules/tracking/usecases/tracking/transitionState.usecase.ts — host of the new `requireCurrentState` guard
@@ -257,8 +257,8 @@ PLAN:
     file: docs/feature-tracker.md
     line: 50
     change: |
-      Before: | Manually mark a pending-fix MR as merged | [181-mark-pending-fix-as-merged](specs/181-mark-pending-fix-as-merged.md) | drafted | 2026-05-27 |
-      After:  | Manually mark a pending-fix MR as merged | [181-mark-pending-fix-as-merged](specs/181-mark-pending-fix-as-merged.md) — [plan](plans/181-mark-pending-fix-as-merged.plan.md) | planned | 2026-05-27 |
+      Before: | Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) | drafted | 2026-05-27 |
+      After:  | Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) — [plan](plans/182-mark-pending-fix-as-merged.plan.md) | planned | 2026-05-27 |
 
   VALIDATION_GATES:
     - yarn typecheck

@@ -1,11 +1,11 @@
 /**
- * SPEC-181 — Manually mark a pending-fix MR as merged
+ * SPEC-182 — Manually mark a pending-fix MR as merged
  *
  * Outer-loop acceptance test (SDD): exercises POST /api/mr-tracking/mark-as-merged
  * through the Fastify plugin wired with the in-memory tracking gateway. Covers
  * the 8 scenarios from the spec.
  *
- * Scenarios from docs/specs/181-mark-pending-fix-as-merged.md:
+ * Scenarios from docs/specs/182-mark-pending-fix-as-merged.md:
  *   - valid pending-fix → merged: 200 + state="merged" + mergedAt set
  *   - pending-approval rejected: 409 + invalid-current-state message
  *   - approved rejected: 409 + invalid-current-state message
@@ -43,7 +43,7 @@ function seedMr(
   gateway.create(projectPath, TrackedMrFactory.create({ id: 'mr-42', ...overrides }));
 }
 
-describe('Acceptance — SPEC-181: Manually mark a pending-fix MR as merged', () => {
+describe('Acceptance — SPEC-182: Manually mark a pending-fix MR as merged', () => {
   let gateway: InMemoryReviewRequestTrackingGateway;
   const projectPath = '/home/user/proj';
 

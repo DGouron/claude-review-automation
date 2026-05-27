@@ -2,7 +2,7 @@
 
 ## Status: implemented
 
-See [report](../reports/181-mark-pending-fix-as-merged.report.md) and [plan](../plans/181-mark-pending-fix-as-merged.plan.md).
+See [report](../reports/182-mark-pending-fix-as-merged.report.md) and [plan](../plans/182-mark-pending-fix-as-merged.plan.md).
 
 ## Implementation
 

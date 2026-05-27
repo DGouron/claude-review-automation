@@ -1,7 +1,7 @@
-# SPEC-181 — Implementation Report
+# SPEC-182 — Implementation Report
 
-**Spec**: [181-mark-pending-fix-as-merged](../specs/181-mark-pending-fix-as-merged.md)
-**Plan**: [181-mark-pending-fix-as-merged.plan.md](../plans/181-mark-pending-fix-as-merged.plan.md)
+**Spec**: [182-mark-pending-fix-as-merged](../specs/182-mark-pending-fix-as-merged.md)
+**Plan**: [182-mark-pending-fix-as-merged.plan.md](../plans/182-mark-pending-fix-as-merged.plan.md)
 **Status**: complete
 **Date**: 2026-05-27
 
@@ -25,7 +25,7 @@ Tests (4):
 
 | Path | Change |
 |------|--------|
-| `src/tests/acceptance/181-mark-pending-fix-as-merged.acceptance.test.ts` | NEW — 8 acceptance scenarios via `app.inject()`. |
+| `src/tests/acceptance/182-mark-pending-fix-as-merged.acceptance.test.ts` | NEW — 8 acceptance scenarios via `app.inject()`. |
 | `src/tests/units/entities/reviewRequestState.valueObject.test.ts` | Extended — 1 test for new transition. |
 | `src/tests/units/usecases/tracking/transitionState.usecase.test.ts` | Extended — 2 tests for `requireCurrentState`. |
 | `src/tests/units/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.test.ts` | NEW — happy path + invalid-current-state rejection. |
@@ -33,7 +33,7 @@ Tests (4):
 ## Test results
 
 ```
-src/tests/acceptance/181-mark-pending-fix-as-merged.acceptance.test.ts  (8 tests)  PASS
+src/tests/acceptance/182-mark-pending-fix-as-merged.acceptance.test.ts  (8 tests)  PASS
 src/tests/units/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.test.ts  (9 tests)  PASS
 src/tests/units/entities/reviewRequestState.valueObject.test.ts  (20 tests)  PASS
 src/tests/units/usecases/tracking/transitionState.usecase.test.ts  (9 tests)  PASS
@@ -41,7 +41,7 @@ src/tests/units/usecases/tracking/transitionState.usecase.test.ts  (9 tests)  PA
 
 **Full suite**: 2318/2320 passing.
 
-Two unrelated failures in `src/tests/units/cli/cli.integration.test.ts` — these tests invoke `tsx src/main/cli.ts` with a 5s timeout, and the first cold start in a fresh worktree exceeds it. Re-running the same file in the master checkout passes in 1.3s. The failures are environmental (worktree cold-start), not caused by SPEC-181.
+Two unrelated failures in `src/tests/units/cli/cli.integration.test.ts` — these tests invoke `tsx src/main/cli.ts` with a 5s timeout, and the first cold start in a fresh worktree exceeds it. Re-running the same file in the master checkout passes in 1.3s. The failures are environmental (worktree cold-start), not caused by SPEC-182.
 
 ## Spec coverage
 
@@ -65,7 +65,7 @@ Two unrelated failures in `src/tests/units/cli/cli.integration.test.ts` — thes
 |------|--------|
 | `yarn typecheck` | PASS |
 | `yarn lint` | PASS |
-| `yarn test:ci` | PASS (SPEC-181 scope) — pre-existing CLI flake unrelated |
+| `yarn test:ci` | PASS (SPEC-182 scope) — pre-existing CLI flake unrelated |
 
 ## Architectural decisions (recap)
 

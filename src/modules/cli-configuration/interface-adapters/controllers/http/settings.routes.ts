@@ -1,5 +1,12 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { getModel, setModel, getDefaultLanguage, setDefaultLanguage, getSettings, type ClaudeModel } from '@/frameworks/settings/runtimeSettings.js';
+import {
+  claudeModelSchema,
+  getModel,
+  setModel,
+  getDefaultLanguage,
+  setDefaultLanguage,
+  getSettings,
+} from '@/frameworks/settings/runtimeSettings.js';
 import { languageSchema } from '@/modules/shared-kernel/entities/language/language.schema.js';
 
 export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
@@ -12,33 +19,28 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.post('/api/settings/model', async (request, reply) => {
-    const { model } = request.body as { model?: ClaudeModel };
+    const { model } = request.body as { model?: unknown };
 
-    if (!model) {
+    const parsed = claudeModelSchema.safeParse(model);
+    if (!parsed.success) {
       reply.code(400);
-      return { success: false, error: 'Model is required' };
+      return { success: false, error: `Invalid model. Use: ${claudeModelSchema.options.join(', ')}` };
     }
 
-    const validModels: ClaudeModel[] = ['opus', 'sonnet'];
-    if (!validModels.includes(model)) {
-      reply.code(400);
-      return { success: false, error: 'Invalid model. Use: opus, sonnet' };
-    }
-
-    setModel(model);
+    await setModel(parsed.data);
     return { success: true, model: getModel() };
   });
 
   fastify.post('/api/settings/language', async (request, reply) => {
-    const { language } = request.body as { language?: string };
+    const { language } = request.body as { language?: unknown };
 
     const parsed = languageSchema.safeParse(language);
     if (!parsed.success) {
       reply.code(400);
-      return { success: false, error: 'Invalid language. Use: en, fr' };
+      return { success: false, error: `Invalid language. Use: ${languageSchema.options.join(', ')}` };
     }
 
-    setDefaultLanguage(parsed.data);
+    await setDefaultLanguage(parsed.data);
     return { success: true, language: getDefaultLanguage() };
   });
 };
