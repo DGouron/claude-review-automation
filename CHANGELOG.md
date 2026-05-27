@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.26.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.25.0...reviewflow-v3.26.0) (2026-05-27)
+
+
+### Added
+
+* **dashboard:** make now lane collapsible ([#225](https://github.com/DGouron/review-flow/issues/225)) ([7c895ba](https://github.com/DGouron/review-flow/commit/7c895bacb79637b0116198a2fdc74d6cf75f9fe5))
+
 ## [3.25.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.24.2...reviewflow-v3.25.0) (2026-05-27)
 
 
