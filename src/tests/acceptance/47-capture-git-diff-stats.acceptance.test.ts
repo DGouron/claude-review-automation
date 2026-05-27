@@ -1,9 +1,9 @@
 /**
  * SPEC-47 — Capture Git Diff Stats (Commits, Additions, Deletions)
  *
- * Outer-loop acceptance test (SDD): exercises the use case + service layer
- * directly. The integration with claudeInvoker is verified by inspection
- * (already wired via fetchDiffStatsSafely + diffStatsFetchFactory).
+ * Outer-loop acceptance test (SDD): exercises the production
+ * fetchDiffStatsSafely helper + the stats service + the tracking use case.
+ * The wiring inside claudeInvoker.ts is exercised by its own unit tests.
  *
  * Scenarios from docs/specs/47-capture-git-diff-stats.md:
  *   1. Successful diff stats capture on GitHub review (nominal)
@@ -15,15 +15,17 @@
  *   7. Zero-diff merge request
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { pino, type Logger } from 'pino';
 import {
   addReviewStats,
   loadProjectStats,
   getStatsSummary,
 } from '@/modules/statistics-insights/services/statsService.js';
+import { fetchDiffStatsSafely } from '@/modules/statistics-insights/services/fetchDiffStatsSafely.js';
 import { RecordReviewCompletionUseCase } from '@/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.js';
 import { InMemoryReviewRequestTrackingGateway } from '@/tests/stubs/reviewRequestTracking.stub.js';
 import { StubDiffStatsFetchGateway } from '@/tests/stubs/diffStatsFetch.stub.js';
@@ -33,24 +35,17 @@ import type { DiffStats } from '@/modules/shared-kernel/entities/diffStats/diffS
 
 const REVIEW_OUTPUT = '[REVIEW_STATS:blocking=1:warnings=2:suggestions=3:score=7.5]';
 
-function fetchDiffStatsSafely(
-  gateway: StubDiffStatsFetchGateway,
-  projectPath: string,
-  mergeRequestNumber: number,
-): DiffStats | null {
-  try {
-    return gateway.fetchDiffStats(projectPath, mergeRequestNumber);
-  } catch {
-    return null;
-  }
-}
+let projectCounter = 0;
 
 describe('Acceptance — SPEC-47: Capture git diff stats', () => {
   let projectPath: string;
+  let logger: Logger;
 
   beforeEach(() => {
-    projectPath = join(tmpdir(), `reviewflow-spec-47-${Date.now()}-${Math.random()}`);
+    projectCounter += 1;
+    projectPath = join(tmpdir(), `reviewflow-spec-47-${projectCounter}`);
     mkdirSync(join(projectPath, '.claude', 'reviews'), { recursive: true });
+    logger = pino({ level: 'silent' });
   });
 
   afterEach(() => {
@@ -64,7 +59,7 @@ describe('Acceptance — SPEC-47: Capture git diff stats', () => {
       const diffStatsGateway = new StubDiffStatsFetchGateway();
       diffStatsGateway.setResponse(42, { commitsCount: 3, additions: 150, deletions: 30 });
 
-      const fetched = fetchDiffStatsSafely(diffStatsGateway, projectPath, 42);
+      const fetched = fetchDiffStatsSafely(diffStatsGateway, projectPath, 42, logger);
       const reviewStats = addReviewStats(projectPath, 42, 60_000, REVIEW_OUTPUT, 'reviewer', fetched);
 
       expect(reviewStats.diffStats).toEqual({
@@ -103,7 +98,7 @@ describe('Acceptance — SPEC-47: Capture git diff stats', () => {
       const diffStatsGateway = new StubDiffStatsFetchGateway();
       diffStatsGateway.setResponse(42, { commitsCount: 5, additions: 200, deletions: 45 });
 
-      const fetched = fetchDiffStatsSafely(diffStatsGateway, projectPath, 42);
+      const fetched = fetchDiffStatsSafely(diffStatsGateway, projectPath, 42, logger);
       const reviewStats = addReviewStats(projectPath, 42, 90_000, REVIEW_OUTPUT, 'reviewer', fetched);
 
       expect(reviewStats.diffStats).toEqual({
@@ -115,12 +110,14 @@ describe('Acceptance — SPEC-47: Capture git diff stats', () => {
   });
 
   describe('Scenario 3: Diff stats fetch failure does not block the review', () => {
-    it('persists ReviewStats with diffStats=null and does not throw', () => {
+    it('persists ReviewStats with diffStats=null, does not throw, and logs a warning', () => {
       const diffStatsGateway = new StubDiffStatsFetchGateway();
       diffStatsGateway.setFailure(42);
+      const warnSpy = vi.spyOn(logger, 'warn');
 
-      const fetched = fetchDiffStatsSafely(diffStatsGateway, projectPath, 42);
+      const fetched = fetchDiffStatsSafely(diffStatsGateway, projectPath, 42, logger);
       expect(fetched).toBeNull();
+      expect(warnSpy).toHaveBeenCalledOnce();
 
       const reviewStats = addReviewStats(projectPath, 42, 60_000, REVIEW_OUTPUT, 'reviewer', fetched);
 

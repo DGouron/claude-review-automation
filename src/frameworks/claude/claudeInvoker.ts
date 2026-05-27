@@ -9,6 +9,7 @@ import { logInfo, logWarn, logError } from '@/frameworks/logging/logBuffer.js';
 import { getModel } from '@/frameworks/settings/runtimeSettings.js';
 import { getProjectAgents, getFollowupAgents, loadProjectConfig } from '@/config/projectConfig.js';
 import { addReviewStats } from '@/modules/statistics-insights/services/statsService.js';
+import { fetchDiffStatsSafely } from '@/modules/statistics-insights/services/fetchDiffStatsSafely.js';
 import { FileSystemReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/fileSystem/reviewRequestTracking.fileSystem.js';
 import { ProjectStatsCalculator } from '@/modules/statistics-insights/interface-adapters/presenters/projectStats.calculator.js';
 import { GitLabDiffStatsFetchGateway } from '@/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.js';
@@ -270,18 +271,13 @@ export interface InvocationResult {
   selectedModel?: ClaudeModelName;
 }
 
-function fetchDiffStatsSafely(
+function fetchDiffStatsForJob(
   job: ReviewJob,
   deps: ClaudeInvokerDependencies,
   logger: Logger,
 ): DiffStats | null {
-  try {
-    const gateway = deps.diffStatsFetchFactory(job.platform);
-    return gateway.fetchDiffStats(job.projectPath, job.mrNumber);
-  } catch (error) {
-    logger.warn({ jobId: job.id, error }, 'Failed to fetch diff stats');
-    return null;
-  }
+  const gateway = deps.diffStatsFetchFactory(job.platform);
+  return fetchDiffStatsSafely(gateway, job.projectPath, job.mrNumber, logger);
 }
 
 async function resolveModel(
@@ -430,7 +426,7 @@ export async function invokeClaudeReview(
   const prompt = `/${job.skill} ${job.mrNumber}`;
 
   // Fetch diff stats once: reused for both model routing and end-of-review stats
-  const diffStats = fetchDiffStatsSafely(job, deps, logger);
+  const diffStats = fetchDiffStatsForJob(job, deps, logger);
 
   // Select model: explicit job override > routing policy + diff stats > project default > runtime default
   const model = await resolveModel(job, diffStats, deps, logger);
