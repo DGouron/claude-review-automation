@@ -99,6 +99,12 @@
         <button type="button" id="open-settings-modal-btn" class="sidebar-settings-button" hidden>
           <span class="sidebar-settings-button__prefix">// SETTINGS</span>
         </button>
+        <button type="button" id="open-economics-sheet-btn" class="sidebar-settings-button" onclick="openEconomicsSheet()">
+          <span class="sidebar-settings-button__prefix">// CLAUDE ECONOMICS</span>
+        </button>
+        <button type="button" id="open-stats-sheet-btn" class="sidebar-settings-button" onclick="openStatsSheet()" disabled aria-disabled="true">
+          <span class="sidebar-settings-button__prefix">// PROJECT STATS</span>
+        </button>
 
         <span id="config-status" class="config-status hidden"></span>
 
@@ -106,6 +112,16 @@
       </aside>
 
       <main class="dashboard-main">
+        <div id="team-section" class="section hidden">
+          <div class="section-header clickable" onclick="toggleTeamSection()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+            <i data-lucide="users"></i> <span id="i18n-section-team"></span>
+            <span id="team-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
+          </div>
+          <div id="team-tab-content" class="section-content hidden">
+            <div class="empty-state" id="i18n-empty-team"></div>
+          </div>
+        </div>
+
         <div class="focus-strip attention-strip" aria-label="Attention indicators">
           <div class="focus-chip focus-now">
             <div class="focus-copy">
@@ -152,18 +168,12 @@
           <div style="margin-top: 0.75rem;" id="git-login-instructions"></div>
         </div>
 
-        <div class="section" id="pending-reviews-section">
+        <div class="section hidden" id="pending-reviews-section">
           <div class="section-header">
             <i data-lucide="hourglass"></i> <span id="i18n-section-pending-reviews"></span>
             <span id="pending-reviews-count" class="badge-count hidden">0</span>
           </div>
-          <div id="pending-reviews" class="section-content">
-            <div class="heartbeat-empty-state" id="pending-reviews-empty-state">
-              <span class="heartbeat-label">// STANDBY</span>
-              <span class="heartbeat-message" id="i18n-empty-pending-reviews">No reviews waiting for confirmation</span>
-              <div class="heartbeat-line-container" id="heartbeat-line" aria-hidden="true"></div>
-            </div>
-          </div>
+          <div id="pending-reviews" class="section-content"></div>
         </div>
 
         <div id="logs-section" class="section hidden">
@@ -176,73 +186,12 @@
           </div>
         </div>
 
-        <div id="stats-section" class="section hidden">
-          <div class="section-header clickable" onclick="toggleStats()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-            <i data-lucide="bar-chart-3"></i> <span id="i18n-section-stats"></span>
-            <span id="stats-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
-            <button id="recalculate-btn" class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); recalculateStats()" style="margin-left: auto; font-size: 0.75rem; padding: 2px 8px;">
-              <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
-              <span id="recalculate-label"></span>
-            </button>
-            <span id="backfill-progress" class="badge-count hidden" style="margin-left: 4px;"></span>
-          </div>
-          <div id="project-stats" class="section-content stats-grid hidden">
-            <div class="empty-state" id="i18n-empty-stats"></div>
-          </div>
-        </div>
-
-        <div id="team-section" class="section hidden">
-          <div class="section-header clickable" onclick="toggleTeamSection()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-            <i data-lucide="users"></i> <span id="i18n-section-team"></span>
-            <span id="team-toggle" class="toggle-icon collapsed"><i data-lucide="chevron-down"></i></span>
-          </div>
-          <div id="team-tab-content" class="section-content hidden">
-            <div class="empty-state" id="i18n-empty-team"></div>
-          </div>
-        </div>
-
-        <div id="claude-economics-section" class="section">
-          <div class="section-header clickable" onclick="toggleSection('claude-economics-section')" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
-            <i data-lucide="circuit-board"></i> <span id="i18n-section-claude-economics"></span>
-            <span class="section-toggle collapsed"><i data-lucide="chevron-down"></i></span>
-          </div>
-          <div class="section-content economics-content hidden">
-            <div class="economics-panel">
-              <div class="economics-panel-header">
-                <span class="economics-panel-title" id="i18n-economics-token-usage"></span>
-              </div>
-              <div class="economics-panel-body" id="token-usage-content">
-                <div class="empty-state">Loading…</div>
-              </div>
-            </div>
-
-            <div class="economics-panel">
-              <div class="economics-panel-header">
-                <span class="economics-panel-title" id="i18n-economics-monthly-budget"></span>
-              </div>
-              <div class="economics-panel-body">
-                <div id="budget-tile">
-                  <div class="empty-state">Loading…</div>
-                </div>
-                <div class="budget-slider-row">
-                  <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
-                  <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
-                  <button id="budget-slider-submit" type="button">Apply</button>
-                  <span id="budget-slider-status" class="budget-slider-status"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section" id="active-reviews-section">
+        <div class="section hidden" id="active-reviews-section">
           <div class="section-header">
             <i data-lucide="file-search"></i> <span id="i18n-section-active-reviews"></span>
             <span id="active-reviews-count" class="badge-count hidden">0</span>
           </div>
-          <div id="active-reviews" class="section-content">
-            <div class="empty-state" id="i18n-empty-active-reviews"></div>
-          </div>
+          <div id="active-reviews" class="section-content"></div>
         </div>
 
         <div class="section hidden" id="active-followups-section">
@@ -329,6 +278,61 @@
     <div id="dev-sheet-content" class="sheet-content"></div>
   </div>
 
+  <div id="economics-sheet-overlay" class="sheet-overlay" onclick="closeEconomicsSheet()"></div>
+  <div id="economics-sheet" class="sheet-panel">
+    <div id="economics-sheet-content" class="sheet-content">
+      <button class="sheet-close" onclick="closeEconomicsSheet()"><i data-lucide="x"></i></button>
+      <div class="sheet-mr-header">
+        <div class="sheet-mr-title"><i data-lucide="circuit-board"></i> <span id="i18n-section-claude-economics"></span></div>
+      </div>
+      <div class="economics-panel">
+        <div class="economics-panel-header">
+          <span class="economics-panel-title" id="i18n-economics-token-usage"></span>
+        </div>
+        <div class="economics-panel-body" id="token-usage-content">
+          <div class="empty-state">Loading…</div>
+        </div>
+      </div>
+
+      <div class="economics-panel">
+        <div class="economics-panel-header">
+          <span class="economics-panel-title" id="i18n-economics-monthly-budget"></span>
+        </div>
+        <div class="economics-panel-body">
+          <div id="budget-tile">
+            <div class="empty-state">Loading…</div>
+          </div>
+          <div class="budget-slider-row">
+            <label for="budget-slider" id="budget-slider-label">Cap: <span id="budget-slider-value">$200</span></label>
+            <input type="range" id="budget-slider" min="0" max="600" step="10" value="200" />
+            <button id="budget-slider-submit" type="button">Apply</button>
+            <span id="budget-slider-status" class="budget-slider-status"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats-sheet-overlay" class="sheet-overlay" onclick="closeStatsSheet()"></div>
+  <div id="stats-sheet" class="sheet-panel">
+    <div id="stats-sheet-content" class="sheet-content">
+      <button class="sheet-close" onclick="closeStatsSheet()"><i data-lucide="x"></i></button>
+      <div class="sheet-mr-header">
+        <div class="sheet-mr-title">
+          <i data-lucide="bar-chart-3"></i> <span id="i18n-section-stats"></span>
+          <button id="recalculate-btn" class="btn btn-sm btn-secondary" onclick="recalculateStats()" style="margin-left: auto; font-size: 0.75rem; padding: 2px 8px;">
+            <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+            <span id="recalculate-label"></span>
+          </button>
+          <span id="backfill-progress" class="badge-count hidden" style="margin-left: 4px;"></span>
+        </div>
+      </div>
+      <div id="project-stats" class="stats-grid">
+        <div class="empty-state" id="i18n-empty-stats"></div>
+      </div>
+    </div>
+  </div>
+
   <dialog id="settings-modal" class="settings-modal" aria-labelledby="settings-modal-title"></dialog>
 
   <!-- UI language select — kept in DOM for JS wiring; visual control lives in settings modal -->
@@ -363,6 +367,7 @@
     import { renderOverviewHtml } from './modules/overview.js';
     import { getDesktopNotificationPayload, shouldNotifyDesktop } from './modules/desktopNotifications.js';
     import { getLoadingPresentation, getQuietRefreshSectionIdentifiers } from './modules/loading.js';
+    import { shouldHideActiveReviewsSection, shouldHidePendingReviewsSection } from './modules/sectionVisibility.js';
     import { computeCardCounters, extractGithubSlug } from './modules/cardCounters.js';
     import { collectReviewNotifications, createReviewNotificationState } from './modules/notifications.js';
     import { resolveReviewAssigneeDisplay } from './modules/assignee.js';
@@ -414,7 +419,6 @@
     let currentData = { activeReviews: [], recentReviews: [], logs: [], reviewFiles: [], pendingFix: [], pendingApproval: [], pendingReviews: [] };
     const mrDataStore = new Map();
     let loadedReviews = {};
-    let statsCollapsed = true;
     let currentStatsReviews = [];
     let currentDevFilter = 'all';
     let focusStripCompact = false;
@@ -422,7 +426,7 @@
     let currentInsightsData = null;
     const loadingState = { status: 0, reviewFiles: 0, stats: 0, mrTracking: 0 };
     let hasLoadedStatusOnce = false;
-    const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section', 'claude-economics-section'];
+    const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section'];
     const sectionExpandedState = Object.fromEntries(secondarySections.map((sectionIdentifier) => [sectionIdentifier, false]));
     const quietRefreshSections = [
       'active-reviews-section',
@@ -853,12 +857,12 @@
       const activeReviewsEl = document.getElementById('active-reviews');
       const activeReviewsCount = document.getElementById('active-reviews-count');
 
-      activeReviewsSection.classList.remove('hidden');
-      if (reviews.length === 0) {
-        const showInitialLoadingState = !hasLoadedStatusOnce && loadingState.status > 0;
-        activeReviewsEl.innerHTML = `<div class="empty-state">${showInitialLoadingState ? t('loading.section') : t('empty.activeReviews')}</div>`;
+      if (shouldHideActiveReviewsSection({ activeReviews: currentData.activeReviews })) {
+        activeReviewsSection.classList.add('hidden');
+        activeReviewsEl.innerHTML = '';
         activeReviewsCount.classList.add('hidden');
       } else {
+        activeReviewsSection.classList.remove('hidden');
         activeReviewsEl.innerHTML = reviews.map(r => renderReview(r, true)).join('');
         activeReviewsCount.textContent = reviews.length;
         activeReviewsCount.classList.remove('hidden');
@@ -1319,20 +1323,6 @@
       updateLogs();
     }
 
-    function toggleStats() {
-      statsCollapsed = !statsCollapsed;
-      const content = document.getElementById('project-stats');
-      const toggle = document.getElementById('stats-toggle');
-
-      if (statsCollapsed) {
-        content.classList.add('hidden');
-        toggle.classList.add('collapsed');
-      } else {
-        content.classList.remove('hidden');
-        toggle.classList.remove('collapsed');
-      }
-    }
-
     function toggleTeamSection() {
       teamCollapsed = !teamCollapsed;
       const content = document.getElementById('team-tab-content');
@@ -1530,6 +1520,37 @@
     function closeDevSheet() {
       document.getElementById('dev-sheet-overlay').classList.remove('open');
       document.getElementById('dev-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function openEconomicsSheet() {
+      document.getElementById('economics-sheet-overlay').classList.add('open');
+      document.getElementById('economics-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      refreshTokenUsageTile();
+      refreshBudgetTile();
+      initBudgetSlider();
+      refreshIcons();
+    }
+
+    function closeEconomicsSheet() {
+      document.getElementById('economics-sheet-overlay').classList.remove('open');
+      document.getElementById('economics-sheet').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function openStatsSheet() {
+      if (!currentProjectPath) return;
+      document.getElementById('stats-sheet-overlay').classList.add('open');
+      document.getElementById('stats-sheet').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      fetchProjectStats();
+      refreshIcons();
+    }
+
+    function closeStatsSheet() {
+      document.getElementById('stats-sheet-overlay').classList.remove('open');
+      document.getElementById('stats-sheet').classList.remove('open');
       document.body.style.overflow = '';
     }
 
@@ -1907,6 +1928,15 @@
       const container = document.getElementById('pending-reviews');
       const countBadge = document.getElementById('pending-reviews-count');
       if (!container || !countBadge || !section) return;
+
+      if (shouldHidePendingReviewsSection({ pendingReviews: currentData.pendingReviews })) {
+        section.classList.add('hidden');
+        container.innerHTML = '';
+        countBadge.classList.add('hidden');
+        countBadge.textContent = '0';
+        return;
+      }
+      section.classList.remove('hidden');
 
       const model = buildPendingReviewsModel(currentData.pendingReviews || []);
       container.innerHTML = renderPendingReviewsHtml(model);
@@ -2384,8 +2414,12 @@
           fetchTeamInsights();
           refreshTokenUsageTile();
 
-          document.getElementById('stats-section').classList.remove('hidden');
           document.getElementById('team-section').classList.remove('hidden');
+          const statsSheetButton = document.getElementById('open-stats-sheet-btn');
+          if (statsSheetButton) {
+            statsSheetButton.removeAttribute('disabled');
+            statsSheetButton.setAttribute('aria-disabled', 'false');
+          }
 
           const platformIcon = activePlatform === 'gitlab' ? '<i data-lucide="gitlab"></i> GitLab' : '<i data-lucide="github"></i> GitHub';
           info.innerHTML = `
@@ -2500,6 +2534,11 @@
       renderDashboardTabs();
       renderCardCounters();
       syncSettingsButtonVisibility();
+      const statsSheetButton = document.getElementById('open-stats-sheet-btn');
+      if (statsSheetButton) {
+        statsSheetButton.setAttribute('disabled', '');
+        statsSheetButton.setAttribute('aria-disabled', 'true');
+      }
       refreshOverviewSection();
     }
 
@@ -3265,7 +3304,6 @@
     window.toggleCollapsibleList = toggleCollapsibleList;
     window.checkClaudeStatus = checkClaudeStatus;
     window.toggleLogs = toggleLogs;
-    window.toggleStats = toggleStats;
     window.changeModel = changeModel;
     window.changeLanguage = changeLanguage;
     window.toggleReviewAccordion = toggleReviewAccordion;
@@ -3288,6 +3326,10 @@
     window.closeMrSheet = closeMrSheet;
     window.openDevSheet = openDevSheet;
     window.closeDevSheet = closeDevSheet;
+    window.openEconomicsSheet = openEconomicsSheet;
+    window.closeEconomicsSheet = closeEconomicsSheet;
+    window.openStatsSheet = openStatsSheet;
+    window.closeStatsSheet = closeStatsSheet;
     window.generateAiInsights = generateAiInsights;
     window.exportInsightsPdf = exportInsightsPdf;
     window.toggleTeamAnalysis = toggleTeamAnalysis;
