@@ -24,6 +24,7 @@ export function createTestConfig(overrides?: Partial<Config>): Config {
     queue: {
       maxConcurrent: 2,
       deduplicationWindowMs: 60000,
+      jobHistoryRetentionDays: 7,
     },
     repositories: [createTestRepository()],
     triggerMode: 'full-auto',

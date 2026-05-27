@@ -47,6 +47,7 @@ export interface UserConfig {
 export interface QueueConfig {
   maxConcurrent: number;
   deduplicationWindowMs: number;
+  jobHistoryRetentionDays: number;
 }
 
 export type TriggerMode = 'full-auto' | 'semi-auto';
@@ -208,6 +209,19 @@ export function validateAndEnrichConfig(data: unknown): Config {
     throw new Error('Configuration invalide : deduplicationWindowMs invalide');
   }
 
+  let jobHistoryRetentionDays = 7;
+  if (queue.jobHistoryRetentionDays !== undefined && queue.jobHistoryRetentionDays !== null) {
+    if (
+      typeof queue.jobHistoryRetentionDays !== 'number' ||
+      !Number.isInteger(queue.jobHistoryRetentionDays) ||
+      queue.jobHistoryRetentionDays < 1 ||
+      queue.jobHistoryRetentionDays > 365
+    ) {
+      throw new Error('Configuration invalide : jobHistoryRetentionDays invalide');
+    }
+    jobHistoryRetentionDays = queue.jobHistoryRetentionDays;
+  }
+
   // Validate triggerMode (optional, defaults to 'full-auto')
   let triggerMode: TriggerMode = 'full-auto';
   if (config.triggerMode !== undefined && config.triggerMode !== null) {
@@ -263,6 +277,7 @@ export function validateAndEnrichConfig(data: unknown): Config {
     queue: {
       maxConcurrent: queue.maxConcurrent as number,
       deduplicationWindowMs: queue.deduplicationWindowMs as number,
+      jobHistoryRetentionDays,
     },
     repositories: enrichedRepositories,
     triggerMode,
