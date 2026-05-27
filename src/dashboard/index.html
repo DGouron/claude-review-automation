@@ -372,7 +372,7 @@
     } from './modules/animations.js';
     import { escapeHtml, markdownToHtml, sanitizeHttpUrl } from './modules/html.js';
     import { getAgentIcon, icon, refreshIcons } from './modules/icons.js';
-    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, QUALITY_TARGET_SCORE } from './modules/constants.js';
+    import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY, STORAGE_KEY_CURRENT, STORAGE_KEY_FOCUS_STRIP_MODE, STORAGE_KEY_NOW_LANE_COLLAPSED, QUALITY_TARGET_SCORE } from './modules/constants.js';
     import { buildTabBarModel, renderTabBarHtml, readActiveTab, writeActiveTab } from './modules/tabBar.js';
     import { buildManagePanelModel, renderManagePanelHtml, buildOptimisticAddedRow, validateLocalPathInput } from './modules/managePanel.js';
     import { renderOverviewHtml } from './modules/overview.js';
@@ -508,12 +508,27 @@
       refreshIcons();
     }
 
-    function toggleNowLane() {
-      nowLaneCollapsed = !nowLaneCollapsed;
-      const body = document.querySelector('.queue-lanes-grid .queue-lane:first-child .queue-lane-body');
-      const toggle = document.querySelector('.queue-lanes-grid .queue-lane:first-child .queue-lane-toggle');
+    function applyNowLaneCollapsed() {
+      const lane = document.getElementById('queue-lane-now');
+      if (!lane) return;
+      const body = document.getElementById('queue-lane-now-body');
+      const header = lane.querySelector('.queue-lane-header');
+      const toggle = lane.querySelector('.queue-lane-toggle');
       if (body) body.classList.toggle('hidden', nowLaneCollapsed);
       if (toggle) toggle.classList.toggle('collapsed', nowLaneCollapsed);
+      if (header) header.setAttribute('aria-expanded', nowLaneCollapsed ? 'false' : 'true');
+    }
+
+    function loadNowLaneCollapsed() {
+      const value = localStorage.getItem(STORAGE_KEY_NOW_LANE_COLLAPSED);
+      nowLaneCollapsed = value === 'collapsed';
+      applyNowLaneCollapsed();
+    }
+
+    function toggleNowLane() {
+      nowLaneCollapsed = !nowLaneCollapsed;
+      localStorage.setItem(STORAGE_KEY_NOW_LANE_COLLAPSED, nowLaneCollapsed ? 'collapsed' : 'expanded');
+      applyNowLaneCollapsed();
       refreshIcons();
     }
 
@@ -1854,15 +1869,15 @@
       const nowLaneCollapsedClass = nowLaneCollapsed ? 'collapsed' : '';
       return `
         <div class="queue-lanes-grid">
-          <div class="queue-lane">
-            <div class="queue-lane-header clickable" onclick="toggleNowLane()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
+          <div class="queue-lane" id="queue-lane-now">
+            <div class="queue-lane-header clickable" onclick="toggleNowLane()" role="button" tabindex="0" aria-expanded="${nowLaneCollapsed ? 'false' : 'true'}" aria-controls="queue-lane-now-body" onkeydown="activateOnKeydown(event)">
               <span class="queue-lane-title">${t('queueLane.now')}</span>
               <span class="queue-lane-header-right">
                 <span class="queue-lane-count">${queueLanesModel.nowLaneCount}</span>
                 <span class="queue-lane-toggle ${nowLaneCollapsedClass}"><i data-lucide="chevron-down"></i></span>
               </span>
             </div>
-            <div class="queue-lane-body ${nowLaneCollapsed ? 'hidden' : ''}">${nowLaneContent}</div>
+            <div class="queue-lane-body ${nowLaneCollapsed ? 'hidden' : ''}" id="queue-lane-now-body">${nowLaneContent}</div>
           </div>
           <div class="queue-lane">
             <div class="queue-lane-header">
@@ -3432,6 +3447,7 @@
       Notification.requestPermission().catch(() => {});
     }
     loadFocusStripMode();
+    loadNowLaneCollapsed();
     renderStaticLabels();
     updateSessionMetricsUI();
     connectWebSocket();
