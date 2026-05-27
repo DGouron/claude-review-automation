@@ -105,6 +105,7 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
 
     const [, platform, , mrNumberStr] = match;
     const mrNumber = Number.parseInt(mrNumberStr, 10);
+    const platformLiteral: Platform = platform === 'github' ? 'github' : 'gitlab';
 
     const repo = getRepositories().find(
       (r) => r.localPath === validation.path && r.enabled
@@ -112,6 +113,16 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
     if (!repo) {
       reply.code(404);
       return { success: false, error: 'Repository not configured' };
+    }
+
+    const trackedMr = reviewRequestTrackingGateway.getByNumber(
+      validation.path,
+      mrNumber,
+      platformLiteral,
+    );
+    if (!trackedMr) {
+      reply.code(404);
+      return { success: false, error: 'MR not tracked' };
     }
 
     const projectConfig = loadProjectConfig(validation.path);
@@ -133,7 +144,6 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
         .map((repository) => repository.localPath),
     });
     if (!budgetDecision.accepted) {
-      const platformLiteral: 'gitlab' | 'github' = platform === 'github' ? 'github' : 'gitlab';
       logger.warn(
         {
           mrNumber,
@@ -155,14 +165,14 @@ export const mrTrackingAdvancedRoutes: FastifyPluginAsync<MrTrackingAdvancedRout
 
     const manualFollowupJob: ReviewJob = {
       id: jobId,
-      platform: platform as 'gitlab' | 'github',
+      platform: platformLiteral,
       projectPath: gitProjectPath,
       localPath: repo.localPath,
       mrNumber,
       mrUrl,
       skill,
-      sourceBranch: 'unknown',
-      targetBranch: 'unknown',
+      sourceBranch: trackedMr.sourceBranch,
+      targetBranch: trackedMr.targetBranch,
       jobType: 'followup',
     };
 
