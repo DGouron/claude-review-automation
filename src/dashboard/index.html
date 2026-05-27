@@ -439,6 +439,7 @@
     let hasLoadedStatusOnce = false;
     const secondarySections = ['active-followups-section', 'pending-approval-section', 'completed-reviews-section'];
     const sectionExpandedState = Object.fromEntries(secondarySections.map((sectionIdentifier) => [sectionIdentifier, false]));
+    let nowLaneCollapsed = false;
     const quietRefreshSections = [
       'active-reviews-section',
       'active-followups-section',
@@ -504,6 +505,15 @@
       if (!(sectionIdentifier in sectionExpandedState)) return;
       sectionExpandedState[sectionIdentifier] = !sectionExpandedState[sectionIdentifier];
       applySectionExpansion(sectionIdentifier);
+      refreshIcons();
+    }
+
+    function toggleNowLane() {
+      nowLaneCollapsed = !nowLaneCollapsed;
+      const body = document.querySelector('.queue-lanes-grid .queue-lane:first-child .queue-lane-body');
+      const toggle = document.querySelector('.queue-lanes-grid .queue-lane:first-child .queue-lane-toggle');
+      if (body) body.classList.toggle('hidden', nowLaneCollapsed);
+      if (toggle) toggle.classList.toggle('collapsed', nowLaneCollapsed);
       refreshIcons();
     }
 
@@ -1841,14 +1851,18 @@
           )
         : `<div class="empty-state">${t('queueLane.emptyReadyToApprove')}</div>`;
 
+      const nowLaneCollapsedClass = nowLaneCollapsed ? 'collapsed' : '';
       return `
         <div class="queue-lanes-grid">
           <div class="queue-lane">
-            <div class="queue-lane-header">
+            <div class="queue-lane-header clickable" onclick="toggleNowLane()" role="button" tabindex="0" onkeydown="activateOnKeydown(event)">
               <span class="queue-lane-title">${t('queueLane.now')}</span>
-              <span class="queue-lane-count">${queueLanesModel.nowLaneCount}</span>
+              <span class="queue-lane-header-right">
+                <span class="queue-lane-count">${queueLanesModel.nowLaneCount}</span>
+                <span class="queue-lane-toggle ${nowLaneCollapsedClass}"><i data-lucide="chevron-down"></i></span>
+              </span>
             </div>
-            <div class="queue-lane-body">${nowLaneContent}</div>
+            <div class="queue-lane-body ${nowLaneCollapsed ? 'hidden' : ''}">${nowLaneContent}</div>
           </div>
           <div class="queue-lane">
             <div class="queue-lane-header">
@@ -3389,6 +3403,7 @@
     window.confirmMarkAsMerged = confirmMarkAsMerged;
     window.toggleFocusStripMode = toggleFocusStripMode;
     window.toggleSection = toggleSection;
+    window.toggleNowLane = toggleNowLane;
     window.onUsefulLinkAction = onUsefulLinkAction;
     window.activateOnKeydown = activateOnKeydown;
     window.handleCleanupClick = handleCleanupClick;

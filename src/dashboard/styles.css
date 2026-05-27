@@ -1877,6 +1877,33 @@ body.compact-density .log-entry {
   padding: 0.55rem 0.65rem 0.2rem;
 }
 
+.queue-lane-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.queue-lane-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.queue-lane-toggle {
+  display: inline-flex;
+  align-items: center;
+  color: #7d8aa4;
+}
+
+.queue-lane-toggle [data-lucide] {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.2s;
+}
+
+.queue-lane-toggle.collapsed [data-lucide] {
+  transform: rotate(-90deg);
+}
+
 .now-lane-copy {
   flex: 1;
   min-width: 0;
