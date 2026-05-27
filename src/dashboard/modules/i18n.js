@@ -170,8 +170,6 @@ const translations = {
     'empty.logs': 'No logs',
     'empty.stats': 'Load a project to see stats',
     'empty.statsNoData': 'No statistics available',
-    'empty.pendingReviews': 'No reviews waiting for confirmation',
-    'empty.activeReviews': 'No active reviews',
     'empty.activeFollowups': 'No follow-up in progress',
     'empty.pendingFix': 'No MR pending fix',
     'empty.pendingApproval': 'No MR pending approval',
@@ -225,6 +223,7 @@ const translations = {
     'button.autoFollowup': 'Auto follow-up',
     'button.delete': 'Delete',
     'button.syncThreads': 'Sync GitLab threads',
+    'button.markAsMerged': 'Mark as merged',
 
     // MR details
     'mr.threads.open': '{{count}} open',
@@ -248,6 +247,10 @@ const translations = {
     'modal.cancel.message': 'This action is irreversible. The review will be stopped immediately.',
     'modal.back': 'Go back',
     'modal.confirm': 'Confirm',
+    'modal.markMerged.title': 'Mark {{label}} !{{number}} as merged?',
+    'modal.markMerged.message': 'This manually marks the MR as merged. The card will leave "Corrections requises".',
+    'modal.markMerged.back': 'Go back',
+    'modal.markMerged.confirm': 'Mark as merged',
 
     // Confirm dialogs
     'confirm.deleteReview': 'Delete {{filename}}?',
@@ -257,6 +260,7 @@ const translations = {
     // Success
     'success.reviewCancelled': 'Review cancelled',
     'success.reviewAlreadyCompleted': 'This review is already completed',
+    'success.markedAsMerged': 'MR marked as merged',
 
     // Errors
     'error.loading': 'Loading error',
@@ -269,6 +273,7 @@ const translations = {
     'error.approveMr': 'Error approving',
     'error.syncThreads': 'Error syncing threads',
     'error.cancelReview': 'Error cancelling review',
+    'error.markAsMerged': 'Error marking as merged',
     'error.selectOrEnterPath': 'Select or enter a path',
     'error.projectNotLoaded': 'Load a project first',
 
@@ -595,8 +600,6 @@ const translations = {
     'empty.logs': 'Aucun log',
     'empty.stats': 'Charger un projet pour voir les stats',
     'empty.statsNoData': 'Aucune statistique disponible',
-    'empty.pendingReviews': 'Aucune review en attente de confirmation',
-    'empty.activeReviews': 'Aucune review en cours',
     'empty.activeFollowups': 'Aucun follow-up en cours',
     'empty.pendingFix': 'Aucune MR en attente de correctif',
     'empty.pendingApproval': "Aucune MR en attente d'approbation",
@@ -650,6 +653,7 @@ const translations = {
     'button.autoFollowup': 'Auto follow-up',
     'button.delete': 'Supprimer',
     'button.syncThreads': 'Synchroniser les threads GitLab',
+    'button.markAsMerged': 'Marquer comme mergée',
 
     // MR details
     'mr.threads.open': '{{count}} ouvert(s)',
@@ -673,6 +677,10 @@ const translations = {
     'modal.cancel.message': 'Cette action est irréversible. La review sera arrêtée immédiatement.',
     'modal.back': 'Revenir',
     'modal.confirm': 'Confirmer',
+    'modal.markMerged.title': 'Marquer la {{label}} !{{number}} comme mergée ?',
+    'modal.markMerged.message': 'Marque manuellement la MR comme mergée. La carte quittera "Corrections requises".',
+    'modal.markMerged.back': 'Revenir',
+    'modal.markMerged.confirm': 'Marquer comme mergée',
 
     // Confirm dialogs
     'confirm.deleteReview': 'Supprimer {{filename}} ?',
@@ -682,6 +690,7 @@ const translations = {
     // Success
     'success.reviewCancelled': 'Review annulée',
     'success.reviewAlreadyCompleted': 'Cette review est déjà terminée',
+    'success.markedAsMerged': 'MR marquée comme mergée',
 
     // Errors
     'error.loading': 'Erreur de chargement',
@@ -694,6 +703,7 @@ const translations = {
     'error.approveMr': "Erreur lors de l'approbation",
     'error.syncThreads': 'Erreur lors de la synchronisation des threads',
     'error.cancelReview': "Erreur lors de l'annulation",
+    'error.markAsMerged': 'Erreur lors du marquage',
     'error.selectOrEnterPath': 'Sélectionnez ou entrez un chemin',
     'error.projectNotLoaded': "Charger un projet d'abord",
 

@@ -126,6 +126,48 @@ describe('TransitionStateUseCase', () => {
     expect(gateway.getById('/project', 'mr-1')?.state).toBe('approved');
   });
 
+  it('should reject transition when requireCurrentState does not match', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'approved' });
+    gateway.create('/project', mr);
+    const useCase = new TransitionStateUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      targetState: 'merged',
+      requireCurrentState: 'pending-fix',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.reason !== 'invalid-current-state') {
+      throw new Error('Expected invalid-current-state rejection');
+    }
+    expect(result.currentState).toBe('approved');
+    const untouched = gateway.getById('/project', 'mr-1');
+    expect(untouched?.state).toBe('approved');
+    expect(untouched?.mergedAt).toBeNull();
+  });
+
+  it('should accept transition when requireCurrentState matches', () => {
+    const gateway = new InMemoryReviewRequestTrackingGateway();
+    const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'pending-fix' });
+    gateway.create('/project', mr);
+    const useCase = new TransitionStateUseCase(gateway);
+
+    const result = useCase.execute({
+      projectPath: '/project',
+      mrId: 'mr-1',
+      targetState: 'merged',
+      requireCurrentState: 'pending-fix',
+    });
+
+    expect(result.ok).toBe(true);
+    const updated = gateway.getById('/project', 'mr-1');
+    expect(updated?.state).toBe('merged');
+    expect(updated?.mergedAt).not.toBeNull();
+  });
+
   it('should skip quality check for non-approval transitions', () => {
     const gateway = new InMemoryReviewRequestTrackingGateway();
     const mr = TrackedMrFactory.create({ id: 'mr-1', state: 'approved' });

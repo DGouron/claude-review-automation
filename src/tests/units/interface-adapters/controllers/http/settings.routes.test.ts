@@ -15,7 +15,7 @@ describe('settings routes', () => {
 
   describe('GET /api/settings/model', () => {
     it('should return current model', async () => {
-      setModel('sonnet')
+      await setModel('sonnet')
 
       const response = await application.inject({
         method: 'GET',

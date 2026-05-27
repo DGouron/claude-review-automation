@@ -94,4 +94,52 @@ export const mrTrackingRoutes: FastifyPluginAsync<MrTrackingRoutesOptions> = asy
     reply.code(404);
     return { success: false, error: 'MR non trouvée' };
   });
+
+  fastify.post('/api/mr-tracking/mark-as-merged', async (request, reply) => {
+    const body = request.body as { mrId?: string; projectPath?: string };
+    const { mrId, projectPath } = body;
+
+    if (!mrId) {
+      reply.code(400);
+      return { success: false, error: 'mrId requis' };
+    }
+
+    const validation = validateProjectPath(projectPath);
+    if (!validation.valid) {
+      reply.code(400);
+      return { success: false, error: validation.error };
+    }
+
+    const transitionState = new TransitionStateUseCase(reviewRequestTrackingGateway);
+    const result = transitionState.execute({
+      projectPath: validation.path,
+      mrId,
+      targetState: 'merged',
+      requireCurrentState: 'pending-fix',
+    });
+
+    if (result.ok) {
+      logInfo('MR marquée comme mergée', { mrId });
+      return { success: true, mrId, message: 'MR marquée comme mergée' };
+    }
+
+    switch (result.reason) {
+      case 'not-found':
+        reply.code(404);
+        return { success: false, error: 'MR non trouvée' };
+      case 'invalid-current-state':
+        reply.code(409);
+        return {
+          success: false,
+          error: 'Seules les MR en correction peuvent être marquées comme mergées',
+        };
+      case 'quality-gate':
+        reply.code(409);
+        return { success: false, error: result.message };
+      default: {
+        const _exhaustive: never = result;
+        throw new Error(`Unhandled transition rejection: ${JSON.stringify(_exhaustive)}`);
+      }
+    }
+  });
 };

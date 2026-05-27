@@ -13,7 +13,7 @@ export type ReviewRequestStateValue = z.infer<typeof ReviewRequestStateSchema>;
 
 const VALID_TRANSITIONS: Record<ReviewRequestStateValue, ReviewRequestStateValue[]> = {
   'pending-review': ['pending-fix', 'pending-approval', 'closed'],
-  'pending-fix': ['pending-review', 'pending-approval', 'closed'],
+  'pending-fix': ['pending-review', 'pending-approval', 'merged', 'closed'],
   'pending-approval': ['approved', 'pending-fix', 'closed'],
   'approved': ['merged', 'closed'],
   'merged': [],
