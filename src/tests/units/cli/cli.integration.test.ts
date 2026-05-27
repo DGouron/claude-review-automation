@@ -12,11 +12,14 @@ const tsxBin = join(repoRoot, 'node_modules/.bin/tsx');
 const cliSrc = join(repoRoot, 'src/main/cli.ts');
 const cliCommand = `${tsxBin} ${cliSrc}`;
 
+// Cold-start tsx spawns can exceed the 5s default under load; allow headroom.
+const TEST_TIMEOUT_MS = 15000;
+
 describe('CLI integration', () => {
   it('should print version when called with --version', () => {
     const output = execSync(`${cliCommand} --version`).toString().trim();
     expect(output).toMatch(/^\d+\.\d+\.\d+$/);
-  });
+  }, TEST_TIMEOUT_MS);
 
   it('should print help when called with --help', () => {
     const output = execSync(`${cliCommand} --help`).toString();
@@ -29,7 +32,7 @@ describe('CLI integration', () => {
     expect(output).toContain('--follow');
     expect(output).toContain('--json');
     expect(output).toContain('--force');
-  });
+  }, TEST_TIMEOUT_MS);
 
   it('should exit with code 1 when status is checked and server is not running', () => {
     try {
@@ -40,7 +43,7 @@ describe('CLI integration', () => {
       expect(execError.status).toBe(1);
       expect(execError.stdout.toString()).toContain('not running');
     }
-  });
+  }, TEST_TIMEOUT_MS);
 
   it('should output JSON for status --json when stopped', () => {
     try {
@@ -52,5 +55,5 @@ describe('CLI integration', () => {
       const parsed = JSON.parse(execError.stdout.toString().trim());
       expect(parsed.status).toBe('stopped');
     }
-  });
+  }, TEST_TIMEOUT_MS);
 });
