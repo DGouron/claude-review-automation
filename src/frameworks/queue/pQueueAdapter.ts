@@ -66,11 +66,18 @@ export type ProgressChangeCallback = (jobId: string, progress: ReviewProgress, e
 // State change callback type - called when jobs are added/started/completed/failed
 export type StateChangeCallback = () => void;
 
+// Persist job record callback type - fired in the completion finally block.
+// Best-effort: implementations must never throw nor delay the queue task.
+export type PersistJobRecordCallback = (jobStatus: JobStatus, abortSignalAborted: boolean) => Promise<void>;
+
 // Global progress change listener
 let progressChangeCallback: ProgressChangeCallback | null = null;
 
 // Global state change listener
 let stateChangeCallback: StateChangeCallback | null = null;
+
+// Global persist callback (wired by composition root)
+let persistJobRecordCallback: PersistJobRecordCallback | null = null;
 
 const activeJobs = new Map<string, JobStatus>();
 const completedJobs: JobStatus[] = []; // Keep last 20
@@ -262,6 +269,14 @@ export async function enqueueReview(
           completedJobs.pop();
         }
 
+        // Best-effort persistence (SPEC-176): fire the callback without
+        // awaiting and swallow any rejection so the queue task is never
+        // delayed nor failed by a disk write.
+        const persistPromise = persistJobRecordCallback?.(jobStatus, abortController.signal.aborted);
+        if (persistPromise) {
+          persistPromise.catch(() => {});
+        }
+
         // Notify state change (job completed/failed)
         stateChangeCallback?.();
       }
@@ -436,6 +451,26 @@ export function setProgressChangeCallback(callback: ProgressChangeCallback | nul
  */
 export function setStateChangeCallback(callback: StateChangeCallback | null): void {
   stateChangeCallback = callback;
+}
+
+/**
+ * Set the persist job record callback (SPEC-176).
+ * Fired in the completion finally block; the queue never awaits the returned
+ * promise. Implementations must swallow their own errors.
+ */
+export function setPersistJobRecordCallback(callback: PersistJobRecordCallback | null): void {
+  persistJobRecordCallback = callback;
+}
+
+/**
+ * Seed the in-memory completed jobs list at startup (SPEC-176).
+ * Records beyond MAX_COMPLETED_JOBS are dropped. Insertion order is preserved.
+ */
+export function replaceCompletedJobs(records: JobStatus[]): void {
+  completedJobs.length = 0;
+  for (const record of records.slice(0, MAX_COMPLETED_JOBS)) {
+    completedJobs.push(record);
+  }
 }
 
 /**

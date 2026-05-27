@@ -701,6 +701,7 @@
       const shouldNotify = shouldNotifyDesktop({
         permission: Notification.permission,
         isDocumentHidden: document.visibilityState !== 'visible',
+        notifyWhenVisible: true,
       });
       if (!shouldNotify) return;
 
@@ -723,6 +724,11 @@
     function dispatchReviewNotifications(activeReviews, recentReviews) {
       const result = collectReviewNotifications(reviewNotificationState, activeReviews, recentReviews);
       reviewNotificationState = result.nextState;
+      console.log('[notify] dispatch', {
+        active: activeReviews.map(r => ({ id: r.id, status: r.status, jobType: r.jobType, mr: r.mrNumber })),
+        recent: recentReviews.slice(0, 5).map(r => ({ id: r.id, status: r.status, jobType: r.jobType, mr: r.mrNumber, completedAt: r.completedAt })),
+        emitted: result.notifications.map(n => ({ kind: n.kind, mr: n.review.mrNumber })),
+      });
       result.notifications.forEach((notification) => {
         const toastPayload = mapNotificationToToast(notification);
         if (!toastPayload) return;

@@ -4,7 +4,17 @@ import { loadConfig, type Config } from '../config/loader.js';
 import { createDependencies, type Dependencies } from './dependencies.js';
 import { registerRoutes } from './routes.js';
 import { setupWebSocketCallbacks } from './websocket.js';
-import { initQueue } from '../frameworks/queue/pQueueAdapter.js';
+import {
+  initQueue,
+  replaceCompletedJobs,
+  setPersistJobRecordCallback,
+  type JobStatus,
+} from '../frameworks/queue/pQueueAdapter.js';
+import { JobHistoryFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/fileSystem/jobHistory.fileSystem.gateway.js';
+import { PersistJobRecordUseCase } from '@/modules/review-execution/usecases/jobHistory/persistJobRecord.usecase.js';
+import { LoadRecentJobHistoryUseCase } from '@/modules/review-execution/usecases/jobHistory/loadRecentJobHistory.usecase.js';
+import { PruneJobHistoryUseCase } from '@/modules/review-execution/usecases/jobHistory/pruneJobHistory.usecase.js';
+import type { JobRecord } from '@/modules/review-execution/entities/job/jobRecord.schema.js';
 import { removePidFile } from '../shared/services/pidFileManager.js';
 import { PID_FILE_PATH } from '../shared/services/daemonPaths.js';
 import { startCleanupScheduler } from '../frameworks/scheduler/cleanupScheduler.js';
@@ -40,6 +50,42 @@ function addRawBodyParser(app: FastifyInstance): void {
   );
 }
 
+// Revives a historical JobRecord into a JobStatus to seed the in-memory recent list at startup.
+//
+// KNOWN LIMITATIONS (acknowledged in PR #227 review, follow-ups tracked outside SPEC-176):
+//
+// 1. Status granularity loss: JobRecord persists 4 outcomes (success/failed/killed/timeout),
+//    but the runtime JobStatus.status only knows queued/running/completed/failed. After a
+//    daemon restart, killed and timeout outcomes collapse to 'failed' here; the original
+//    distinction survives only via the `error` field (populated from `exitReason`).
+//    Real fix requires extending JobStatus.status — out of SPEC-176 scope.
+//
+// 2. Empty-string placeholders: ReviewJob fields localPath/mrUrl/sourceBranch/targetBranch/skill
+//    are typed `string` (non-nullable) but not persisted by SPEC-176. Revived jobs assign ''
+//    so downstream display code must treat empty strings as "no value" — most dashboard
+//    consumers already guard defensively (sanitizeHttpUrl, length checks). Real fix requires
+//    narrowing those fields to `string | null` in ReviewJob — out of SPEC-176 scope.
+function reviveJobStatusFromRecord(record: JobRecord): JobStatus {
+  return {
+    job: {
+      id: record.jobId,
+      platform: record.platform,
+      projectPath: record.projectPath,
+      localPath: '',
+      mrNumber: record.mergeRequestId,
+      skill: '',
+      mrUrl: '',
+      sourceBranch: '',
+      targetBranch: '',
+      jobType: record.jobType,
+    },
+    status: record.status === 'success' ? 'completed' : 'failed',
+    startedAt: new Date(record.startedAt),
+    completedAt: new Date(record.completedAt),
+    error: record.exitReason ?? undefined,
+  };
+}
+
 async function buildServer(deps: Dependencies): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
@@ -66,6 +112,39 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
   await loadSettingsFromDisk();
 
   initQueue(deps.logger);
+
+  const jobHistoryGateway = new JobHistoryFileSystemGateway({ logger: deps.logger });
+  const persistJobRecord = new PersistJobRecordUseCase({
+    jobHistoryGateway,
+    logger: deps.logger,
+  });
+  const loadRecentJobHistory = new LoadRecentJobHistoryUseCase({
+    jobHistoryGateway,
+    logger: deps.logger,
+  });
+  const pruneJobHistory = new PruneJobHistoryUseCase({
+    jobHistoryGateway,
+    logger: deps.logger,
+  });
+
+  await pruneJobHistory.execute({
+    retentionDays: config.queue.jobHistoryRetentionDays,
+    now: () => new Date(),
+  });
+  const recentRecords = await loadRecentJobHistory.execute({
+    retentionDays: config.queue.jobHistoryRetentionDays,
+    now: () => new Date(),
+  });
+  replaceCompletedJobs(recentRecords.map(reviveJobStatusFromRecord));
+
+  setPersistJobRecordCallback(async (jobStatus, abortSignalAborted) => {
+    await persistJobRecord.execute({
+      jobStatus,
+      abortSignalAborted,
+      now: () => new Date(),
+    });
+  });
+
   setupWebSocketCallbacks({
     reviewContextWatcher: deps.reviewContextWatcher,
     progressPresenter: deps.progressPresenter,

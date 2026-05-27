@@ -118,6 +118,52 @@ describe('validateAndEnrichConfig', () => {
     })
   })
 
+  describe('jobHistoryRetentionDays validation (SPEC-176)', () => {
+    it('defaults to 7 when the field is missing', () => {
+      const config = createValidConfig()
+
+      const result = validateAndEnrichConfig(config)
+
+      expect(result.queue.jobHistoryRetentionDays).toBe(7)
+    })
+
+    it('accepts a custom integer between 1 and 365', () => {
+      const config = createValidConfig()
+      ;(config.queue as Record<string, unknown>).jobHistoryRetentionDays = 30
+
+      const result = validateAndEnrichConfig(config)
+
+      expect(result.queue.jobHistoryRetentionDays).toBe(30)
+    })
+
+    it('rejects values below 1 with the spec French message', () => {
+      const config = createValidConfig()
+      ;(config.queue as Record<string, unknown>).jobHistoryRetentionDays = 0
+
+      expect(() => validateAndEnrichConfig(config)).toThrow(
+        'Configuration invalide : jobHistoryRetentionDays invalide',
+      )
+    })
+
+    it('rejects values above 365 with the spec French message', () => {
+      const config = createValidConfig()
+      ;(config.queue as Record<string, unknown>).jobHistoryRetentionDays = 400
+
+      expect(() => validateAndEnrichConfig(config)).toThrow(
+        'Configuration invalide : jobHistoryRetentionDays invalide',
+      )
+    })
+
+    it('rejects non-integer values with the spec French message', () => {
+      const config = createValidConfig()
+      ;(config.queue as Record<string, unknown>).jobHistoryRetentionDays = 7.5
+
+      expect(() => validateAndEnrichConfig(config)).toThrow(
+        'Configuration invalide : jobHistoryRetentionDays invalide',
+      )
+    })
+  })
+
   describe('triggerMode validation (SPEC-174)', () => {
     it('default mode when missing: falls back to full-auto', () => {
       const config = createValidConfig()
