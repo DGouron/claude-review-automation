@@ -83,7 +83,8 @@ import { SelfUpdateCliGateway } from '@/modules/cli-configuration/interface-adap
 import { InstallTypeDetectorFsGateway } from '@/modules/cli-configuration/interface-adapters/gateways/installTypeDetector.fs.gateway.js';
 import { broadcastBackfillProgress } from '@/main/websocket.js';
 import { createClaudeInsightsInvoker } from '@/frameworks/claude/claudeInsightsInvoker.js';
-import { getDefaultLanguage } from '@/frameworks/settings/runtimeSettings.js';
+import { getDefaultLanguage, getWorktreeStaleThresholdHours } from '@/frameworks/settings/runtimeSettings.js';
+import { detectDegradedWorktrees } from '@/modules/worktree-management/usecases/detectDegradedWorktrees.usecase.js';
 import type {
   RemoveResult,
   WorktreeIdentity,
@@ -177,6 +178,21 @@ export async function registerRoutes(
     presenter: deps.worktreePanelPresenter,
     schedulerControls: deps.sweepSchedulerControls,
     logger: deps.logger,
+    detectDegradedWorktrees: (entries) =>
+      detectDegradedWorktrees(
+        {
+          entries,
+          staleThresholdMs: getWorktreeStaleThresholdHours() * 60 * 60 * 1000,
+          now: () => new Date(),
+        },
+        { healthProbe: deps.worktreeHealthProbeGateway },
+      ),
+    forceCleanupLock: deps.forceCleanupLock,
+    removeWorktreeForCleanup: (identity) => {
+      const firstEnabled = deps.config.repositories.find((repository) => repository.enabled);
+      const sourceCheckoutPath = firstEnabled?.localPath ?? '';
+      return deps.worktreeGateway.remove({ identity, sourceCheckoutPath, force: true });
+    },
   });
 
   const budgetGateway = new FilesystemBudgetGateway();

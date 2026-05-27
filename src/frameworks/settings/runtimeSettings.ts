@@ -8,9 +8,12 @@ import { languageSchema, type Language } from '@/modules/shared-kernel/entities/
 export const claudeModelSchema = z.enum(['haiku', 'sonnet', 'opus']);
 export type ClaudeModel = z.infer<typeof claudeModelSchema>;
 
+const worktreeStaleThresholdHoursSchema = z.number().int().min(1).max(720);
+
 const runtimeSettingsSchema = z.object({
   language: languageSchema,
   model: claudeModelSchema,
+  worktreeStaleThresholdHours: worktreeStaleThresholdHoursSchema.default(24),
 });
 
 type RuntimeSettings = z.infer<typeof runtimeSettingsSchema>;
@@ -22,6 +25,7 @@ type SettingsLogger = {
 const DEFAULT_SETTINGS: RuntimeSettings = {
   model: 'opus',
   language: 'en',
+  worktreeStaleThresholdHours: 24,
 };
 
 let settings: RuntimeSettings = { ...DEFAULT_SETTINGS };
@@ -120,6 +124,19 @@ export async function setDefaultLanguage(language: Language): Promise<void> {
     throw new Error(`Invalid language: ${language}`);
   }
   settings.language = result.data;
+  await persistAsync();
+}
+
+export function getWorktreeStaleThresholdHours(): number {
+  return settings.worktreeStaleThresholdHours;
+}
+
+export async function setWorktreeStaleThresholdHours(hours: number): Promise<void> {
+  const result = worktreeStaleThresholdHoursSchema.safeParse(hours);
+  if (!result.success) {
+    throw new Error(`Invalid stale threshold (hours): ${hours}`);
+  }
+  settings.worktreeStaleThresholdHours = result.data;
   await persistAsync();
 }
 

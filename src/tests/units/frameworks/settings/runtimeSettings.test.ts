@@ -67,7 +67,7 @@ describe('runtimeSettings', () => {
 
         expect(existsSync(settingsPath)).toBe(true);
         const written = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-        expect(written).toEqual({ language: 'en', model: 'opus' });
+        expect(written).toEqual({ language: 'en', model: 'opus', worktreeStaleThresholdHours: 24 });
       });
 
       it('falls back to defaults silently when file is malformed JSON', async () => {
@@ -143,13 +143,74 @@ describe('runtimeSettings', () => {
         await Promise.all([setModel('sonnet'), setDefaultLanguage('fr')]);
 
         const written = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-        expect(written).toEqual({ language: 'fr', model: 'sonnet' });
+        expect(written).toEqual({ language: 'fr', model: 'sonnet', worktreeStaleThresholdHours: 24 });
       });
     });
 
     describe('validation', () => {
       it('throws when setModel receives an unknown model', async () => {
         await expect(setModel('gpt-5' as ClaudeModel)).rejects.toThrow(/Invalid model/);
+      });
+    });
+
+    describe('worktreeStaleThresholdHours', () => {
+      it('defaults to 24 when no settings file exists', async () => {
+        await loadSettingsFromDisk();
+
+        const { getWorktreeStaleThresholdHours } = await import(
+          '@/frameworks/settings/runtimeSettings.js'
+        );
+        expect(getWorktreeStaleThresholdHours()).toBe(24);
+      });
+
+      it('restores worktreeStaleThresholdHours from an existing file', async () => {
+        writeFileSync(
+          settingsPath,
+          JSON.stringify({ language: 'en', model: 'opus', worktreeStaleThresholdHours: 48 }),
+        );
+
+        await loadSettingsFromDisk();
+        const { getWorktreeStaleThresholdHours } = await import(
+          '@/frameworks/settings/runtimeSettings.js'
+        );
+
+        expect(getWorktreeStaleThresholdHours()).toBe(48);
+      });
+
+      it('falls back to the default when the persisted value is below the minimum', async () => {
+        writeFileSync(
+          settingsPath,
+          JSON.stringify({ language: 'en', model: 'opus', worktreeStaleThresholdHours: 0 }),
+        );
+
+        await loadSettingsFromDisk();
+        const { getWorktreeStaleThresholdHours } = await import(
+          '@/frameworks/settings/runtimeSettings.js'
+        );
+
+        expect(getWorktreeStaleThresholdHours()).toBe(24);
+      });
+
+      it('persists worktreeStaleThresholdHours after setWorktreeStaleThresholdHours', async () => {
+        await loadSettingsFromDisk();
+        const { setWorktreeStaleThresholdHours } = await import(
+          '@/frameworks/settings/runtimeSettings.js'
+        );
+
+        await setWorktreeStaleThresholdHours(72);
+
+        const written = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+        expect(written.worktreeStaleThresholdHours).toBe(72);
+      });
+
+      it('throws when setWorktreeStaleThresholdHours receives a value outside [1, 720]', async () => {
+        await loadSettingsFromDisk();
+        const { setWorktreeStaleThresholdHours } = await import(
+          '@/frameworks/settings/runtimeSettings.js'
+        );
+
+        await expect(setWorktreeStaleThresholdHours(0)).rejects.toThrow(/Invalid stale threshold/);
+        await expect(setWorktreeStaleThresholdHours(721)).rejects.toThrow(/Invalid stale threshold/);
       });
     });
 

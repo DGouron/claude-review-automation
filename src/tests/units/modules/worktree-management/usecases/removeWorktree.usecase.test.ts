@@ -72,4 +72,47 @@ describe('removeWorktree use case', () => {
       expect(result.warning).toContain('worktree is locked');
     }
   });
+
+  describe('force mode', () => {
+    it('returns removed when force is true and the worktree is missing on disk (registry-only cleanup)', async () => {
+      const result = await removeWorktree(
+        { identity, sourceCheckoutPath: '/repo', force: true },
+        {
+          executor,
+          worktreeExists: async () => false,
+        },
+      );
+
+      expect(result).toEqual({ status: 'removed' });
+      expect(executor.callsOfKind('worktree-prune')).toHaveLength(1);
+      expect(executor.callsOfKind('worktree-remove')).toHaveLength(0);
+    });
+
+    it('still attempts git worktree remove when force is true and the worktree exists', async () => {
+      existingPaths.add(expectedPath);
+
+      const result = await removeWorktree(
+        { identity, sourceCheckoutPath: '/repo', force: true },
+        {
+          executor,
+          worktreeExists: async () => existingPaths.has(expectedPath),
+        },
+      );
+
+      expect(result).toEqual({ status: 'removed' });
+      expect(executor.callsOfKind('worktree-remove')).toHaveLength(1);
+    });
+
+    it('preserves backwards-compatible behavior when force is unset (absent if missing on disk)', async () => {
+      const result = await removeWorktree(
+        { identity, sourceCheckoutPath: '/repo' },
+        {
+          executor,
+          worktreeExists: async () => false,
+        },
+      );
+
+      expect(result).toEqual({ status: 'absent' });
+    });
+  });
 });
