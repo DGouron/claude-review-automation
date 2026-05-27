@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.27.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.26.0...reviewflow-v3.27.0) (2026-05-27)
+
+
+### Added
+
+* **queue:** cap parallel reviews per project (spec-183) ([#229](https://github.com/DGouron/review-flow/issues/229)) ([f01bca6](https://github.com/DGouron/review-flow/commit/f01bca6af0151a7c05abe6f18a059954187a8675))
+* **queue:** persist job history to disk (SPEC-176) ([#227](https://github.com/DGouron/review-flow/issues/227)) ([8310453](https://github.com/DGouron/review-flow/commit/8310453dbc4d34e160398bfde0f7068286f21745))
+* **stats:** implement SPEC-47 capture git diff stats ([#226](https://github.com/DGouron/review-flow/issues/226)) ([7a4f65c](https://github.com/DGouron/review-flow/commit/7a4f65cc906b243a6fab2aa1f8e618a61e0c0331))
+* **worktree:** implement SPEC-175 worktree failure visibility & force-cleanup ([#230](https://github.com/DGouron/review-flow/issues/230)) ([964a43d](https://github.com/DGouron/review-flow/commit/964a43d3b0c240fdd1143076150515e848ac498d))
+
 ## [3.26.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.25.0...reviewflow-v3.26.0) (2026-05-27)
 
 
