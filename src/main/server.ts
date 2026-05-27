@@ -50,9 +50,21 @@ function addRawBodyParser(app: FastifyInstance): void {
   );
 }
 
-// Reloaded history records have no source MR metadata; placeholders only.
-// Display fields (mrUrl, title, skill, branches, localPath) are intentionally
-// out of scope for SPEC-176 persistence.
+// Revives a historical JobRecord into a JobStatus to seed the in-memory recent list at startup.
+//
+// KNOWN LIMITATIONS (acknowledged in PR #227 review, follow-ups tracked outside SPEC-176):
+//
+// 1. Status granularity loss: JobRecord persists 4 outcomes (success/failed/killed/timeout),
+//    but the runtime JobStatus.status only knows queued/running/completed/failed. After a
+//    daemon restart, killed and timeout outcomes collapse to 'failed' here; the original
+//    distinction survives only via the `error` field (populated from `exitReason`).
+//    Real fix requires extending JobStatus.status — out of SPEC-176 scope.
+//
+// 2. Empty-string placeholders: ReviewJob fields localPath/mrUrl/sourceBranch/targetBranch/skill
+//    are typed `string` (non-nullable) but not persisted by SPEC-176. Revived jobs assign ''
+//    so downstream display code must treat empty strings as "no value" — most dashboard
+//    consumers already guard defensively (sanitizeHttpUrl, length checks). Real fix requires
+//    narrowing those fields to `string | null` in ReviewJob — out of SPEC-176 scope.
 function reviveJobStatusFromRecord(record: JobRecord): JobStatus {
   return {
     job: {

@@ -162,7 +162,12 @@ describe('Acceptance — SPEC-176: Job History Persistence', () => {
     });
 
     expect(records).toHaveLength(2);
-    expect(records[0]?.completedAt > records[1]!.completedAt).toBe(true);
+    const [first, second] = records;
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    if (first && second) {
+      expect(first.completedAt > second.completedAt).toBe(true);
+    }
   });
 
   it('Scenario 6 — write failure best-effort: a throwing gateway does not rethrow', async () => {

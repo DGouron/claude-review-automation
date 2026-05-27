@@ -54,4 +54,20 @@ describe('jobRecordGuard', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects a record with a non ISO-8601 completedAt', () => {
+    const invalid = JobRecordFactory.create({ completedAt: 'yesterday' });
+
+    const result = jobRecordGuard.safeParse(invalid);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a record with a non ISO-8601 startedAt', () => {
+    const invalid = JobRecordFactory.create({ startedAt: '2026-05-25' });
+
+    const result = jobRecordGuard.safeParse(invalid);
+
+    expect(result.success).toBe(false);
+  });
 });
