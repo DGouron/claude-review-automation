@@ -2,7 +2,31 @@
 
 **Labels**: enhancement, P2-important, queue, observability
 **Date**: 2026-05-24
-**Status**: drafted
+**Status**: implemented (2026-05-27)
+
+---
+
+## Implementation
+
+**Artefacts**:
+- Entity: `src/modules/review-execution/entities/job/jobRecord.schema.ts`, `jobRecord.guard.ts`, `jobHistory.gateway.ts`
+- Use cases: `src/modules/review-execution/usecases/jobHistory/persistJobRecord.usecase.ts`, `loadRecentJobHistory.usecase.ts`, `pruneJobHistory.usecase.ts`
+- Gateway impl: `src/modules/review-execution/interface-adapters/gateways/fileSystem/jobHistory.fileSystem.gateway.ts`
+- Queue integration: `src/frameworks/queue/pQueueAdapter.ts` (callback indirection + `replaceCompletedJobs` startup seeder)
+- Config: `src/frameworks/config/configLoader.ts` (`jobHistoryRetentionDays`, default 7, range 1–365)
+- Composition root: `src/main/server.ts` (startup prune + load + seed + callback registration; inline `reviveJobStatusFromRecord` adapter helper)
+
+**Endpoints**: none — persistence is internal to the queue lifecycle, no HTTP route.
+
+**Architectural decisions**:
+- Callback indirection (`setPersistJobRecordCallback`) keeps `frameworks/queue/` free of any `usecases/` import, mirroring the existing `setStateChangeCallback` / `setProgressChangeCallback` patterns.
+- Best-effort persistence: the call site captures the returned promise and attaches `.catch(() => {})` to swallow rejections without `await`, guaranteeing the queue task never blocks on disk I/O.
+- Status mapping (`JobStatus` → `JobRecord.status` with branches `success` / `failed` / `killed` / `timeout`) lives in the `persistJobRecord` use case, not the entity. The `JobRecord` schema stays a pure data shape.
+- `fs/promises.appendFile` for atomicity: POSIX guarantees atomic appends for writes < `PIPE_BUF`; our short JSON lines sit well within that bound, satisfying the "concurrent writes don't corrupt" rule without an explicit lock.
+- Reload at startup uses placeholder values (`''`) for fields not captured in `JobRecord` (`mrUrl`, `localPath`, `skill`, source/target branches); these are display niceties intentionally excluded from the persistence shape per spec.
+- Anti-overengineering: no Value Object class, no branded type for `jobId`, no EventBus refactor, no presenter/controller.
+
+**Test coverage**: 72/72 tests pass — 62 unit + 10 acceptance scenarios. Full coverage matrix in `docs/reports/176-job-history-persistence.report.md`.
 
 ---
 

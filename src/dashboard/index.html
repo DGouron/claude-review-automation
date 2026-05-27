@@ -401,6 +401,7 @@
       renderWorktreeSection,
       fetchWorktreeOverview,
       triggerManualSweep,
+      triggerForceCleanup,
       snapshotTotals,
       computeChangedMetricKeys,
     } from './modules/worktreePanel.js';
@@ -706,6 +707,7 @@
       const shouldNotify = shouldNotifyDesktop({
         permission: Notification.permission,
         isDocumentHidden: document.visibilityState !== 'visible',
+        notifyWhenVisible: true,
       });
       if (!shouldNotify) return;
 
@@ -728,6 +730,11 @@
     function dispatchReviewNotifications(activeReviews, recentReviews) {
       const result = collectReviewNotifications(reviewNotificationState, activeReviews, recentReviews);
       reviewNotificationState = result.nextState;
+      console.log('[notify] dispatch', {
+        active: activeReviews.map(r => ({ id: r.id, status: r.status, jobType: r.jobType, mr: r.mrNumber })),
+        recent: recentReviews.slice(0, 5).map(r => ({ id: r.id, status: r.status, jobType: r.jobType, mr: r.mrNumber, completedAt: r.completedAt })),
+        emitted: result.notifications.map(n => ({ kind: n.kind, mr: n.review.mrNumber })),
+      });
       result.notifications.forEach((notification) => {
         const toastPayload = mapNotificationToToast(notification);
         if (!toastPayload) return;
@@ -3632,6 +3639,32 @@
       }).catch(() => {});
     }
 
+    function bindForceCleanupButtons() {
+      if (worktreeSection === null) return;
+      const buttons = worktreeSection.querySelectorAll('[data-action="force-cleanup"]');
+      buttons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (button.dataset.busy === '1') return;
+          const platform = button.dataset.platform;
+          const projectPath = button.dataset.projectPath;
+          const mrNumber = Number(button.dataset.mrNumber);
+          if (!platform || !projectPath || Number.isNaN(mrNumber)) return;
+
+          button.dataset.busy = '1';
+          try {
+            const result = await triggerForceCleanup({ platform, projectPath, mrNumber });
+            if (result.status !== 'ok') {
+              button.classList.add('worktree-cleanup-failed');
+              window.setTimeout(() => button.classList.remove('worktree-cleanup-failed'), 1200);
+            }
+          } finally {
+            button.dataset.busy = '0';
+            await refreshWorktreeSection({ animate: true });
+          }
+        });
+      });
+    }
+
     async function refreshWorktreeSection({ animate } = { animate: false }) {
       if (worktreeSection === null) return;
       try {
@@ -3639,6 +3672,7 @@
         const totals = snapshotTotals(viewModel);
         worktreeSection.innerHTML = renderWorktreeSection(viewModel);
         bindWorktreeSweepButton();
+        bindForceCleanupButtons();
         if (animate) animateWorktreeMetrics();
         flashChangedMetrics(totals);
         lastWorktreeTotals = totals;

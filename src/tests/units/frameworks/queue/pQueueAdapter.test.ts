@@ -154,6 +154,8 @@ describe('pQueueAdapter - SPEC-186 per-project concurrency cap', () => {
     __resetProjectConcurrencyState();
   });
 
+
+
   it('exposes getRunningCount and getTotalCapacity that reflect setProjectConcurrencyCap', async () => {
     const { setProjectConcurrencyCap, getRunningCount, getTotalCapacity } = await import(
       '@/frameworks/queue/pQueueAdapter.js'
@@ -217,5 +219,99 @@ describe('pQueueAdapter - SPEC-186 per-project concurrency cap', () => {
 
     expect(completed.sort()).toEqual(['A', 'B', 'C']);
     expect(getRunningCount()).toBe(0);
+  });
+});
+
+describe('pQueueAdapter - persist job record callback (SPEC-176)', () => {
+  beforeEach(async () => {
+    initQueue(createStubLogger());
+    const { setPersistJobRecordCallback, replaceCompletedJobs } = await import(
+      '@/frameworks/queue/pQueueAdapter.js'
+    );
+    setPersistJobRecordCallback(null);
+    replaceCompletedJobs([]);
+  });
+
+  it('invokes the persist callback after a successful job with aborted=false', async () => {
+    const { setPersistJobRecordCallback } = await import('@/frameworks/queue/pQueueAdapter.js');
+    const recorded: { jobId: string; aborted: boolean }[] = [];
+    setPersistJobRecordCallback(async (status, aborted) => {
+      recorded.push({ jobId: status.job.id, aborted });
+    });
+
+    const job = createJob({ id: 'gitlab:cb-success:1', mrNumber: 1 });
+
+    await enqueueReview(job, async () => {});
+
+    await new Promise<void>(resolve => setTimeout(resolve, 30));
+
+    expect(recorded).toEqual([{ jobId: 'gitlab:cb-success:1', aborted: false }]);
+  });
+
+  it('invokes the persist callback after a failed job (does not break the queue)', async () => {
+    const { setPersistJobRecordCallback } = await import('@/frameworks/queue/pQueueAdapter.js');
+    const recorded: { jobId: string; status: string }[] = [];
+    setPersistJobRecordCallback(async (status) => {
+      recorded.push({ jobId: status.job.id, status: status.status });
+    });
+
+    const job = createJob({ id: 'gitlab:cb-failed:1', mrNumber: 1 });
+
+    await enqueueReview(job, async () => {
+      throw new Error('boom');
+    });
+
+    await new Promise<void>(resolve => setTimeout(resolve, 30));
+
+    expect(recorded).toEqual([{ jobId: 'gitlab:cb-failed:1', status: 'failed' }]);
+  });
+
+  it('does not propagate a callback rejection back into the queue', async () => {
+    const { setPersistJobRecordCallback } = await import('@/frameworks/queue/pQueueAdapter.js');
+    setPersistJobRecordCallback(async () => {
+      throw new Error('callback rejected');
+    });
+
+    const job = createJob({ id: 'gitlab:cb-throws:1', mrNumber: 1 });
+
+    await expect(enqueueReview(job, async () => {})).resolves.toBe(true);
+
+    await new Promise<void>(resolve => setTimeout(resolve, 30));
+  });
+});
+
+describe('pQueueAdapter - replaceCompletedJobs (SPEC-176)', () => {
+  beforeEach(async () => {
+    initQueue(createStubLogger());
+    const { replaceCompletedJobs } = await import('@/frameworks/queue/pQueueAdapter.js');
+    replaceCompletedJobs([]);
+  });
+
+  it('seeds the in-memory completed list, capped at 20', async () => {
+    const { replaceCompletedJobs, getJobsStatus } = await import('@/frameworks/queue/pQueueAdapter.js');
+    const records = Array.from({ length: 25 }, (_, index) => ({
+      job: createJob({ id: `seed:${index}`, mrNumber: index }),
+      status: 'completed' as const,
+    }));
+
+    replaceCompletedJobs(records);
+
+    const snapshot = getJobsStatus();
+    expect(snapshot.recent).toHaveLength(20);
+    expect(snapshot.recent[0].id).toBe('seed:0');
+  });
+
+  it('clears the previous list before seeding', async () => {
+    const { replaceCompletedJobs, getJobsStatus } = await import('@/frameworks/queue/pQueueAdapter.js');
+
+    replaceCompletedJobs([
+      { job: createJob({ id: 'first', mrNumber: 1 }), status: 'completed' },
+    ]);
+    replaceCompletedJobs([
+      { job: createJob({ id: 'second', mrNumber: 2 }), status: 'completed' },
+    ]);
+
+    const snapshot = getJobsStatus();
+    expect(snapshot.recent.map((entry) => entry.id)).toEqual(['second']);
   });
 });

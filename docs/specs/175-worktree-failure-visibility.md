@@ -2,7 +2,40 @@
 
 **Labels**: enhancement, P2-important, dashboard, worktree
 **Date**: 2026-05-24
-**Status**: drafted
+**Status**: implemented
+
+---
+
+## Implementation
+
+See `docs/reports/175-worktree-failure-visibility.report.md` for the full implementation report.
+
+### Artefacts
+
+- **Entities**: `WorktreeHealth` discriminated union (`healthy` | `degraded` with `DegradedReason` of kind `stale` | `orphan-git-lock` | `unresolved-conflict` | `missing-build-artifacts`), `WorktreeHealthReport`, `WorktreeHealthProbeGateway` contract.
+- **Use cases**: `detectDegradedWorktrees` (ordered first-match detection), `removeWorktree` extended with `force?: boolean` for registry-only cleanup when FS path is absent.
+- **Services**: `InMemoryForceCleanupLockService` (concurrency guard keyed by `${platform}:${projectPath}:${mrNumber}`).
+- **Gateways**: `WorktreeHealthProbeFileSystemGateway` (resolves worktree-local `.git` pointer → `<main-repo>/.git/worktrees/<name>/`, probes `index.lock`/`HEAD.lock` ages, runs `git status --porcelain=v1` for unresolved conflicts, `existsSync(<worktree>/node_modules)` for build artifacts).
+- **Presenter**: `worktreePanel.presenter.ts` extended with `degradedCount` + `degraded[]` carrying French user-facing reason labels and ready-to-POST cleanup payloads.
+- **Controller**: `worktreeOverview.routes.ts` extended (GET payload + new POST endpoint).
+- **View**: `dashboard/modules/worktreePanel.js` gains `renderDegradedAlerts` and `triggerForceCleanup`; `index.html` binds the click handlers; `styles.css` adds the alert chrome.
+- **Settings**: `runtimeSettings.ts` adds `worktreeStaleThresholdHours` (default 24, range [1, 720]).
+
+### Endpoints
+
+| Method | Route | Use case |
+|--------|-------|----------|
+| GET | `/api/worktrees` | `detectDegradedWorktrees` + presenter (additive `degraded[]` + `degradedCount`, backwards-compatible). |
+| POST | `/api/worktrees/cleanup` (body `{ platform, projectPath, mrNumber }`) | `forceCleanupLock.tryAcquire` + `removeWorktree({ force: true })` + `release` in `finally`. |
+
+### Architectural decisions
+
+- **No state machine** — discriminated union + ordered first-match detection (`stale → orphan-lock → unresolved-conflict → missing-artifacts → healthy`).
+- **Single probe boundary** — `WorktreeHealthProbeGateway.probe(entry): HealthSignals` aggregates the 3 FS checks in one round-trip instead of 4 micro-gateways.
+- **No new force-cleanup use case** — extended existing `removeWorktree.usecase.ts` with backwards-compatible `force?: boolean`.
+- **In-memory lock**, no distributed coordination — single-process daemon constraint.
+- **No audit-log entity** — structured `logger.info` / `logger.warn` calls satisfy the "logs reason + outcome" rule.
+- **POST with JSON body** instead of URL path params — avoids GitLab `projectPath` (`group/project`) URL-encoding pitfalls.
 
 ---
 

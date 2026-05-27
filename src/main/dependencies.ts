@@ -24,9 +24,13 @@ import { GitCommandCliGateway } from '@/modules/worktree-management/interface-ad
 import { WorktreeFileSystemGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktree.fileSystem.gateway.js';
 import { WorktreeSizeProbeCliGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktreeSizeProbe.cli.gateway.js';
 import { WorktreePanelPresenter } from '@/modules/worktree-management/interface-adapters/presenters/worktreePanel.presenter.js';
+import { WorktreeHealthProbeFileSystemGateway } from '@/modules/worktree-management/interface-adapters/gateways/worktreeHealthProbe.fileSystem.gateway.js';
+import { InMemoryForceCleanupLockService } from '@/modules/worktree-management/services/forceCleanupLock.js';
 import type { GitCommandExecutor } from '@/modules/worktree-management/entities/gitCommand/gitCommand.gateway.js';
 import type { WorktreeGateway } from '@/modules/worktree-management/entities/worktree/worktree.gateway.js';
 import type { WorktreeSizeProbeGateway } from '@/modules/worktree-management/entities/worktree/worktreeSizeProbe.gateway.js';
+import type { WorktreeHealthProbeGateway } from '@/modules/worktree-management/entities/worktree/worktreeHealthProbe.gateway.js';
+import type { ForceCleanupLockService } from '@/modules/worktree-management/services/forceCleanupLock.js';
 import type { WorktreeSchedulerControls } from '@/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.js';
 import { pino, type Logger, type LoggerOptions } from 'pino';
 import { mkdirSync } from 'node:fs';
@@ -46,8 +50,10 @@ export interface Dependencies {
   gitCommandExecutor: GitCommandExecutor;
   worktreeGateway: WorktreeGateway;
   worktreeSizeProbeGateway: WorktreeSizeProbeGateway;
+  worktreeHealthProbeGateway: WorktreeHealthProbeGateway;
   worktreePanelPresenter: WorktreePanelPresenter;
   sweepSchedulerControls: WorktreeSchedulerControls | null;
+  forceCleanupLock: ForceCleanupLockService;
   logger: Logger;
   config: Config;
 }
@@ -88,9 +94,13 @@ export function createDependencies(config: Config): Dependencies {
   const gitCommandExecutor = new GitCommandCliGateway();
   const worktreeGateway = new WorktreeFileSystemGateway({ executor: gitCommandExecutor });
   const worktreeSizeProbeGateway = new WorktreeSizeProbeCliGateway();
+  const worktreeHealthProbeGateway = new WorktreeHealthProbeFileSystemGateway({
+    executor: gitCommandExecutor,
+  });
   const worktreePanelPresenter = new WorktreePanelPresenter({
     sizeProbe: worktreeSizeProbeGateway,
   });
+  const forceCleanupLock = new InMemoryForceCleanupLockService();
 
   return {
     reviewRequestTrackingGateway: new FileSystemReviewRequestTrackingGateway(new ProjectStatsCalculator()),
@@ -106,8 +116,10 @@ export function createDependencies(config: Config): Dependencies {
     gitCommandExecutor,
     worktreeGateway,
     worktreeSizeProbeGateway,
+    worktreeHealthProbeGateway,
     worktreePanelPresenter,
     sweepSchedulerControls: null,
+    forceCleanupLock,
     logger,
     config,
   };

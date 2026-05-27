@@ -99,4 +99,38 @@ describe('collectReviewNotifications', () => {
     expect(firstPass.notifications).toHaveLength(1);
     expect(secondPass.notifications).toHaveLength(0);
   });
+
+  it('should notify both followupStarted and reviewFailed when a follow-up runs then fails alongside an unrelated active review', () => {
+    const baselineState = collectReviewNotifications(
+      createReviewNotificationState(),
+      [{ id: 'r-running', status: 'running', jobType: 'review', mrNumber: 5352 }],
+      [],
+    ).nextState;
+
+    const startedTick = collectReviewNotifications(
+      baselineState,
+      [
+        { id: 'r-running', status: 'running', jobType: 'review', mrNumber: 5352 },
+        { id: 'f-fail', status: 'running', jobType: 'followup', mrNumber: 5019 },
+      ],
+      [],
+    );
+
+    expect(startedTick.notifications).toEqual([
+      { kind: 'followupStarted', review: { id: 'f-fail', status: 'running', jobType: 'followup', mrNumber: 5019 } },
+    ]);
+
+    const failedTick = collectReviewNotifications(
+      startedTick.nextState,
+      [{ id: 'r-running', status: 'running', jobType: 'review', mrNumber: 5352 }],
+      [{ id: 'f-fail', status: 'failed', jobType: 'followup', mrNumber: 5019, completedAt: '2026-05-26T18:59:29Z' }],
+    );
+
+    expect(failedTick.notifications).toEqual([
+      {
+        kind: 'reviewFailed',
+        review: { id: 'f-fail', status: 'failed', jobType: 'followup', mrNumber: 5019, completedAt: '2026-05-26T18:59:29Z' },
+      },
+    ]);
+  });
 });
