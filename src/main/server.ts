@@ -17,6 +17,7 @@ import { SupervisorLockFileSystemGateway, createDefaultSupervisorLockFileSystem,
 import { runReviewRecovery } from '@/modules/review-execution/services/reviewRecovery.service.js';
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { configureSettingsPath, getDefaultSettingsPath, loadSettingsFromDisk } from '@/frameworks/settings/runtimeSettings.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -59,6 +60,9 @@ export async function createServer(options: ServerOptions = {}): Promise<Fastify
 export async function startServer(options: ServerOptions = {}): Promise<FastifyInstance> {
   const config = options.config ?? loadConfig();
   const deps = createDependencies(config);
+
+  configureSettingsPath(getDefaultSettingsPath());
+  await loadSettingsFromDisk();
 
   initQueue(deps.logger);
   setupWebSocketCallbacks({

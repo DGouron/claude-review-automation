@@ -25,7 +25,7 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
       return { success: false, error: 'Invalid model. Use: opus, sonnet' };
     }
 
-    setModel(model);
+    await setModel(model);
     return { success: true, model: getModel() };
   });
 
@@ -38,7 +38,7 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
       return { success: false, error: 'Invalid language. Use: en, fr' };
     }
 
-    setDefaultLanguage(parsed.data);
+    await setDefaultLanguage(parsed.data);
     return { success: true, language: getDefaultLanguage() };
   });
 };
