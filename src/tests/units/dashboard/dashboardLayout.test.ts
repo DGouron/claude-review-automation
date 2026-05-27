@@ -251,5 +251,27 @@ describe('SPEC-181 — Dashboard Empty-State Restructure & Team-First Layout', (
       expect(inlineScript).not.toMatch(/function toggleStats\b/);
       expect(inlineScript).not.toMatch(/window\.toggleStats\s*=/);
     });
+
+    it('no longer references removed empty-state translation lookup ids', () => {
+      expect(inlineScript).not.toMatch(/getElementById\(['"]i18n-empty-active-reviews['"]\)/);
+      expect(inlineScript).not.toMatch(/getElementById\(['"]i18n-empty-pending-reviews['"]\)/);
+    });
+  });
+
+  describe('i18n orphan keys', () => {
+    let i18nSource: string;
+
+    beforeEach(() => {
+      const I18N_PATH = join(PROJECT_ROOT, 'src', 'dashboard', 'modules', 'i18n.js');
+      i18nSource = readFileSync(I18N_PATH, 'utf-8');
+    });
+
+    it('drops empty.activeReviews translation key in both locales', () => {
+      expect(i18nSource).not.toMatch(/['"]empty\.activeReviews['"]\s*:/);
+    });
+
+    it('drops empty.pendingReviews translation key in both locales', () => {
+      expect(i18nSource).not.toMatch(/['"]empty\.pendingReviews['"]\s*:/);
+    });
   });
 });
