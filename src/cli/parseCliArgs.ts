@@ -51,13 +51,23 @@ interface FollowupImportantsArgs {
   yes: boolean;
 }
 
+interface SetupArgs {
+  command: 'setup';
+  path: string | undefined;
+  json: boolean;
+  force: boolean;
+  ai: boolean;
+  yes: boolean;
+  showSecrets: boolean;
+}
+
 interface HelpArgs {
   command: 'help';
 }
 
-export type CliArgs = StartArgs | StopArgs | StatusArgs | LogsArgs | InitArgs | DiscoverArgs | ValidateArgs | FollowupImportantsArgs | VersionArgs | HelpArgs;
+export type CliArgs = StartArgs | StopArgs | StatusArgs | LogsArgs | InitArgs | DiscoverArgs | ValidateArgs | FollowupImportantsArgs | SetupArgs | VersionArgs | HelpArgs;
 
-const KNOWN_COMMANDS = ['start', 'stop', 'status', 'logs', 'init', 'discover', 'validate', 'followup-importants'] as const;
+const KNOWN_COMMANDS = ['start', 'stop', 'status', 'logs', 'init', 'discover', 'validate', 'followup-importants', 'setup'] as const;
 type KnownCommand = (typeof KNOWN_COMMANDS)[number];
 
 function hasFlag(args: string[], long: string, short?: string): boolean {
@@ -159,6 +169,20 @@ function parseValidateArgs(args: string[]): ValidateArgs {
   };
 }
 
+function parseSetupArgs(args: string[]): SetupArgs {
+  const positional = args.find((arg, index) => !arg.startsWith('-') && arg !== 'setup' && (index === 0 || args[index - 1] !== '--path'));
+  const flagPath = getFlagValue(args, '--path');
+  return {
+    command: 'setup',
+    path: flagPath ?? positional,
+    json: hasFlag(args, '--json'),
+    force: hasFlag(args, '--force'),
+    ai: hasFlag(args, '--ai'),
+    yes: hasFlag(args, '--yes', '-y'),
+    showSecrets: hasFlag(args, '--show-secrets'),
+  };
+}
+
 export function parseCliArgs(args: string[]): CliArgs {
   if (hasFlag(args, '--version', '-v')) {
     return { command: 'version' };
@@ -187,5 +211,7 @@ export function parseCliArgs(args: string[]): CliArgs {
       return parseValidateArgs(args);
     case 'followup-importants':
       return parseFollowupImportantsArgs(args);
+    case 'setup':
+      return parseSetupArgs(args);
   }
 }
