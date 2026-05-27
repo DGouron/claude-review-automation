@@ -1,6 +1,38 @@
 # Spec #47 — Capture Git Diff Stats (Commits, Additions, Deletions)
 
-## Status: READY FOR IMPLEMENTATION
+## Status: implemented
+
+**Implemented**: 2026-05-27
+**Plan**: [`docs/plans/47-capture-git-diff-stats.plan.md`](../plans/47-capture-git-diff-stats.plan.md)
+**Report**: [`docs/reports/47-capture-git-diff-stats.report.md`](../reports/47-capture-git-diff-stats.report.md)
+
+## Implementation
+
+The bulk of this spec (gateways, persistence, integration) was already in place from prior work — verified by the planner's reconnaissance. This iteration closed the remaining DoD gap and added the SDD acceptance test.
+
+### Artefacts
+
+| Type | Location |
+|------|----------|
+| Domain type | `src/modules/shared-kernel/entities/diffStats/diffStats.ts` |
+| Gateway contract | `src/modules/shared-kernel/entities/diffStats/diffStatsFetch.gateway.ts` |
+| GitHub gateway | `src/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.github.gateway.ts` |
+| GitLab gateway | `src/modules/statistics-insights/interface-adapters/gateways/diffStatsFetch.gitlab.gateway.ts` |
+| Stats persistence | `src/modules/statistics-insights/services/statsService.ts` (`addReviewStats`, `getStatsSummary`, aggregates) |
+| Stats entity | `src/modules/statistics-insights/entities/stats/projectStats.ts` |
+| Tracking entity | `src/modules/tracking/entities/tracking/reviewEvent.ts` |
+| Tracking use case | `src/modules/tracking/usecases/tracking/recordReviewCompletion.usecase.ts` |
+| Integration point | `src/frameworks/claude/claudeInvoker.ts` (`fetchDiffStatsSafely`, lines 273-285) |
+| Acceptance test | `src/tests/acceptance/47-capture-git-diff-stats.acceptance.test.ts` (7 scenarios) |
+| Summary unit test | `src/tests/units/services/statsService.summary.test.ts` |
+
+### Architectural decisions
+
+- **Platform APIs over local `git`** — concurrent reviews on the same checkout make local git state unreliable; mirrors `DiffMetadataFetchGateway` pattern.
+- **GitLab compound-call all-or-nothing failure** — MR detail + commits endpoints wrapped in a single try/catch; partial failure returns `null`.
+- **Aggregation excludes nulls** — `diffStatsReviewCount` divides averages, preventing legacy reviews from skewing means.
+- **`getStatsSummary()` extended** — added `totalAdditions`, `totalDeletions`, `averageAdditions` (formatted), `averageDeletions` (formatted), `totalLinesReviewed`. Closes DoD line 203.
+- **No dashboard rendering** — out of scope per spec.
 
 ---
 

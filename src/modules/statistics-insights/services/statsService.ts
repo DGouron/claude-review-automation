@@ -293,6 +293,11 @@ export function getStatsSummary(stats: ProjectStats): {
   averageScore: string;
   totalBlocking: number;
   totalWarnings: number;
+  totalAdditions: number;
+  totalDeletions: number;
+  averageAdditions: string;
+  averageDeletions: string;
+  totalLinesReviewed: number;
   trend: { score: 'up' | 'down' | 'stable'; blocking: 'up' | 'down' | 'stable' };
 } {
   const formatDuration = (ms: number): string => {
@@ -333,6 +338,11 @@ export function getStatsSummary(stats: ProjectStats): {
     averageScore: stats.averageScore !== null ? stats.averageScore.toFixed(1) : '-',
     totalBlocking: stats.totalBlocking,
     totalWarnings: stats.totalWarnings,
+    totalAdditions: stats.totalAdditions,
+    totalDeletions: stats.totalDeletions,
+    averageAdditions: stats.averageAdditions !== null ? stats.averageAdditions.toFixed(1) : '-',
+    averageDeletions: stats.averageDeletions !== null ? stats.averageDeletions.toFixed(1) : '-',
+    totalLinesReviewed: stats.totalAdditions + stats.totalDeletions,
     trend: { score: scoreTrend, blocking: blockingTrend },
   };
 }
