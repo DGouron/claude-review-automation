@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.25.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.24.2...reviewflow-v3.25.0) (2026-05-27)
+
+
+### Added
+
+* **dashboard:** restructure empty states and promote team section ([#222](https://github.com/DGouron/review-flow/issues/222)) ([493cd8a](https://github.com/DGouron/review-flow/commit/493cd8a30f0b25fbc7f2b1ae0c6e42393713fd79))
+* **tracking:** allow manual mark-as-merged from pending-fix ([#224](https://github.com/DGouron/review-flow/issues/224)) ([f4cf64d](https://github.com/DGouron/review-flow/commit/f4cf64d03c9d121d9462462ca9f32090d1e915f6))
+
+
+### Fixed
+
+* **settings:** persist runtime settings across restarts ([#221](https://github.com/DGouron/review-flow/issues/221)) ([f8a71b8](https://github.com/DGouron/review-flow/commit/f8a71b8dbcf3ae16557b219131cdc8f08a4e9d65))
+
 ## [3.24.2](https://github.com/DGouron/review-flow/compare/reviewflow-v3.24.1...reviewflow-v3.24.2) (2026-05-27)
 
 
