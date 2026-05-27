@@ -3,7 +3,10 @@ title: "SPEC-030: reviewflow init-project — Project Setup with MCP-Ready Skele
 issue: https://github.com/DGouron/review-flow/issues/30
 labels: enhancement, cli, dx, P1-critical, skills
 milestone: Project Bootstrapping
-status: DRAFT
+status: superseded
+superseded_by: "183-setup-wizard-cli-orchestrator"
+superseded_at: "2026-05-27"
+superseded_reason: "Absorbed into the end-to-end Setup Wizard. The single-purpose init-project command becomes step 5+7 of the unified wizard. Scenarios, FRs and templates are preserved as input to SPEC-183 implementation."
 ---
 
 

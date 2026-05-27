@@ -4,7 +4,7 @@
 |---------|------|--------|------|
 | Token budget cap with live indicator | [163-token-budget-cap](specs/163-token-budget-cap.md) | implemented | 2026-05-20 |
 | Token usage summary on dashboard | [126-token-usage-summary-dashboard](specs/126-token-usage-summary-dashboard.md) | implemented | 2026-05-20 |
-| Init project command | [30-init-project-command](specs/30-init-project-command.md) | drafted | 2026-03-14 |
+| ~~Init project command~~ | [30-init-project-command](specs/30-init-project-command.md) | superseded by SPEC-183 | 2026-05-27 |
 | ~~Update README quickstart~~ | [32-update-readme-quickstart](specs/32-update-readme-quickstart.md) | obsolete (npm flow N/A — daemon local) | 2026-03-14 |
 | Zod guard GitLab webhook | [44-zod-guard-gitlab-webhook](specs/44-zod-guard-gitlab-webhook.md) | implemented | 2026-03-14 |
 | GitHub followup review on push | [46-github-followup-review-on-push](specs/46-github-followup-review-on-push.md) | implemented | 2026-05-20 |
@@ -12,11 +12,11 @@
 | Review focus selection | [48-review-focus-selection](specs/48-review-focus-selection.md) | implemented | 2026-05-23 |
 | Update skills project examples | [50-update-skills-project-examples](specs/50-update-skills-project-examples.md) | implemented | 2026-05-22 |
 | Dashboard unit tests | [51-dashboard-unit-tests](specs/51-dashboard-unit-tests.md) | implemented | 2026-05-20 |
-| Automated webhook secret generation | [52-automated-webhook-secret-generation](specs/52-automated-webhook-secret-generation.md) | drafted | 2026-03-14 |
-| Configuration validation command | [55-configuration-validation-command](specs/55-configuration-validation-command.md) | drafted | 2026-03-14 |
-| MCP-ready skeleton skill templates | [56-mcp-ready-skeleton-skill-templates](specs/56-mcp-ready-skeleton-skill-templates.md) | drafted | 2026-03-14 |
-| Interactive agent configuration wizard | [57-interactive-agent-configuration-wizard](specs/57-interactive-agent-configuration-wizard.md) | drafted | 2026-03-14 |
-| Multi-language project init | [58-multi-language-project-init](specs/58-multi-language-project-init.md) | drafted | 2026-03-14 |
+| ~~Automated webhook secret generation~~ | [52-automated-webhook-secret-generation](specs/52-automated-webhook-secret-generation.md) | superseded by SPEC-183 | 2026-05-27 |
+| ~~Configuration validation command~~ | [55-configuration-validation-command](specs/55-configuration-validation-command.md) | superseded by SPEC-183 | 2026-05-27 |
+| ~~MCP-ready skeleton skill templates~~ | [56-mcp-ready-skeleton-skill-templates](specs/56-mcp-ready-skeleton-skill-templates.md) | superseded by SPEC-183 | 2026-05-27 |
+| ~~Interactive agent configuration wizard~~ | [57-interactive-agent-configuration-wizard](specs/57-interactive-agent-configuration-wizard.md) | superseded by SPEC-183 | 2026-05-27 |
+| ~~Multi-language project init~~ | [58-multi-language-project-init](specs/58-multi-language-project-init.md) | superseded by SPEC-183 | 2026-05-27 |
 | Skill list command | [59-skill-list-command](specs/59-skill-list-command.md) | drafted | 2026-03-14 |
 | Skill install command | [60-skill-install-command](specs/60-skill-install-command.md) | drafted | 2026-03-14 |
 | Skill catalog system | [61-skill-catalog-system](specs/61-skill-catalog-system.md) | drafted | 2026-03-14 |
@@ -49,3 +49,6 @@
 | Block approval below quality threshold with comment-based bypass | [180-quality-threshold-block-approval](specs/180-quality-threshold-block-approval.md) — plans: [A](plans/180-quality-threshold-block-approval.plan.md) [B](plans/180-quality-threshold-block-approval-iter-B.plan.md) [C](plans/180-quality-threshold-block-approval-iter-C.plan.md) — reports: [A](reports/180-quality-threshold-block-approval.report.md) [B](reports/180-quality-threshold-block-approval-iter-B.report.md) [C](reports/180-quality-threshold-block-approval-iter-C.report.md) | implemented | 2026-05-26 |
 | Dashboard empty-state restructure & team-first layout | [181-dashboard-empty-state-restructure](specs/181-dashboard-empty-state-restructure.md) — [plan](plans/181-dashboard-empty-state-restructure.plan.md) — [report](reports/181-dashboard-empty-state-restructure.report.md) | implemented | 2026-05-27 |
 | Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) — [plan](plans/182-mark-pending-fix-as-merged.plan.md) — [report](reports/182-mark-pending-fix-as-merged.report.md) | implemented | 2026-05-27 |
+| Setup Wizard CLI orchestrator (Jarvis end-to-end) | [183-setup-wizard-cli-orchestrator](specs/183-setup-wizard-cli-orchestrator.md) | drafted | 2026-05-27 |
+| Setup Wizard Dashboard (Jarvis HUD) | [184-setup-wizard-dashboard-jarvis](specs/184-setup-wizard-dashboard-jarvis.md) | drafted | 2026-05-27 |
+| Setup Wizard MCP agent fallback (deferred) | [185-setup-wizard-mcp-agent-fallback](specs/185-setup-wizard-mcp-agent-fallback.md) | drafted (deferred) | 2026-05-27 |
