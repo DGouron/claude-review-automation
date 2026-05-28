@@ -1,5 +1,9 @@
 import type { StepId } from '@/modules/setup-wizard/entities/stepId/stepId.schema.js';
 import type { StepOutcomeStatus } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.schema.js';
+import type {
+  PromptKind,
+  PromptOption,
+} from '@/modules/setup-wizard/entities/promptOption/promptOption.schema.js';
 
 interface StepStartedOverrides {
   step?: StepId;
@@ -16,6 +20,9 @@ interface StepCompletedOverrides {
 interface AwaitingInputOverrides {
   step?: StepId;
   prompt?: string;
+  kind?: PromptKind;
+  options?: PromptOption[];
+  defaultValue?: string | null;
 }
 
 interface ResumeOverrides {
@@ -51,6 +58,9 @@ export class WizardStreamEventFactory {
       step: overrides.step ?? 'add-project',
       status: 'awaiting_input',
       prompt: overrides.prompt ?? 'Chemin du projet ?',
+      kind: overrides.kind ?? 'text',
+      options: overrides.options ?? [],
+      defaultValue: overrides.defaultValue ?? null,
     });
   }
 

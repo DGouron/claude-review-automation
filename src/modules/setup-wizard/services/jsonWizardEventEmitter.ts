@@ -1,6 +1,10 @@
 import type { WizardEventEmitter } from '@/modules/setup-wizard/services/wizardEventEmitter.js';
 import type { StepId } from '@/modules/setup-wizard/entities/stepId/stepId.schema.js';
 import type { StepOutcome } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.schema.js';
+import type {
+  PromptKind,
+  PromptOption,
+} from '@/modules/setup-wizard/entities/promptOption/promptOption.schema.js';
 
 type LineWriter = (line: string) => void;
 
@@ -24,8 +28,14 @@ export class JsonWizardEventEmitter implements WizardEventEmitter {
     });
   }
 
-  emitAwaitingInput(stepId: StepId, prompt: string): void {
-    this.emit({ step: stepId, status: 'awaiting_input', prompt });
+  emitAwaitingInput(
+    stepId: StepId,
+    prompt: string,
+    kind: PromptKind,
+    options: PromptOption[],
+    defaultValue: string | null,
+  ): void {
+    this.emit({ step: stepId, status: 'awaiting_input', prompt, kind, options, defaultValue });
   }
 
   emitInstructions(lines: string[]): void {

@@ -10,6 +10,7 @@ class StubSetupProcessHandle implements SetupProcessHandle {
   private lineHandler: SetupProcessLineHandler | null = null;
   private exitHandler: SetupProcessExitHandler | null = null;
   killed = false;
+  readonly writtenLines: string[] = [];
 
   readonly pid: number | null = 4242;
 
@@ -19,6 +20,10 @@ class StubSetupProcessHandle implements SetupProcessHandle {
 
   onExit(handler: SetupProcessExitHandler): void {
     this.exitHandler = handler;
+  }
+
+  writeLine(line: string): void {
+    this.writtenLines.push(line);
   }
 
   kill(): void {
@@ -56,5 +61,14 @@ export class StubSetupProcessGateway implements SetupProcessGateway {
 
   get killed(): boolean {
     return this.handle?.killed ?? false;
+  }
+
+  get writtenLines(): string[] {
+    return this.handle?.writtenLines ?? [];
+  }
+
+  get lastWrittenLine(): string | null {
+    const lines = this.writtenLines;
+    return lines.length > 0 ? lines[lines.length - 1] : null;
   }
 }

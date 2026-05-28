@@ -4,6 +4,8 @@ import type { Logger } from 'pino';
 import type { SetupRunRegistry } from '@/modules/setup-wizard/usecases/streamSetupRun.usecase.js';
 import type { SetupStateGateway } from '@/modules/setup-wizard/entities/setupState/setupState.gateway.js';
 import { wizardStreamEventGuard } from '@/modules/setup-wizard/entities/wizardStreamEvent/wizardStreamEvent.guard.js';
+import { setupInputGuard } from '@/modules/setup-wizard/entities/setupInput/setupInput.guard.js';
+import { serializeSetupInput } from '@/modules/setup-wizard/entities/setupInput/setupInput.schema.js';
 
 export interface SetupWizardRoutesOptions {
   registry: SetupRunRegistry;
@@ -51,6 +53,26 @@ export const setupWizardRoutes: FastifyPluginAsync<SetupWizardRoutesOptions> = a
 
     logger.info({ runId: result.runId }, 'Setup wizard run started');
     return { runId: result.runId };
+  });
+
+  const inputRunIdSchema = z.object({ runId: z.string().min(1) });
+
+  fastify.post('/api/setup/input', async (request, reply) => {
+    const runIdResult = inputRunIdSchema.safeParse(request.body);
+    const inputResult = setupInputGuard.safeParse(request.body);
+    if (!runIdResult.success || !inputResult.success) {
+      reply.code(400);
+      return { error: 'invalid-input' };
+    }
+
+    const line = serializeSetupInput(inputResult.data);
+    const result = registry.submitInput(runIdResult.data.runId, line);
+    if (result.status === 'no-active-run') {
+      reply.code(409);
+      return { error: 'no-active-run' };
+    }
+
+    return { status: 'written' };
   });
 
   fastify.get('/api/setup/state', async () => {

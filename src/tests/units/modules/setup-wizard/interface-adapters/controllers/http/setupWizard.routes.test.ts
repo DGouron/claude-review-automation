@@ -123,4 +123,82 @@ describe('setupWizard routes', () => {
     expect(streamResult.body).not.toContain('this is not valid json');
     expect(streamResult.body).toContain('event: end');
   });
+
+  it('writes a choice answer to stdin as a JSON string and returns 200', async () => {
+    const start = await application.inject({ method: 'POST', url: '/api/setup/start' });
+    const runId = JSON.parse(start.body).runId;
+
+    const response = await application.inject({
+      method: 'POST',
+      url: '/api/setup/input',
+      payload: { runId, kind: 'choice', value: 'github' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(processGateway.lastWrittenLine).toBe('"github"');
+  });
+
+  it('writes a text answer as the raw line, not JSON-quoted', async () => {
+    const start = await application.inject({ method: 'POST', url: '/api/setup/start' });
+    const runId = JSON.parse(start.body).runId;
+
+    await application.inject({
+      method: 'POST',
+      url: '/api/setup/input',
+      payload: { runId, kind: 'text', value: '/home/u/api' },
+    });
+
+    expect(processGateway.lastWrittenLine).toBe('/home/u/api');
+  });
+
+  it('writes a multiSelect answer as a JSON array', async () => {
+    const start = await application.inject({ method: 'POST', url: '/api/setup/start' });
+    const runId = JSON.parse(start.body).runId;
+
+    await application.inject({
+      method: 'POST',
+      url: '/api/setup/input',
+      payload: { runId, kind: 'multiSelect', value: ['solid', 'testing'] },
+    });
+
+    expect(processGateway.lastWrittenLine).toBe('["solid","testing"]');
+  });
+
+  it('writes a confirm answer as a JSON boolean', async () => {
+    const start = await application.inject({ method: 'POST', url: '/api/setup/start' });
+    const runId = JSON.parse(start.body).runId;
+
+    await application.inject({
+      method: 'POST',
+      url: '/api/setup/input',
+      payload: { runId, kind: 'confirm', value: true },
+    });
+
+    expect(processGateway.lastWrittenLine).toBe('true');
+  });
+
+  it('returns 409 when there is no active run to answer', async () => {
+    const response = await application.inject({
+      method: 'POST',
+      url: '/api/setup/input',
+      payload: { runId: 'RV-unknown', kind: 'text', value: 'x' },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(processGateway.lastWrittenLine).toBeNull();
+  });
+
+  it('rejects an input body whose value does not match its kind with 400', async () => {
+    const start = await application.inject({ method: 'POST', url: '/api/setup/start' });
+    const runId = JSON.parse(start.body).runId;
+
+    const response = await application.inject({
+      method: 'POST',
+      url: '/api/setup/input',
+      payload: { runId, kind: 'confirm', value: 'not-a-boolean' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(processGateway.lastWrittenLine).toBeNull();
+  });
 });

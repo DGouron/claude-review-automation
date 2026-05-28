@@ -1,6 +1,10 @@
 import type { WizardEventEmitter } from '@/modules/setup-wizard/services/wizardEventEmitter.js';
 import type { StepId } from '@/modules/setup-wizard/entities/stepId/stepId.schema.js';
 import type { StepOutcome } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.schema.js';
+import type {
+  PromptKind,
+  PromptOption,
+} from '@/modules/setup-wizard/entities/promptOption/promptOption.schema.js';
 import { green, red, yellow, dim, bold } from '@/shared/services/ansiColors.js';
 
 type Logger = (line: string) => void;
@@ -31,7 +35,13 @@ export class HumanWizardEventEmitter implements WizardEventEmitter {
     }
   }
 
-  emitAwaitingInput(_stepId: StepId, prompt: string): void {
+  emitAwaitingInput(
+    _stepId: StepId,
+    prompt: string,
+    _kind: PromptKind,
+    _options: PromptOption[],
+    _defaultValue: string | null,
+  ): void {
     this.write(`  ${dim('?')} ${prompt}`);
   }
 
