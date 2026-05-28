@@ -7,6 +7,10 @@ import { StubSetupProcessGateway } from '@/tests/stubs/setupProcess.stub.js';
 import { WizardStreamEventFactory } from '@/tests/factories/wizardStreamEvent.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { serializeSetupInput } from '@/modules/setup-wizard/entities/setupInput/setupInput.schema.js';
+import {
+  buildFormModel,
+  buildInputPayload,
+} from '@/dashboard/modules/setupWizardForms.js';
 import type {
   SetupStateGateway,
   SetupStateLoadResult,
@@ -192,6 +196,146 @@ describe('Setup Wizard interactive forms (acceptance, Iteration B1)', () => {
       expect(processGateway.lastWrittenLine).toBe('/home/u/api');
       const advanced = received.some((line) => line.includes('"status":"succeeded"'));
       expect(advanced).toBe(true);
+    });
+  });
+
+  describe('the dashboard form model produces a body the input endpoint accepts (Iteration B2)', () => {
+    function parseAwaitingInput(line: string): Record<string, unknown> {
+      return JSON.parse(line);
+    }
+
+    it('text: form model + payload write the raw string to stdin', async () => {
+      const runId = await startRun(application);
+      const eventLine = WizardStreamEventFactory.awaitingInput({
+        step: 'add-project',
+        kind: 'text',
+        defaultValue: '/home/u/cwd',
+      });
+      processGateway.emitLine(eventLine);
+
+      const model = buildFormModel(parseAwaitingInput(eventLine));
+      if (model === null) {
+        throw new Error('expected a form model');
+      }
+      expect(model.kind).toBe('text');
+      const result = buildInputPayload(model.kind, runId, '/home/u/api', model.options);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      const response = await application.inject({
+        method: 'POST',
+        url: '/api/setup/input',
+        payload: result.body,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(processGateway.lastWrittenLine).toBe('/home/u/api');
+    });
+
+    it('confirm: form model + payload write a JSON boolean to stdin', async () => {
+      const runId = await startRun(application);
+      const eventLine = WizardStreamEventFactory.awaitingInput({
+        step: 'secrets',
+        kind: 'confirm',
+      });
+      processGateway.emitLine(eventLine);
+
+      const model = buildFormModel(parseAwaitingInput(eventLine));
+      if (model === null) {
+        throw new Error('expected a form model');
+      }
+      const result = buildInputPayload(model.kind, runId, true, model.options);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      const response = await application.inject({
+        method: 'POST',
+        url: '/api/setup/input',
+        payload: result.body,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(processGateway.lastWrittenLine).toBe('true');
+    });
+
+    it('choice: form model + payload write a JSON string to stdin', async () => {
+      const runId = await startRun(application);
+      const eventLine = WizardStreamEventFactory.awaitingInput({
+        step: 'pipeline',
+        kind: 'choice',
+        options: [
+          { label: 'Backend', value: 'backend' },
+          { label: 'Frontend', value: 'frontend' },
+        ],
+      });
+      processGateway.emitLine(eventLine);
+
+      const model = buildFormModel(parseAwaitingInput(eventLine));
+      if (model === null) {
+        throw new Error('expected a form model');
+      }
+      const result = buildInputPayload(model.kind, runId, 'backend', model.options);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      const response = await application.inject({
+        method: 'POST',
+        url: '/api/setup/input',
+        payload: result.body,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(processGateway.lastWrittenLine).toBe('"backend"');
+    });
+
+    it('multiSelect: form model + payload write a JSON array to stdin', async () => {
+      const runId = await startRun(application);
+      const eventLine = WizardStreamEventFactory.awaitingInput({
+        step: 'pipeline',
+        kind: 'multiSelect',
+        options: [
+          { label: 'SOLID', value: 'solid' },
+          { label: 'Testing', value: 'testing' },
+        ],
+      });
+      processGateway.emitLine(eventLine);
+
+      const model = buildFormModel(parseAwaitingInput(eventLine));
+      if (model === null) {
+        throw new Error('expected a form model');
+      }
+      const result = buildInputPayload(model.kind, runId, ['solid', 'testing'], model.options);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      const response = await application.inject({
+        method: 'POST',
+        url: '/api/setup/input',
+        payload: result.body,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(processGateway.lastWrittenLine).toBe('["solid","testing"]');
+    });
+
+    it('rejects a choice value not among the offered options before posting', () => {
+      const eventLine = WizardStreamEventFactory.awaitingInput({
+        step: 'pipeline',
+        kind: 'choice',
+        options: [{ label: 'Backend', value: 'backend' }],
+      });
+      const model = buildFormModel(parseAwaitingInput(eventLine));
+      if (model === null) {
+        throw new Error('expected a form model');
+      }
+
+      const result = buildInputPayload(model.kind, 'run-1', 'database', model.options);
+
+      expect(result.ok).toBe(false);
     });
   });
 });

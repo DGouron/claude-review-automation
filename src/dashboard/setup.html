@@ -57,6 +57,11 @@
       buildMultiTabViewState,
       prefersReducedMotion,
     } from './modules/setupWizardStream.js';
+    import {
+      buildFormModel,
+      renderForm,
+      buildInputPayload,
+    } from './modules/setupWizardForms.js';
 
     const stepsContainer = document.getElementById('setup-steps');
     const bannersContainer = document.getElementById('setup-banners');
@@ -76,6 +81,8 @@
     }
 
     let lastAnnouncedKey = '';
+    let activeRunId = null;
+    let activeRunReadOnly = false;
 
     function announce(rows) {
       const active = rows.find((row) => row.status === 'in_progress')
@@ -98,12 +105,99 @@
       }
     }
 
+    function latestAwaitingInput(events) {
+      const last = events[events.length - 1];
+      return last && last.status === 'awaiting_input' ? last : null;
+    }
+
+    async function submitForm(form, model) {
+      const errorSlot = form.querySelector('.setup-form-error');
+      const raw = 'fixedValue' in model ? model.fixedValue : readFormValue(form, model.kind);
+      const result = buildInputPayload(model.kind, activeRunId, raw, model.options);
+      if (!result.ok) {
+        showFormError(errorSlot, result.error);
+        return;
+      }
+      try {
+        const response = await fetch('/api/setup/input', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(result.body),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          showFormError(errorSlot, payload.error === 'no-active-run'
+            ? '// SESSION EXPIRÉE — relancez le wizard'
+            : '// ENTRÉE REFUSÉE par le serveur');
+        }
+      } catch {
+        showFormError(errorSlot, '// ENVOI IMPOSSIBLE — vérifiez la connexion');
+      }
+    }
+
+    function readFormValue(form, kind) {
+      if (kind === 'text') {
+        const input = form.querySelector('.setup-form-input');
+        return input ? input.value : '';
+      }
+      if (kind === 'multiSelect') {
+        return [...form.querySelectorAll('.setup-form-checkbox:checked')].map((box) => box.value);
+      }
+      return '';
+    }
+
+    function showFormError(slot, message) {
+      if (!slot) {
+        return;
+      }
+      slot.textContent = message;
+      slot.hidden = false;
+    }
+
+    function bindForm(form, model) {
+      form.addEventListener('submit', (formEvent) => {
+        formEvent.preventDefault();
+        submitForm(form, model);
+      });
+      for (const button of form.querySelectorAll('[data-confirm-value]')) {
+        button.addEventListener('click', () => {
+          submitForm(form, { ...model, fixedValue: button.dataset.confirmValue === 'true' });
+        });
+      }
+      for (const button of form.querySelectorAll('[data-choice-value]')) {
+        button.addEventListener('click', () => {
+          submitForm(form, { ...model, fixedValue: button.dataset.choiceValue });
+        });
+      }
+    }
+
+    function renderActiveForm(events) {
+      if (activeRunReadOnly || activeRunId === null) {
+        return;
+      }
+      const awaiting = latestAwaitingInput(events);
+      const model = buildFormModel(awaiting);
+      if (model === null) {
+        return;
+      }
+      const row = stepsContainer.querySelector(`[data-step-id="${model.stepId}"] .setup-step-body`);
+      if (!row) {
+        return;
+      }
+      row.insertAdjacentHTML('beforeend', renderForm(model));
+      const form = row.querySelector('.setup-form');
+      if (form) {
+        bindForm(form, model);
+      }
+    }
+
     function render(events) {
       const rows = buildStepRowsModel(events);
       const banners = buildBannerModel(events);
       stepsContainer.innerHTML = rows.map(renderStepRow).join('');
       bannersContainer.innerHTML = banners.map(renderBanner).join('');
       applyResumeHeading(banners);
+      renderActiveForm(events);
       announce(rows);
     }
 
@@ -151,6 +245,8 @@
     }
 
     function subscribe(runId, readOnly) {
+      activeRunId = runId;
+      activeRunReadOnly = readOnly;
       shell.setAttribute('data-boot', 'ready');
       connectSetupWizardStream({
         runId,

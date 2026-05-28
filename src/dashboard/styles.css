@@ -6242,6 +6242,70 @@ input:focus-visible,
   color: var(--danger);
 }
 
+.setup-form {
+  position: relative;
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--accent);
+  background: radial-gradient(circle at top left, var(--accent-ghost), transparent 60%), var(--bg-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.setup-form-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.setup-form-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.setup-form-input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-0);
+  background: var(--bg-1);
+  border: 1px solid var(--bg-4);
+}
+
+.setup-form-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.setup-form-choices,
+.setup-form-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.setup-form-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-1);
+}
+
+.setup-form-error {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--danger);
+}
+
 .setup-visually-hidden {
   position: absolute;
   width: 1px;
