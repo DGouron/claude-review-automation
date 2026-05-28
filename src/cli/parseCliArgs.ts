@@ -169,8 +169,14 @@ function parseValidateArgs(args: string[]): ValidateArgs {
   };
 }
 
+function isPositionalPath(arg: string, index: number, args: string[]): boolean {
+  if (arg.startsWith('-')) return false;
+  if (arg === 'setup') return false;
+  return index === 0 || args[index - 1] !== '--path';
+}
+
 function parseSetupArgs(args: string[]): SetupArgs {
-  const positional = args.find((arg, index) => !arg.startsWith('-') && arg !== 'setup' && (index === 0 || args[index - 1] !== '--path'));
+  const positional = args.find((arg, index) => isPositionalPath(arg, index, args));
   const flagPath = getFlagValue(args, '--path');
   return {
     command: 'setup',
