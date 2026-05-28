@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.29.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.28.0...reviewflow-v3.29.0) (2026-05-28)
+
+
+### Added
+
+* **dashboard:** SPEC-189 Ember read-only review chat (Phase A) ([#244](https://github.com/DGouron/review-flow/issues/244)) ([4e0d5b9](https://github.com/DGouron/review-flow/commit/4e0d5b9bb37a68cc2c91454412a35ce34107f1ed))
+
+
+### Fixed
+
+* **docs:** unblock vitepress build and refresh setup-wizard docs ([83ce3bb](https://github.com/DGouron/review-flow/commit/83ce3bbbea6e80851742c8af08cfbb912bdc66d5))
+* **docs:** unblock vitepress build and refresh setup-wizard docs ([fc5896d](https://github.com/DGouron/review-flow/commit/fc5896d14cc378d51bf17c9f51ebc01360cbc6bb))
+
 ## [3.28.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.27.0...reviewflow-v3.28.0) (2026-05-28)
 
 
