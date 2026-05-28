@@ -1,6 +1,9 @@
 ---
 title: "SPEC-184: Setup Wizard Dashboard — Jarvis HUD"
-status: implemented
+status: partially-implemented
+iterations:
+  A: implemented
+  B: deferred
 milestone: Setup Wizard Jarvis
 depends_on:
   - "183-setup-wizard-cli-orchestrator"
@@ -10,11 +13,14 @@ related:
 
 # SPEC-184: Setup Wizard Dashboard — Jarvis HUD
 
-## Status: implemented (Iteration A)
+## Status: implemented — Iteration A only (B deferred)
 
-Iteration A (read-only live view) is implemented. The interactive forms / stdin duplex
-(Iteration B) is deferred — it requires a SPEC-183 change (a `PromptStdinJsonGateway` so
-`--json` mode reads answers from stdin instead of the TTY). See
+**Iteration A** (read-only live view) is implemented and on master (PR #235). **Iteration B**
+(interactive forms + `POST /api/setup/input` + stdin duplex) is **deferred**: it is blocked by
+[SPEC-187](187-setup-wizard-json-stdin-input.md) — the CLI must first read answers from stdin
+in `--json` mode (today it still uses a TTY prompt). Items from the DoD not yet delivered:
+`POST /api/setup/input` + forms (B), real Lottie animations (CSS used instead), visual-regression
+tests, and full multi-tab completion broadcast. See
 [implementation report](../reports/184-setup-wizard-dashboard-jarvis.report.md) and
 [plan](../plans/184-setup-wizard-dashboard-jarvis.plan.md).
 
