@@ -1,6 +1,6 @@
 ---
 title: "SPEC-189: Ask Ember about your reviews (read-only chat)"
-status: drafted
+status: implemented
 milestone: Ember Assistant
 depends_on:
   - "188-setup-wizard-wireframe-avatar"
@@ -15,6 +15,44 @@ related:
 ---
 
 # SPEC-189: Ask Ember about your reviews (read-only chat)
+
+## Status: implemented
+
+Streaming variant (progressive chunks) shipped per the user's decision. See
+[plan](../plans/189-ember-readonly-review-chat.plan.md). The real conversational
+claude transport ships as untested humble glue behind a port — see the
+manual-verification follow-ups below.
+
+## Implementation
+
+New module `src/modules/ember-chat/` (modular-monolith layout), reusing existing read paths, the SSE+registry+long-lived-process pattern (SPEC-184), the avatar (SPEC-188), and the no-API-key billing guard (SPEC-169).
+
+### Artefacts
+- **Entities** — `emberSessionState` (pure idle/live lifecycle state machine), `emberMessage` schema + guard (empty-input rejection at the HTTP boundary), `emberTool.gateway` (`EmberReadDataGateway` port — four read methods, zero write methods, so read-only is compile-enforced), `emberSessionTransport.gateway` (conversational transport port).
+- **Service** — `emberSystemPrompt` (pure builder of the grounding + read-only + Phase-B-decline directives, French).
+- **Use cases** — `emberSessionRegistry` (single shared session: ensure-live / reuse / transparent-revive / idle-release + status fan-out), `askEmber` (no-API-key guard + registry orchestration).
+- **Gateways** — `emberReadData.composite.gateway` (thin façade delegating to the four existing read gateways: stats / insights / tracking / worktree), `emberSessionTransport.claude.gateway` (**real conversational claude transport — humble glue, not unit-tested**).
+- **Presenter** — `emberStatus.presenter` (lifecycle/event → avatar state + French a11y live-region text + unavailable message).
+- **Controller** — `emberChat.routes` (`POST /api/ember/ask`, `GET /api/ember/stream`).
+- **View** — `src/dashboard/modules/emberChat.js` (pure decisions + humble `connectEmberStream`; drives the reused `mountSetupWizardAvatar`). Panel markup + CSS added to the existing dashboard shell.
+
+### Endpoints
+| Method | Route | Use case |
+|--------|-------|----------|
+| POST | `/api/ember/ask` | `askEmber` (guard → API-key check → ensure session live → start/continue thread) |
+| GET | `/api/ember/stream` | SSE pipe: `chunk` (streamed answer) / `status` (idle\|working, drives avatar + a11y) / `error` (French unavailable) / `end` |
+
+### Decisions
+- **Read-only enforced structurally**, not just by prompt: the `EmberReadDataGateway` port exposes no write method, so a write path cannot compile.
+- **One shared Ember per machine**, single conversation thread; consecutive questions reuse one transport handle (no per-message cold start); after an inactivity timeout the next question transparently revives it (idle default 5 min, tick 30 s — conservative, tune after observing real cold-start cost).
+- **Streaming** shipped (progressive chunk events folded client-side; avatar stays `working` during, `idle` on done).
+- The real claude transport is **untested humble glue** behind a port + fully-controllable stub; every layer above it is unit-tested against the stub, and the acceptance test runs on the stub (no real claude process in CI).
+- The four reads are reached via a read allowlist over the same on-disk review-data files the composite gateway reads; exposing them as dedicated read-only MCP tools was deferred to stay within file budget (composite gateway remains the read-only source of truth either way).
+
+### Manual-verification follow-ups
+- Confirm the `claude` CLI keeps a resumable conversational thread across turns in the chosen `--input-format stream-json --output-format stream-json` shape; if it differs, only `extractText` / `isTurnComplete` in the transport gateway need adjusting.
+- Confirm the read tools actually reach the live session; decide MCP-tool exposure vs the current in-process read allowlist.
+- Drive the chat end-to-end in a browser (markup/CSS/`connectEmberStream` are humble, browser-only glue).
 
 ## Context
 

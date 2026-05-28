@@ -114,6 +114,25 @@
         <span id="config-status" class="config-status hidden"></span>
 
         <section id="worktree-section" aria-label="Worktree pool"></section>
+
+        <section id="ember-chat-panel" class="ember-chat-panel" aria-label="Ember">
+          <div class="ember-chat-panel__header">
+            <span class="ember-chat-panel__prefix">// EMBER</span>
+            <canvas id="ember-avatar" class="ember-chat-panel__avatar" width="72" height="72" aria-hidden="true"></canvas>
+          </div>
+          <output id="ember-answer" class="ember-chat-panel__answer" aria-live="polite"></output>
+          <div id="ember-status" class="ember-chat-panel__status" role="status" aria-live="polite"></div>
+          <button type="button" id="ember-retry" class="ember-chat-panel__retry" hidden>// RÉESSAYER</button>
+          <form id="ember-form" class="ember-chat-panel__form" autocomplete="off">
+            <label class="visually-hidden" for="ember-question">Posez une question à Ember</label>
+            <input
+              type="text"
+              id="ember-question"
+              class="ember-chat-panel__input"
+              placeholder="Posez une question sur vos reviews…"
+            />
+          </form>
+        </section>
       </aside>
 
       <main class="dashboard-main">
@@ -429,6 +448,8 @@
       buildHeaderCapacityViewModel,
       renderHeaderCapacityBadgeHtml,
     } from './modules/headerCapacityBadge.js';
+    import { connectEmberStream, shouldSendQuestion } from './modules/emberChat.js';
+    import { mountSetupWizardAvatar } from './modules/setupWizardAvatarRenderer.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -3838,6 +3859,45 @@
       }).catch(() => {});
     });
 
+    // Ember read-only chat (SPEC-189). The pure decisions + SSE fold live in
+    // emberChat.js; this humble init just binds DOM and the reused avatar.
+    function initEmberChat() {
+      const form = document.getElementById('ember-form');
+      const input = document.getElementById('ember-question');
+      const answer = document.getElementById('ember-answer');
+      const status = document.getElementById('ember-status');
+      const retry = document.getElementById('ember-retry');
+      const canvas = document.getElementById('ember-avatar');
+      if (!form || !input || !answer || !status || !canvas) return;
+
+      const avatar = mountSetupWizardAvatar({ canvas, initialState: 'idle' });
+
+      const ask = async () => {
+        const question = input.value;
+        if (!shouldSendQuestion(question)) {
+          input.focus();
+          return;
+        }
+        answer.textContent = '';
+        status.textContent = '';
+        retry.hidden = true;
+        await connectEmberStream({
+          question,
+          onAnswer: (text) => { answer.textContent = text; },
+          onAvatarState: (state) => avatar.setState(state),
+          onAnnounce: (text) => { status.textContent = text; },
+          onRetryVisible: (visible) => { retry.hidden = !visible; },
+        });
+        input.focus();
+      };
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void ask();
+      });
+      retry.addEventListener('click', () => { void ask(); });
+    }
+
     // Boot animations & observers exactly once, regardless of readyState timing
     let __animationsBooted = false;
     function bootOnce() {
@@ -3845,6 +3905,7 @@
       __animationsBooted = true;
       bootAnimations();
       observeCounters();
+      initEmberChat();
     }
     if (document.readyState !== 'loading') {
       bootOnce();
