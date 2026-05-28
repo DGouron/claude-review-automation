@@ -49,15 +49,6 @@ describe('degradedReasonSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts missing-build-artifacts with expectedPath', () => {
-    const result = degradedReasonSchema.safeParse({
-      kind: 'missing-build-artifacts',
-      expectedPath: '/tmp/worktrees/foo/node_modules',
-    });
-
-    expect(result.success).toBe(true);
-  });
-
   it('rejects an unknown kind', () => {
     const result = degradedReasonSchema.safeParse({ kind: 'unknown-disaster' });
 

@@ -109,14 +109,8 @@ function describeReason(reason: DegradedReason): { label: string; action: string
       action: 'Cleanup forcé recommandé',
     };
   }
-  if (reason.kind === 'unresolved-conflict') {
-    return {
-      label: 'Conflit git non résolu',
-      action: 'Cleanup forcé recommandé',
-    };
-  }
   return {
-    label: 'Artefacts de build manquants',
+    label: 'Conflit git non résolu',
     action: 'Cleanup forcé recommandé',
   };
 }

@@ -114,7 +114,6 @@ async function buildAcceptanceApp(options: BuildAppOptions): Promise<AcceptanceA
     mtime: new Date(NOW.getTime() - 60 * 1000),
     orphanLock: null,
     unresolvedConflict: false,
-    missingBuildArtifacts: { missing: false, expectedPath: '' },
   };
   healthProbe.setDefault(fallbackSignals);
 
@@ -168,7 +167,6 @@ describe('Acceptance — SPEC-175: Worktree Failure Visibility & Force-Cleanup',
         mtime: staleMtime,
         orphanLock: null,
         unresolvedConflict: false,
-        missingBuildArtifacts: { missing: false, expectedPath: '' },
       };
       const signalsByPath = new Map<string, HealthSignals>([[stalePath, signals]]);
 
@@ -212,7 +210,6 @@ describe('Acceptance — SPEC-175: Worktree Failure Visibility & Force-Cleanup',
         mtime: staleMtime,
         orphanLock: null,
         unresolvedConflict: false,
-        missingBuildArtifacts: { missing: false, expectedPath: '' },
       };
       const signalsByPath = new Map<string, HealthSignals>([[path, signals]]);
 
@@ -256,7 +253,6 @@ describe('Acceptance — SPEC-175: Worktree Failure Visibility & Force-Cleanup',
         mtime: staleMtime,
         orphanLock: null,
         unresolvedConflict: false,
-        missingBuildArtifacts: { missing: false, expectedPath: '' },
       };
       const signalsByPath = new Map<string, HealthSignals>([[path, signals]]);
 
@@ -302,7 +298,6 @@ describe('Acceptance — SPEC-175: Worktree Failure Visibility & Force-Cleanup',
         mtime: staleMtime,
         orphanLock: null,
         unresolvedConflict: false,
-        missingBuildArtifacts: { missing: false, expectedPath: '' },
       };
       const signalsByPath = new Map<string, HealthSignals>([[path, signals]]);
 
@@ -351,7 +346,6 @@ describe('Acceptance — SPEC-175: Worktree Failure Visibility & Force-Cleanup',
           mtime: staleMtime,
           orphanLock: null,
           unresolvedConflict: false,
-          missingBuildArtifacts: { missing: false, expectedPath: '' },
         });
       }
 

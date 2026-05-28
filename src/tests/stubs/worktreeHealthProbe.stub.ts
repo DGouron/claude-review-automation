@@ -26,7 +26,6 @@ export class StubWorktreeHealthProbeGateway implements WorktreeHealthProbeGatewa
       mtime: entry.mtime,
       orphanLock: null,
       unresolvedConflict: false,
-      missingBuildArtifacts: { missing: false, expectedPath: '' },
     };
   }
 }

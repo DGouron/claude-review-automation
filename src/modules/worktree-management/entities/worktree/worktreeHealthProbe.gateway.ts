@@ -6,16 +6,10 @@ export interface OrphanLockSignal {
   ageMs: number;
 }
 
-export interface MissingArtifactsSignal {
-  missing: boolean;
-  expectedPath: string;
-}
-
 export interface HealthSignals {
   mtime: Date;
   orphanLock: OrphanLockSignal | null;
   unresolvedConflict: boolean;
-  missingBuildArtifacts: MissingArtifactsSignal;
 }
 
 export interface WorktreeHealthProbeGateway {

@@ -6,16 +6,22 @@
 
 ---
 
+## Amendment (2026-05-28)
+
+The `missing-build-artifacts` degraded state was **removed**. Review worktrees are created via `git worktree add` with no dependency install step — they never carry `node_modules` because a code review reads source, it does not build. The signal therefore flagged every freshly created worktree as degraded ("Artefacts de build manquants" / "Cleanup forcé recommandé"), a 100% false positive. The three remaining signals (`stale`, `orphan-git-lock`, `unresolved-conflict`) are genuine stuck-worktree conditions and are kept. References to the removed signal below are struck through for historical context.
+
+---
+
 ## Implementation
 
 See `docs/reports/175-worktree-failure-visibility.report.md` for the full implementation report.
 
 ### Artefacts
 
-- **Entities**: `WorktreeHealth` discriminated union (`healthy` | `degraded` with `DegradedReason` of kind `stale` | `orphan-git-lock` | `unresolved-conflict` | `missing-build-artifacts`), `WorktreeHealthReport`, `WorktreeHealthProbeGateway` contract.
+- **Entities**: `WorktreeHealth` discriminated union (`healthy` | `degraded` with `DegradedReason` of kind `stale` | `orphan-git-lock` | `unresolved-conflict`), `WorktreeHealthReport`, `WorktreeHealthProbeGateway` contract.
 - **Use cases**: `detectDegradedWorktrees` (ordered first-match detection), `removeWorktree` extended with `force?: boolean` for registry-only cleanup when FS path is absent.
 - **Services**: `InMemoryForceCleanupLockService` (concurrency guard keyed by `${platform}:${projectPath}:${mrNumber}`).
-- **Gateways**: `WorktreeHealthProbeFileSystemGateway` (resolves worktree-local `.git` pointer → `<main-repo>/.git/worktrees/<name>/`, probes `index.lock`/`HEAD.lock` ages, runs `git status --porcelain=v1` for unresolved conflicts, `existsSync(<worktree>/node_modules)` for build artifacts).
+- **Gateways**: `WorktreeHealthProbeFileSystemGateway` (resolves worktree-local `.git` pointer → `<main-repo>/.git/worktrees/<name>/`, probes `index.lock`/`HEAD.lock` ages, runs `git status --porcelain=v1` for unresolved conflicts).
 - **Presenter**: `worktreePanel.presenter.ts` extended with `degradedCount` + `degraded[]` carrying French user-facing reason labels and ready-to-POST cleanup payloads.
 - **Controller**: `worktreeOverview.routes.ts` extended (GET payload + new POST endpoint).
 - **View**: `dashboard/modules/worktreePanel.js` gains `renderDegradedAlerts` and `triggerForceCleanup`; `index.html` binds the click handlers; `styles.css` adds the alert chrome.
@@ -50,7 +56,7 @@ The dashboard needs to (1) flag degraded worktrees explicitly and (2) offer a fo
 ## Rules
 
 - A worktree in a degraded state must display a visual alert in the dashboard worktree panel
-- Detected degraded states: stale (inactive beyond threshold), orphan git lock, unresolved git conflict, missing build artifacts
+- Detected degraded states: stale (inactive beyond threshold), orphan git lock, unresolved git conflict
 - Stale threshold is configurable (default: 24h)
 - Each degraded worktree shows: reason, detection timestamp, recommended action
 - Force-cleanup action removes the worktree from filesystem AND from git worktree registry (`git worktree prune`)
@@ -67,7 +73,7 @@ The dashboard needs to (1) flag degraded worktrees explicitly and (2) offer a fo
 - stale detected: {state: "active", lastActivity: "26h", staleThreshold: "24h"} → status "stale" + alert "Worktree inactif depuis 26h"
 - orphan git lock: {gitLockPresent: true, lockAge: "2h"} → status "degraded" + alert "Lock git orphelin depuis 2h"
 - unresolved git conflict: {gitStatus: "conflict"} → status "degraded" + alert "Conflit git non résolu"
-- missing build artifacts: {buildArtifactsPresent: false} → status "degraded" + alert "Artefacts de build manquants"
+- ~~missing build artifacts: {buildArtifactsPresent: false} → status "degraded" + alert "Artefacts de build manquants"~~ (removed 2026-05-28 — false positive on every review worktree)
 - force-cleanup success: {worktree: "stale", action: "force-cleanup"} → removed + log entry "Force cleanup (raison : inactif 26h)"
 - force-cleanup failure: {worktree: "stale", action: "force-cleanup", filesystemError: "EACCES"} → reject "Cleanup échoué : permission refusée" + alert preserved + failure log entry
 - force-cleanup already running: {worktree: "stale", action: "force-cleanup", inProgress: true} → reject "Cleanup déjà en cours sur ce worktree"
@@ -93,9 +99,8 @@ The dashboard needs to (1) flag degraded worktrees explicitly and (2) offer a fo
 |------|------------|
 | Worktree | Working directory created via `git worktree add` and used as the isolated checkout for a single MR review |
 | Stale | A worktree whose last activity timestamp is older than the configured threshold (default 24h) |
-| Degraded | A worktree in a state preventing its normal lifecycle: stale, orphan lock, conflict, or missing build artifacts |
+| Degraded | A worktree in a state preventing its normal lifecycle: stale, orphan lock, or conflict |
 | Force-cleanup | An operator-triggered removal of a worktree that bypasses the normal lifecycle checks |
-| Build artifacts | The files produced by the project's build (e.g., `node_modules`, `dist`) whose absence indicates an interrupted setup |
 
 ---
 

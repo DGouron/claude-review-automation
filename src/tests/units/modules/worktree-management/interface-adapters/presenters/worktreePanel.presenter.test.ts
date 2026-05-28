@@ -411,30 +411,6 @@ describe('WorktreePanelPresenter', () => {
       expect(row?.reasonLabel).toBe('Conflit git non résolu');
     });
 
-    it('formats missing-build-artifacts with a static French label', async () => {
-      const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/no-deps', mrNumber: 7 };
-      const path = '/tmp/worktrees/gitlab-group-no-deps-7';
-      const entry = buildEntry(identity, new Date(NOW.getTime() - 60_000), path);
-      const report: WorktreeHealthReport = {
-        entry,
-        health: WorktreeHealthFactory.missingArtifacts({
-          expectedPath: `${path}/node_modules`,
-          detectedAt: NOW,
-        }),
-      };
-
-      const viewModel = await presenter.present({
-        worktrees: [entry],
-        lastSweep: null,
-        nextSweepAt: NOW,
-        healthReports: [report],
-      });
-
-      const row = viewModel.degraded[0];
-      expect(row?.reasonCode).toBe('missing-build-artifacts');
-      expect(row?.reasonLabel).toBe('Artefacts de build manquants');
-    });
-
     it('excludes healthy reports from the degraded list', async () => {
       const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group/healthy', mrNumber: 8 };
       const path = '/tmp/worktrees/gitlab-group-healthy-8';

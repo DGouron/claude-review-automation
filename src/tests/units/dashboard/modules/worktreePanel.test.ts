@@ -36,7 +36,7 @@ interface DegradedRowFactoryOverrides {
   platform?: 'gitlab' | 'github';
   projectPath?: string;
   path?: string;
-  reasonCode?: 'stale' | 'orphan-git-lock' | 'unresolved-conflict' | 'missing-build-artifacts';
+  reasonCode?: 'stale' | 'orphan-git-lock' | 'unresolved-conflict';
   reasonLabel?: string;
   detectedAtIso?: string;
   recommendedAction?: string;
