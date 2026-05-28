@@ -1,7 +1,7 @@
 # Report — SPEC-91 Dashboard Multi-Project Overview
 
 - **Spec**: [`docs/specs/91-dashboard-multi-project-overview.md`](../specs/91-dashboard-multi-project-overview.md)
-- **Plan**: [`docs/plans/91-dashboard-multi-project-overview.plan.md`](../plans/91-dashboard-multi-project-overview.plan.md)
+- **Plan**: _not persisted_
 - **Status**: implemented
 - **Date**: 2026-05-25
 - **Effort**: ~2 AI-days (matches estimate)

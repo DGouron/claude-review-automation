@@ -185,7 +185,7 @@ A single `reviewflow setup` command must replace this fragmented experience with
 
 ### Step 10 — Display next actions
 
-- nominal end: {all steps: ok} → output "Configurez le webhook sur <platform>: URL=http://YOUR_HOST:PORT/webhooks/<platform>, Secret=<masked>, Events=<event-type>"
+- nominal end: {all steps: ok} → output "Configurez le webhook sur `<platform>`: URL=http://YOUR_HOST:PORT/webhooks/`<platform>`, Secret=`<masked>`, Events=`<event-type>`"
 - with --show-secrets: {flag: --show-secrets} → show full secret value in output
 
 ### JSON event stream mode

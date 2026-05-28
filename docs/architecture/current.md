@@ -73,6 +73,7 @@ src/
 │   ├── token-accounting/                          # Token usage + budget cap
 │   ├── statistics-insights/                       # Stats recalculation + developer insights
 │   ├── cli-configuration/                         # init, validate, discover commands
+│   ├── setup-wizard/                              # Interactive `reviewflow setup`: deps check, daemon install, file generation, registration
 │   ├── data-lifecycle/                            # Periodic cleanup of stale tracking data
 │   └── shared-kernel/                             # Cross-module shared types (diff stats, ...)
 │

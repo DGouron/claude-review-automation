@@ -148,7 +148,7 @@ No NEW domain entity is required. The wizard event shapes are already implicitly
       SSE is implemented via Fastify `reply.raw` (Node http.ServerResponse) since the
       project has no SSE helper. Controller contains ZERO presentation logic: it forwards
       validated raw events; the browser humble object maps status→visuals. Follows the
-      typed-options DI pattern of every existing *.routes.ts (FastifyPluginAsync<Options>).
+      typed-options DI pattern of every existing *.routes.ts (`FastifyPluginAsync<Options>`).
 
 ---
 
@@ -329,7 +329,7 @@ faithfully requires a SPEC-183 change first.
   - src/main/websocket.ts — confirms project uses WS not SSE (R5) [VERIFIED]
   - src/shared/services/daemonSpawner.ts — node:child_process.spawn pattern to mirror [VERIFIED]
   - src/main/routes.ts — composition root + @fastify/static + redirect pattern [VERIFIED]
-  - src/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.ts — FastifyPluginAsync<Options> route + zod boundary pattern [VERIFIED]
+  - src/modules/worktree-management/interface-adapters/controllers/http/worktreeOverview.routes.ts — `FastifyPluginAsync<Options>` route + zod boundary pattern [VERIFIED]
   - src/modules/worktree-management/interface-adapters/controllers/http/...routes.test.ts — route test via Fastify pattern [VERIFIED]
   - src/dashboard/styles.css :root — real design tokens (R6) [VERIFIED]
   - src/dashboard/modules/worktreePanel.js + tabBar.js — humble-object JSDoc/style for browser views [VERIFIED]

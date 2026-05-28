@@ -19,7 +19,7 @@ credentials-file: /home/YOUR_USER/.cloudflared/YOUR_TUNNEL_ID.json
 ingress:
   # Route your domain to the local server
   - hostname: review.your-domain.com
-    service: http://localhost:3000
+    service: http://localhost:3847
 
   # Catch-all for unmatched requests
   - service: http_status:404
