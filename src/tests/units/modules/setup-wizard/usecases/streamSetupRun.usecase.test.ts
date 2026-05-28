@@ -81,4 +81,40 @@ describe('SetupRunRegistry', () => {
 
     expect(registry.hasActiveRun()).toBe(true);
   });
+
+  it('writes a submitted input line to the active run stdin', () => {
+    const started = registry.start({ projectPath: null });
+    const runId = started.status === 'started' ? started.runId : '';
+
+    const result = registry.submitInput(runId, '/home/u/api');
+
+    expect(result.status).toBe('written');
+    expect(gateway.writtenLines).toEqual(['/home/u/api']);
+  });
+
+  it('rejects input for an unknown run id', () => {
+    registry.start({ projectPath: null });
+
+    const result = registry.submitInput('unknown-run', '/home/u/api');
+
+    expect(result.status).toBe('no-active-run');
+    expect(gateway.writtenLines).toEqual([]);
+  });
+
+  it('rejects input when no run has started', () => {
+    const result = registry.submitInput('any', '/home/u/api');
+
+    expect(result.status).toBe('no-active-run');
+  });
+
+  it('rejects input after the active run has exited', () => {
+    const started = registry.start({ projectPath: null });
+    const runId = started.status === 'started' ? started.runId : '';
+    gateway.exit(0);
+
+    const result = registry.submitInput(runId, '/home/u/api');
+
+    expect(result.status).toBe('no-active-run');
+    expect(gateway.writtenLines).toEqual([]);
+  });
 });

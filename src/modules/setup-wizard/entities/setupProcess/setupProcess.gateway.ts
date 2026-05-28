@@ -4,6 +4,7 @@ export type SetupProcessExitHandler = (code: number | null) => void;
 export interface SetupProcessHandle {
   onLine(handler: SetupProcessLineHandler): void;
   onExit(handler: SetupProcessExitHandler): void;
+  writeLine(line: string): void;
   kill(): void;
   readonly pid: number | null;
 }

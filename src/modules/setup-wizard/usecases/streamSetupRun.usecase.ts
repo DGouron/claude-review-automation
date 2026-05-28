@@ -14,6 +14,8 @@ export type StartSetupRunResult =
   | { status: 'started'; runId: string }
   | { status: 'already-active'; runId: string };
 
+export type SubmitInputResult = { status: 'written' } | { status: 'no-active-run' };
+
 interface ActiveRun {
   runId: string;
   handle: SetupProcessHandle;
@@ -81,6 +83,16 @@ export class SetupRunRegistry {
     return () => {
       run.subscribers.delete(subscriber);
     };
+  }
+
+  submitInput(runId: string, line: string): SubmitInputResult {
+    const run = this.activeRun;
+    if (run === null || run.runId !== runId || run.exited) {
+      return { status: 'no-active-run' };
+    }
+
+    run.handle.writeLine(line);
+    return { status: 'written' };
   }
 
   hasActiveRun(): boolean {

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { stepIdSchema } from '@/modules/setup-wizard/entities/stepId/stepId.schema.js';
 import { stepOutcomeStatusSchema } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.schema.js';
+import {
+  promptKindSchema,
+  promptOptionSchema,
+} from '@/modules/setup-wizard/entities/promptOption/promptOption.schema.js';
 
 export const stepStartedEventSchema = z.object({
   step: stepIdSchema,
@@ -19,6 +23,9 @@ export const awaitingInputEventSchema = z.object({
   step: stepIdSchema,
   status: z.literal('awaiting_input'),
   prompt: z.string(),
+  kind: promptKindSchema,
+  options: z.array(promptOptionSchema),
+  defaultValue: z.string().nullable(),
 });
 
 export const instructionsBannerEventSchema = z.object({

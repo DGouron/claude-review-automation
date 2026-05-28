@@ -5,10 +5,17 @@ import { StubLineReader } from '@/tests/stubs/setup-wizard/lineReader.stub.js';
 import type { StepId } from '@/modules/setup-wizard/entities/stepId/stepId.schema.js';
 import type { StepOutcome } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.schema.js';
 import type { WizardEventEmitter } from '@/modules/setup-wizard/services/wizardEventEmitter.js';
+import type {
+  PromptKind,
+  PromptOption,
+} from '@/modules/setup-wizard/entities/promptOption/promptOption.schema.js';
 
 interface AwaitingEvent {
   stepId: StepId;
   prompt: string;
+  kind: PromptKind;
+  options: PromptOption[];
+  defaultValue: string | null;
 }
 
 class RecordingEmitter implements WizardEventEmitter {
@@ -17,8 +24,14 @@ class RecordingEmitter implements WizardEventEmitter {
 
   emitStepStarted(): void {}
   emitStepCompleted(_stepId: StepId, _outcome: StepOutcome): void {}
-  emitAwaitingInput(stepId: StepId, prompt: string): void {
-    this.awaiting.push({ stepId, prompt });
+  emitAwaitingInput(
+    stepId: StepId,
+    prompt: string,
+    kind: PromptKind,
+    options: PromptOption[],
+    defaultValue: string | null,
+  ): void {
+    this.awaiting.push({ stepId, prompt, kind, options, defaultValue });
   }
   emitInstructions(): void {}
   emitWarning(message: string): void {
@@ -61,7 +74,24 @@ describe('PromptStdinJsonGateway', () => {
 
       await gateway.askText('Project path?');
 
-      expect(emitter.awaiting).toEqual([{ stepId: 'add-project', prompt: 'Project path?' }]);
+      expect(emitter.awaiting).toEqual([
+        {
+          stepId: 'add-project',
+          prompt: 'Project path?',
+          kind: 'text',
+          options: [],
+          defaultValue: null,
+        },
+      ]);
+    });
+
+    it('forwards the text default value as the awaiting_input defaultValue', async () => {
+      const { gateway, emitter } = build({ lines: ['/home/u/api'] });
+
+      await gateway.askText('Project path?', '/home/u/default');
+
+      expect(emitter.awaiting[0].kind).toBe('text');
+      expect(emitter.awaiting[0].defaultValue).toBe('/home/u/default');
     });
 
     it('uses the default value when the line is empty', async () => {
@@ -98,6 +128,16 @@ describe('PromptStdinJsonGateway', () => {
       expect(await gateway.askConfirm('Continue?')).toBe(false);
     });
 
+    it('announces a confirm prompt with no options and no default', async () => {
+      const { gateway, emitter } = build({ lines: ['true'] });
+
+      await gateway.askConfirm('Continue?');
+
+      expect(emitter.awaiting[0].kind).toBe('confirm');
+      expect(emitter.awaiting[0].options).toEqual([]);
+      expect(emitter.awaiting[0].defaultValue).toBeNull();
+    });
+
     it('refuses a wrong-shape answer, re-announces, then accepts the next valid line', async () => {
       const { gateway, emitter } = build({ lines: ['"maybe"', 'true'] });
 
@@ -119,6 +159,16 @@ describe('PromptStdinJsonGateway', () => {
       const { gateway } = build({ lines: ['"backend"'] });
 
       expect(await gateway.askChoice('Preset?', choices)).toBe('backend');
+    });
+
+    it('announces a choice prompt carrying its offered options', async () => {
+      const { gateway, emitter } = build({ lines: ['"backend"'] });
+
+      await gateway.askChoice('Preset?', choices);
+
+      expect(emitter.awaiting[0].kind).toBe('choice');
+      expect(emitter.awaiting[0].options).toEqual(choices);
+      expect(emitter.awaiting[0].defaultValue).toBeNull();
     });
 
     it('refuses an unoffered choice, re-announces, then accepts the next valid line', async () => {
@@ -152,6 +202,16 @@ describe('PromptStdinJsonGateway', () => {
       const { gateway } = build({ lines: ['["solid","testing"]'] });
 
       expect(await gateway.askMultiSelect('Skills?', choices)).toEqual(['solid', 'testing']);
+    });
+
+    it('announces a multi-select prompt carrying its offered options', async () => {
+      const { gateway, emitter } = build({ lines: ['["solid"]'] });
+
+      await gateway.askMultiSelect('Skills?', choices);
+
+      expect(emitter.awaiting[0].kind).toBe('multiSelect');
+      expect(emitter.awaiting[0].options).toEqual(choices);
+      expect(emitter.awaiting[0].defaultValue).toBeNull();
     });
 
     it('refuses a selection with an unknown value, re-announces, then accepts the next valid line', async () => {

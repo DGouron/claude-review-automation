@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { ChildProcessByStdio } from 'node:child_process';
-import type { Readable } from 'node:stream';
+import type { Readable, Writable } from 'node:stream';
 import type {
   SetupProcessExitHandler,
   SetupProcessGateway,
@@ -21,7 +21,7 @@ class ChildProcessSetupHandle implements SetupProcessHandle {
   private exitHandler: SetupProcessExitHandler | null = null;
   private buffer = '';
 
-  constructor(private readonly child: ChildProcessByStdio<null, Readable, Readable>) {
+  constructor(private readonly child: ChildProcessByStdio<Writable, Readable, Readable>) {
     this.child.stdout.setEncoding('utf-8');
     this.child.stdout.on('data', (chunk: string) => {
       this.consume(chunk);
@@ -45,6 +45,12 @@ class ChildProcessSetupHandle implements SetupProcessHandle {
 
   onExit(handler: SetupProcessExitHandler): void {
     this.exitHandler = handler;
+  }
+
+  writeLine(line: string): void {
+    if (this.child.stdin.writable) {
+      this.child.stdin.write(`${line}\n`);
+    }
   }
 
   kill(): void {
@@ -83,7 +89,7 @@ export class SetupProcessChildProcessGateway implements SetupProcessGateway {
     }
 
     const child = spawn(process.execPath, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env },
     });
 

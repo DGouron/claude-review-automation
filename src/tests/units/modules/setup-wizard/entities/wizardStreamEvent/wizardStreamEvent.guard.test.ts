@@ -23,14 +23,43 @@ describe('wizardStreamEventGuard', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts an awaiting-input event', () => {
+  it('accepts a self-describing awaiting-input event with kind, options and defaultValue', () => {
     const result = wizardStreamEventGuard.safeParse({
       step: 'add-project',
       status: 'awaiting_input',
       prompt: 'Chemin du projet ?',
+      kind: 'text',
+      options: [],
+      defaultValue: '/home/u/api',
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it('accepts a choice awaiting-input event carrying its options', () => {
+    const result = wizardStreamEventGuard.safeParse({
+      step: 'pipeline',
+      status: 'awaiting_input',
+      prompt: 'Preset ?',
+      kind: 'choice',
+      options: [{ label: 'Backend', value: 'backend' }],
+      defaultValue: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an awaiting-input event with an unknown kind', () => {
+    const result = wizardStreamEventGuard.safeParse({
+      step: 'add-project',
+      status: 'awaiting_input',
+      prompt: 'Chemin du projet ?',
+      kind: 'slider',
+      options: [],
+      defaultValue: null,
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it('accepts an instructions banner event', () => {

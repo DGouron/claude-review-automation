@@ -16,10 +16,38 @@ describe('JsonWizardEventEmitter', () => {
   it('emits awaiting_input event with prompt text', () => {
     const lines: string[] = [];
     const emitter = new JsonWizardEventEmitter((line) => lines.push(line));
-    emitter.emitAwaitingInput('add-project', 'Chemin du projet ?');
+    emitter.emitAwaitingInput('add-project', 'Chemin du projet ?', 'text', [], null);
     const event: { step: string; status: string; prompt: string } = JSON.parse(lines[0]);
     expect(event.status).toBe('awaiting_input');
     expect(event.prompt).toBe('Chemin du projet ?');
+  });
+
+  it('emits a self-describing awaiting_input event with kind, options and defaultValue', () => {
+    const lines: string[] = [];
+    const emitter = new JsonWizardEventEmitter((line) => lines.push(line));
+    emitter.emitAwaitingInput(
+      'pipeline',
+      'Preset ?',
+      'choice',
+      [{ label: 'Backend', value: 'backend' }],
+      null,
+    );
+    const event: {
+      kind: string;
+      options: { label: string; value: string }[];
+      defaultValue: string | null;
+    } = JSON.parse(lines[0]);
+    expect(event.kind).toBe('choice');
+    expect(event.options).toEqual([{ label: 'Backend', value: 'backend' }]);
+    expect(event.defaultValue).toBeNull();
+  });
+
+  it('carries the text default value so the form can use it as a placeholder', () => {
+    const lines: string[] = [];
+    const emitter = new JsonWizardEventEmitter((line) => lines.push(line));
+    emitter.emitAwaitingInput('add-project', 'Chemin ?', 'text', [], '/home/u/api');
+    const event: { defaultValue: string | null } = JSON.parse(lines[0]);
+    expect(event.defaultValue).toBe('/home/u/api');
   });
 
   it('emits step status from outcome', () => {

@@ -1,9 +1,9 @@
 ---
 title: "SPEC-184: Setup Wizard Dashboard — Jarvis HUD"
-status: partially-implemented
+status: implemented
 iterations:
   A: implemented
-  B: deferred
+  B: implemented
 milestone: Setup Wizard Jarvis
 depends_on:
   - "183-setup-wizard-cli-orchestrator"
@@ -13,14 +13,15 @@ related:
 
 # SPEC-184: Setup Wizard Dashboard — Jarvis HUD
 
-## Status: implemented — Iteration A only (B deferred)
+## Status: implemented — Iteration A + Iteration B done
 
-**Iteration A** (read-only live view) is implemented and on master (PR #235). **Iteration B**
-(interactive forms + `POST /api/setup/input` + stdin duplex) is **deferred**: it is blocked by
-[SPEC-187](187-setup-wizard-json-stdin-input.md) — the CLI must first read answers from stdin
-in `--json` mode (today it still uses a TTY prompt). Items from the DoD not yet delivered:
-`POST /api/setup/input` + forms (B), real Lottie animations (CSS used instead), visual-regression
-tests, and full multi-tab completion broadcast. See
+**Iteration A** (read-only live view) shipped in PR #235. **SPEC-187** (stdin JSON input) unblocked
+the duplex. **Iteration B1** (backend) added `kind`/`options`/`defaultValue` to `awaiting_input`,
+writable subprocess stdin, and `POST /api/setup/input`. **Iteration B2** (frontend) added the
+interactive forms (`setupWizardForms.js`): render the form from the `awaiting_input` view-model and
+POST the answer. Accepted deviations / residual DoD items (not blocking the capability): real Lottie
+animations are replaced by CSS + `animejs`, visual-regression test tooling is not set up, and the
+multi-tab completion broadcast is partial. See
 [implementation report](../reports/184-setup-wizard-dashboard-jarvis.report.md) and
 [plan](../plans/184-setup-wizard-dashboard-jarvis.plan.md).
 
