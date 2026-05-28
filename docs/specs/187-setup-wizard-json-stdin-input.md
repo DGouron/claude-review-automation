@@ -1,6 +1,6 @@
 ---
 title: "SPEC-187: Read setup wizard answers from stdin in JSON mode"
-status: drafted
+status: implemented
 milestone: Setup Wizard Jarvis
 depends_on:
   - "183-setup-wizard-cli-orchestrator"
@@ -9,6 +9,25 @@ related:
 ---
 
 # SPEC-187: Read setup wizard answers from stdin in JSON mode
+
+## Status: implemented
+
+See [implementation report](../reports/187-setup-wizard-json-stdin-input.report.md) and [plan](../plans/187-setup-wizard-json-stdin-input.plan.md). This unblocks SPEC-184 Iteration B (dashboard `POST /api/setup/input` → subprocess stdin).
+
+## Implementation
+
+### Artefacts
+- **Entities**: `lineReader/lineReader.gateway.ts` (injectable stdin line-source port), `promptInputError/promptInputError.ts` (`AwaitingInputClosedError`, `NonInteractiveInputError`), `answerLine/answerLine.schema.ts` + `.guard.ts` (Zod validation of confirm/choice/multiSelect shapes).
+- **Gateway impl**: `prompt.stdinJson.gateway.ts` (`PromptStdinJsonGateway` implements `PromptGateway`: emits `awaiting_input`, reads one JSON line, validates against offered options, re-announces on refusal), `lineReader.stdin.gateway.ts` (prod `node:readline` over `process.stdin`).
+- **Orchestrator**: `orchestrateSetup.usecase.ts` sets `context.currentStepId` before each step and maps `AwaitingInputClosedError`/`NonInteractiveInputError` to `blocked` outcomes.
+- **Context**: `wizardContext.ts` gains `currentStepId: StepId | null`.
+- **Wiring**: `setup.command.ts` selects `PromptStdinJsonGateway` when `--json`, else `PromptTtyGateway`; adds a `buildLineReader` factory.
+
+### Decisions
+- The new gateway keeps the existing `PromptGateway` signatures unchanged; the current step id reaches it via an injected getter reading `context.currentStepId` (set by the orchestrator), so no step call-site changed.
+- EOF on stdin (`LineReader.read()` → `null`) throws a typed domain error that the orchestrator converts to a blocked `StepOutcome` (construction stays in the app layer).
+- Invalid/malformed/wrong-shape answers emit a `warning` and re-announce `awaiting_input` with no retry cap; tests stay terminable via a finite line feed.
+- Human (TTY) mode is unchanged — a regression test proves `json=false` builds `PromptTtyGateway` and never touches stdin.
 
 ## Context
 

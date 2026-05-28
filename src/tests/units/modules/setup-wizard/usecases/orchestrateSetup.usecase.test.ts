@@ -8,6 +8,10 @@ import type { SetupStateGateway, SetupStateLoadResult } from '@/modules/setup-wi
 import type { WizardContext } from '@/modules/setup-wizard/entities/wizardContext/wizardContext.js';
 import type { WizardEventEmitter } from '@/modules/setup-wizard/services/wizardEventEmitter.js';
 import { succeeded, blocked } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.js';
+import {
+  AwaitingInputClosedError,
+  NonInteractiveInputError,
+} from '@/modules/setup-wizard/entities/promptInputError/promptInputError.js';
 import { SetupStateFactory } from '@/tests/factories/setupState.factory.js';
 import { StubDependencyProbeGateway } from '@/tests/stubs/setup-wizard/dependencyProbe.stub.js';
 import { StubClaudeAuthGateway } from '@/tests/stubs/setup-wizard/claudeAuth.stub.js';
@@ -87,6 +91,7 @@ class RecordingStateGateway implements SetupStateGateway {
 function buildContext(emitter: WizardEventEmitter, stateGateway: SetupStateGateway, yes = false): WizardContext {
   return {
     state: null,
+    currentStepId: null,
     project: { localPath: '/tmp/p', platform: 'github', preset: 'backend', language: 'en', remoteUrl: null },
     flags: { path: '/tmp/p', json: false, force: false, ai: false, yes, showSecrets: false },
     gateways: {
@@ -208,6 +213,71 @@ describe('OrchestrateSetupUseCase', () => {
 
     expect(result.exitCode).toBe(1);
     expect(steps[1].executeCalls).toBe(0);
+  });
+
+  it('maps an AwaitingInputClosedError thrown by a step to a blocked outcome', async () => {
+    const emitter = new RecordingEmitter();
+    const stateGateway = new RecordingStateGateway({ state: null, corrupted: false });
+    const throwingStep: SetupStep = {
+      id: 'add-project',
+      title: 'Add project',
+      async detect() {
+        return null;
+      },
+      async execute() {
+        throw new AwaitingInputClosedError();
+      },
+    };
+
+    const result = await orchestrator.execute({ context: buildContext(emitter, stateGateway), steps: [throwingStep] });
+
+    expect(result.exitCode).toBe(1);
+    const outcome = result.finalState.steps['add-project'];
+    expect(outcome?.status).toBe('blocked');
+    expect(outcome?.message).toBe('Aucune réponse reçue, le setup est interrompu');
+  });
+
+  it('maps a NonInteractiveInputError thrown by a step to a blocked outcome', async () => {
+    const emitter = new RecordingEmitter();
+    const stateGateway = new RecordingStateGateway({ state: null, corrupted: false });
+    const throwingStep: SetupStep = {
+      id: 'add-project',
+      title: 'Add project',
+      async detect() {
+        return null;
+      },
+      async execute() {
+        throw new NonInteractiveInputError();
+      },
+    };
+
+    const result = await orchestrator.execute({ context: buildContext(emitter, stateGateway, true), steps: [throwingStep] });
+
+    expect(result.exitCode).toBe(2);
+    const outcome = result.finalState.steps['add-project'];
+    expect(outcome?.status).toBe('blocked');
+    expect(outcome?.message).toBe('Mode non-interactif : aucune entrée disponible pour cette étape');
+  });
+
+  it('exposes the current step id on the context while a step executes', async () => {
+    const emitter = new RecordingEmitter();
+    const stateGateway = new RecordingStateGateway({ state: null, corrupted: false });
+    let seen: StepId | null = null;
+    const observingStep: SetupStep = {
+      id: 'daemon',
+      title: 'Daemon',
+      async detect() {
+        return null;
+      },
+      async execute(context: WizardContext) {
+        seen = context.currentStepId;
+        return succeeded();
+      },
+    };
+
+    await orchestrator.execute({ context: buildContext(emitter, stateGateway), steps: [observingStep] });
+
+    expect(seen).toBe('daemon');
   });
 
   it('warns and starts fresh when the loaded state is corrupted', async () => {

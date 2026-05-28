@@ -23,6 +23,7 @@ function noopStateGateway(): SetupStateGateway {
 function buildContext(options: { projectConfig?: StubProjectConfigGateway; skillTemplate?: StubSkillTemplateGateway; force?: boolean } = {}): WizardContext {
   return {
     state: null,
+    currentStepId: null,
     project: { localPath: '/tmp/p', platform: 'github', preset: 'backend', language: 'en', remoteUrl: null },
     flags: { path: '/tmp/p', json: false, force: options.force ?? false, ai: false, yes: false, showSecrets: false },
     gateways: {

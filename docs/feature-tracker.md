@@ -53,4 +53,4 @@
 | Setup Wizard Dashboard (Jarvis HUD) | [184-setup-wizard-dashboard-jarvis](specs/184-setup-wizard-dashboard-jarvis.md) — [plan](plans/184-setup-wizard-dashboard-jarvis.plan.md) — [report](reports/184-setup-wizard-dashboard-jarvis.report.md) | partially-implemented (Iteration A) | 2026-05-28 |
 | Setup Wizard MCP agent fallback (deferred) | [185-setup-wizard-mcp-agent-fallback](specs/185-setup-wizard-mcp-agent-fallback.md) | drafted (deferred) | 2026-05-27 |
 | Cap parallel reviews per project | [186-per-project-concurrency-cap](specs/186-per-project-concurrency-cap.md) — [plan](plans/186-per-project-concurrency-cap.plan.md) — [report](reports/186-per-project-concurrency-cap.report.md) | implemented | 2026-05-27 |
-| Read setup wizard answers from stdin in JSON mode | [187-setup-wizard-json-stdin-input](specs/187-setup-wizard-json-stdin-input.md) | drafted | 2026-05-28 |
+| Read setup wizard answers from stdin in JSON mode | [187-setup-wizard-json-stdin-input](specs/187-setup-wizard-json-stdin-input.md) — [plan](plans/187-setup-wizard-json-stdin-input.plan.md) — [report](reports/187-setup-wizard-json-stdin-input.report.md) | implemented | 2026-05-28 |

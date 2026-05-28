@@ -102,6 +102,7 @@ describe('Acceptance — SPEC-183: Setup Wizard CLI orchestrator', () => {
       : new HumanWizardEventEmitter(() => undefined);
     return {
       state: null,
+      currentStepId: null,
       project: {
         localPath: projectPath,
         platform: null,

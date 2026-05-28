@@ -4,7 +4,11 @@ import type { StepOutcome } from '@/modules/setup-wizard/entities/stepOutcome/st
 import type { SetupStep } from '@/modules/setup-wizard/entities/setupStep/setupStep.js';
 import type { WizardContext } from '@/modules/setup-wizard/entities/wizardContext/wizardContext.js';
 import { createInitialState, markStep, findFirstIncomplete } from '@/modules/setup-wizard/entities/setupState/setupState.js';
-import { isFinalSuccess, isBlocking } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.js';
+import { isFinalSuccess, isBlocking, blocked } from '@/modules/setup-wizard/entities/stepOutcome/stepOutcome.js';
+import {
+  AwaitingInputClosedError,
+  NonInteractiveInputError,
+} from '@/modules/setup-wizard/entities/promptInputError/promptInputError.js';
 
 export interface OrchestrateSetupInput {
   context: WizardContext;
@@ -19,6 +23,20 @@ export interface OrchestrateSetupResult {
 }
 
 export class OrchestrateSetupUseCase {
+  private async runStep(step: SetupStep, context: WizardContext): Promise<StepOutcome> {
+    try {
+      return await step.execute(context);
+    } catch (error) {
+      if (error instanceof AwaitingInputClosedError) {
+        return blocked(error.message, 'Fournissez une réponse sur stdin ou relancez sans --json');
+      }
+      if (error instanceof NonInteractiveInputError) {
+        return blocked(error.message, 'Relancez sans -y pour répondre interactivement');
+      }
+      throw error;
+    }
+  }
+
   async execute(input: OrchestrateSetupInput): Promise<OrchestrateSetupResult> {
     const { context, steps } = input;
     const loadResult = context.gateways.setupState.load();
@@ -56,6 +74,7 @@ export class OrchestrateSetupUseCase {
         }
       }
 
+      context.currentStepId = step.id;
       context.emitter.emitStepStarted(step.id, step.title);
       const detected = await step.detect(context);
       let outcome: StepOutcome;
@@ -64,7 +83,7 @@ export class OrchestrateSetupUseCase {
       } else if (detected && isBlocking(detected)) {
         outcome = detected;
       } else {
-        outcome = await step.execute(context);
+        outcome = await this.runStep(step, context);
       }
       context.emitter.emitStepCompleted(step.id, outcome);
       state = markStep(state, step.id, outcome, context.now);
