@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.27.0...reviewflow-v3.28.0) (2026-05-28)
+
+
+### Added
+
+* **dashboard:** setup wizard HUD (SPEC-184 iteration A) ([#235](https://github.com/DGouron/review-flow/issues/235)) ([3cc3755](https://github.com/DGouron/review-flow/commit/3cc3755f019573f869a133c7cd1aae7e1b355ad4))
+* **dashboard:** spec-188 wizard wireframe avatar (phase 1) ([#240](https://github.com/DGouron/review-flow/issues/240)) ([98b0bfd](https://github.com/DGouron/review-flow/commit/98b0bfd5d1bf6227ddcb47595ae2d9ffec5f42cc))
+* **setup-wizard:** SPEC-183 setup wizard CLI orchestrator ([#233](https://github.com/DGouron/review-flow/issues/233)) ([4d9d0d3](https://github.com/DGouron/review-flow/commit/4d9d0d3be624a7c63d92d4e422f1e58515aeed4e))
+* **setup-wizard:** SPEC-184 Iteration B — dashboard wizard interactive forms ([#238](https://github.com/DGouron/review-flow/issues/238)) ([806515b](https://github.com/DGouron/review-flow/commit/806515b4a69efbfaf8022185e545393dc7525623))
+* **setup-wizard:** SPEC-187 read wizard answers from stdin in JSON mode ([#237](https://github.com/DGouron/review-flow/issues/237)) ([8476550](https://github.com/DGouron/review-flow/commit/8476550edbfce72743e882e2c4a907d60c5ab9a4))
+
+
+### Fixed
+
+* **worktree:** drop false-positive missing-build-artifacts signal ([#239](https://github.com/DGouron/review-flow/issues/239)) ([41a3a79](https://github.com/DGouron/review-flow/commit/41a3a79b5bec924f895ebfa35197d003fde95dd3))
+
 ## [3.27.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.26.0...reviewflow-v3.27.0) (2026-05-27)
 
 
