@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **setup-wizard:** SPEC-184 Iteration B — dashboard wizard interactive forms ([#238](https://github.com/DGouron/review-flow/issues/238)) ([806515b](https://github.com/DGouron/review-flow/commit/806515b4a69efbfaf8022185e545393dc7525623))
 * **setup-wizard:** SPEC-187 read wizard answers from stdin in JSON mode ([#237](https://github.com/DGouron/review-flow/issues/237)) ([8476550](https://github.com/DGouron/review-flow/commit/8476550edbfce72743e882e2c4a907d60c5ab9a4))
 
+
+### Fixed
+
+* **worktree:** drop false-positive missing-build-artifacts signal ([#239](https://github.com/DGouron/review-flow/issues/239)) ([41a3a79](https://github.com/DGouron/review-flow/commit/41a3a79b5bec924f895ebfa35197d003fde95dd3))
+
 ## [3.27.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.26.0...reviewflow-v3.27.0) (2026-05-27)
 
 
