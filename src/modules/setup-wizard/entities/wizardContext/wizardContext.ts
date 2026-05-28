@@ -1,4 +1,5 @@
 import type { SetupState } from '@/modules/setup-wizard/entities/setupState/setupState.schema.js';
+import type { StepId } from '@/modules/setup-wizard/entities/stepId/stepId.schema.js';
 import type { ProjectContext } from '@/modules/setup-wizard/entities/projectContext/projectContext.schema.js';
 import type { SetupStateGateway } from '@/modules/setup-wizard/entities/setupState/setupState.gateway.js';
 import type { DependencyProbeGateway } from '@/modules/setup-wizard/entities/dependencyProbe/dependencyProbe.gateway.js';
@@ -42,6 +43,7 @@ export interface WizardGateways {
 
 export interface WizardContext {
   state: SetupState | null;
+  currentStepId: StepId | null;
   project: ProjectContext;
   flags: WizardFlags;
   gateways: WizardGateways;

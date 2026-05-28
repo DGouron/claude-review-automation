@@ -33,6 +33,7 @@ function buildContext(options: BuildOptions = {}): WizardContext {
   const platform = options.platform === undefined ? 'github' : options.platform;
   return {
     state: null,
+    currentStepId: null,
     project: { localPath: '/tmp/p', platform, preset: 'backend', language: 'en', remoteUrl: null },
     flags: { path: '/tmp/p', json: false, force: false, ai: false, yes: false, showSecrets: options.showSecrets ?? false },
     gateways: {

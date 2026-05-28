@@ -18,6 +18,8 @@ import { StubServerConfigGateway } from '@/tests/stubs/setup-wizard/serverConfig
 import { StubValidationGateway } from '@/tests/stubs/setup-wizard/validation.stub.js';
 import { StubAiFallbackGateway } from '@/tests/stubs/setup-wizard/aiFallback.stub.js';
 import { StubPromptGateway } from '@/tests/stubs/setup-wizard/prompt.stub.js';
+import { StubLineReader } from '@/tests/stubs/setup-wizard/lineReader.stub.js';
+import type { LineReader } from '@/modules/setup-wizard/entities/lineReader/lineReader.gateway.js';
 import { CheckDependenciesStep } from '@/modules/setup-wizard/usecases/steps/checkDependencies.step.js';
 import { ClaudeLoginStep } from '@/modules/setup-wizard/usecases/steps/claudeLogin.step.js';
 import { DaemonInstallStep } from '@/modules/setup-wizard/usecases/steps/daemonInstall.step.js';
@@ -29,7 +31,13 @@ import { RegisterProjectStep } from '@/modules/setup-wizard/usecases/steps/regis
 import { ValidateSetupStep } from '@/modules/setup-wizard/usecases/steps/validateSetup.step.js';
 import { DisplayNextActionsStep } from '@/modules/setup-wizard/usecases/steps/displayNextActions.step.js';
 
-function buildDependencies(rootDir: string, projectPath: string, log: (line: string) => void, exitCodes: number[]): SetupDependencies {
+function buildDependencies(
+  rootDir: string,
+  projectPath: string,
+  log: (line: string) => void,
+  exitCodes: number[],
+  buildLineReader: () => LineReader = () => new StubLineReader([]),
+): SetupDependencies {
   return {
     buildSteps: () => [
       new CheckDependenciesStep(),
@@ -60,6 +68,7 @@ function buildDependencies(rootDir: string, projectPath: string, log: (line: str
     }),
     buildEmitter: (args, write) =>
       args.json ? new JsonWizardEventEmitter(write) : new HumanWizardEventEmitter(write),
+    buildLineReader,
     resolveProjectPath: (args) => args.path ?? projectPath,
     log,
     exit: (code) => {
@@ -79,6 +88,47 @@ describe('executeSetup', () => {
       const args: SetupCliArgs = { path: projectPath, json: false, force: false, ai: false, yes: false, showSecrets: false };
       await executeSetup(args, buildDependencies(rootDir, projectPath, (line) => lines.push(line), exitCodes));
       expect(exitCodes).toEqual([0]);
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it('never builds a line reader in human (non-JSON) mode', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'reviewflow-setup-cmd-tty-'));
+    try {
+      const projectPath = join(rootDir, 'project');
+      const exitCodes: number[] = [];
+      let lineReaderBuilt = 0;
+      const args: SetupCliArgs = { path: projectPath, json: false, force: false, ai: false, yes: false, showSecrets: false };
+      const deps = buildDependencies(rootDir, projectPath, () => undefined, exitCodes, () => {
+        lineReaderBuilt++;
+        return new StubLineReader([]);
+      });
+
+      await executeSetup(args, deps);
+
+      expect(lineReaderBuilt).toBe(0);
+      expect(exitCodes).toEqual([0]);
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it('builds a line reader in --json mode', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'reviewflow-setup-cmd-json-reader-'));
+    try {
+      const projectPath = join(rootDir, 'project');
+      const exitCodes: number[] = [];
+      let lineReaderBuilt = 0;
+      const args: SetupCliArgs = { path: projectPath, json: true, force: false, ai: false, yes: false, showSecrets: false };
+      const deps = buildDependencies(rootDir, projectPath, () => undefined, exitCodes, () => {
+        lineReaderBuilt++;
+        return new StubLineReader([]);
+      });
+
+      await executeSetup(args, deps);
+
+      expect(lineReaderBuilt).toBe(1);
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }

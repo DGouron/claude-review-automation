@@ -24,11 +24,15 @@ import { ServerConfigFileSystemGateway } from '@/modules/setup-wizard/interface-
 import { ValidationAdapterGateway } from '@/modules/setup-wizard/interface-adapters/gateways/validation.adapter.gateway.js';
 import { AiFallbackNoopGateway } from '@/modules/setup-wizard/interface-adapters/gateways/aiFallback.noop.gateway.js';
 import { PromptTtyGateway } from '@/modules/setup-wizard/interface-adapters/gateways/prompt.tty.gateway.js';
+import { PromptStdinJsonGateway } from '@/modules/setup-wizard/interface-adapters/gateways/prompt.stdinJson.gateway.js';
+import { NodeStdinLineReader } from '@/modules/setup-wizard/interface-adapters/gateways/lineReader.stdin.gateway.js';
 import { HumanWizardEventEmitter } from '@/modules/setup-wizard/services/humanWizardEventEmitter.js';
 import { JsonWizardEventEmitter } from '@/modules/setup-wizard/services/jsonWizardEventEmitter.js';
 import type { SetupStep } from '@/modules/setup-wizard/entities/setupStep/setupStep.js';
 import type { WizardContext, WizardGateways } from '@/modules/setup-wizard/entities/wizardContext/wizardContext.js';
 import type { WizardEventEmitter } from '@/modules/setup-wizard/services/wizardEventEmitter.js';
+import type { PromptGateway } from '@/modules/setup-wizard/entities/prompt/prompt.gateway.js';
+import type { LineReader } from '@/modules/setup-wizard/entities/lineReader/lineReader.gateway.js';
 import { getConfigDir } from '@/shared/services/configDir.js';
 
 const DEFAULT_DAEMON_PORT = 3847;
@@ -47,10 +51,24 @@ export interface SetupDependencies {
   buildSteps: () => SetupStep[];
   buildGateways: (args: SetupCliArgs) => WizardGateways;
   buildEmitter: (args: SetupCliArgs, write: (line: string) => void) => WizardEventEmitter;
+  buildLineReader: () => LineReader;
   resolveProjectPath: (args: SetupCliArgs) => string | null;
   log: (line: string) => void;
   exit: (code: number) => void;
   now: () => Date;
+}
+
+function buildStdinPromptGateway(
+  emitter: WizardEventEmitter,
+  context: WizardContext,
+  deps: SetupDependencies,
+): PromptGateway {
+  return new PromptStdinJsonGateway({
+    lineReader: deps.buildLineReader(),
+    emitter,
+    currentStepId: () => context.currentStepId ?? 'dependencies',
+    isNonInteractive: () => context.flags.yes,
+  });
 }
 
 export async function executeSetup(args: SetupCliArgs, deps: SetupDependencies): Promise<void> {
@@ -60,6 +78,7 @@ export async function executeSetup(args: SetupCliArgs, deps: SetupDependencies):
 
   const context: WizardContext = {
     state: null,
+    currentStepId: null,
     project: {
       localPath: projectPath,
       platform: null,
@@ -79,6 +98,10 @@ export async function executeSetup(args: SetupCliArgs, deps: SetupDependencies):
     emitter,
     now: deps.now,
   };
+
+  if (args.json) {
+    context.gateways.prompt = buildStdinPromptGateway(emitter, context, deps);
+  }
 
   const orchestrator = new OrchestrateSetupUseCase();
   const result = await orchestrator.execute({ context, steps: deps.buildSteps() });
@@ -134,6 +157,7 @@ export function createSetupDependencies(): SetupDependencies {
     },
     buildEmitter: (args, write) =>
       args.json ? new JsonWizardEventEmitter(write) : new HumanWizardEventEmitter(write),
+    buildLineReader: () => new NodeStdinLineReader(),
     resolveProjectPath: (args) => args.path ?? process.cwd(),
     log: (line) => console.log(line),
     exit: (code) => process.exit(code),

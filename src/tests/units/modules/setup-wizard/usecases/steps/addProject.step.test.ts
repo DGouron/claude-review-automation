@@ -33,6 +33,7 @@ function buildContext(gitRemote: GitRemoteGateway, options: ContextOptions = {})
   const projectPath = options.projectPath ?? '/tmp/p';
   return {
     state: null,
+    currentStepId: null,
     project: { localPath: projectPath, platform: null, preset: null, language: null, remoteUrl: null },
     flags: {
       path: projectPath,

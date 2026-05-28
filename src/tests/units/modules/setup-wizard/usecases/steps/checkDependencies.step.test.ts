@@ -28,6 +28,7 @@ function noopStateGateway(): SetupStateGateway {
 function buildContext(probe: DependencyProbeGateway): WizardContext {
   return {
     state: null,
+    currentStepId: null,
     project: { localPath: '/tmp/p', platform: null, preset: null, language: null, remoteUrl: null },
     flags: { path: '/tmp/p', json: false, force: false, ai: false, yes: false, showSecrets: false },
     gateways: {
