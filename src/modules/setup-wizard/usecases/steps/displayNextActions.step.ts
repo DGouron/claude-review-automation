@@ -40,6 +40,8 @@ export class DisplayNextActionsStep implements SetupStep {
       showSecrets: context.flags.showSecrets,
     });
 
+    context.emitter.emitInstructions(viewModel.lines);
+
     return succeeded('Prochaines actions affichées', {
       webhookUrl: viewModel.webhookUrl,
       eventType: viewModel.eventType,

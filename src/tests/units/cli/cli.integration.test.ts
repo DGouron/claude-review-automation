@@ -13,10 +13,14 @@ const cliSrc = join(repoRoot, 'src/main/cli.ts');
 const cliCommand = `${tsxBin} ${cliSrc}`;
 
 describe('CLI integration', () => {
+  // These tests cold-start `tsx` on the CLI entry; under full-suite parallel
+  // load that can exceed the default 5s timeout, so they get a generous one.
+  const SHELL_OUT_TIMEOUT_MS = 30000;
+
   it('should print version when called with --version', () => {
     const output = execSync(`${cliCommand} --version`).toString().trim();
     expect(output).toMatch(/^\d+\.\d+\.\d+$/);
-  });
+  }, SHELL_OUT_TIMEOUT_MS);
 
   it('should print help when called with --help', () => {
     const output = execSync(`${cliCommand} --help`).toString();
@@ -29,7 +33,7 @@ describe('CLI integration', () => {
     expect(output).toContain('--follow');
     expect(output).toContain('--json');
     expect(output).toContain('--force');
-  });
+  }, SHELL_OUT_TIMEOUT_MS);
 
   it('should exit with code 1 when status is checked and server is not running', () => {
     try {
@@ -40,7 +44,7 @@ describe('CLI integration', () => {
       expect(execError.status).toBe(1);
       expect(execError.stdout.toString()).toContain('not running');
     }
-  });
+  }, SHELL_OUT_TIMEOUT_MS);
 
   it('should output JSON for status --json when stopped', () => {
     try {
@@ -52,5 +56,5 @@ describe('CLI integration', () => {
       const parsed = JSON.parse(execError.stdout.toString().trim());
       expect(parsed.status).toBe('stopped');
     }
-  });
+  }, SHELL_OUT_TIMEOUT_MS);
 });

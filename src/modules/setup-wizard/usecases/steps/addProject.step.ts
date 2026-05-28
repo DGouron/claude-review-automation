@@ -35,7 +35,7 @@ export class AddProjectStep implements SetupStep {
         const fallbackAvailability = context.gateways.aiFallback.isAvailable();
         if (!fallbackAvailability.available) {
           context.emitter.emitWarning(
-            `--ai requested but agent fallback not yet available: ${fallbackAvailability.reason ?? 'unknown'}`,
+            `--ai demandé mais l'agent de fallback n'est pas encore disponible : ${fallbackAvailability.reason ?? 'inconnu'}`,
           );
         }
       }

@@ -35,6 +35,12 @@ export class HumanWizardEventEmitter implements WizardEventEmitter {
     this.write(`  ${dim('?')} ${prompt}`);
   }
 
+  emitInstructions(lines: string[]): void {
+    for (const line of lines) {
+      this.write(line);
+    }
+  }
+
   emitWarning(message: string): void {
     this.write(`${yellow('⚠')}  ${message}`);
   }

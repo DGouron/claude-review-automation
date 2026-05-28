@@ -268,11 +268,12 @@ describe('Acceptance — SPEC-183: Setup Wizard CLI orchestrator', () => {
     expect(result.finalState.steps['generate-files']?.status).toBe('succeeded');
   });
 
-  it('Test 7 — --ai requested but agent fallback unavailable: falls through to scripted rejection', async () => {
+  it('Test 7 — --ai requested but agent fallback unavailable: warns and falls through to the scripted prompt', async () => {
     const orchestrator = new OrchestrateSetupUseCase();
     const gitRemote = new StubGitRemoteGateway({ projectPath, platform: 'unknown', remoteUrl: 'git@custom.com:org/repo.git' });
     const prompt = new StubPromptGateway();
     prompt.queueChoice('github');
+    const jsonLines: string[] = [];
     const context = buildContext({
       stubs: {
         gitRemote,
@@ -280,14 +281,20 @@ describe('Acceptance — SPEC-183: Setup Wizard CLI orchestrator', () => {
         aiFallback: new StubAiFallbackGateway({ available: false }),
       },
       flags: { ai: true },
+      emitter: 'json',
+      jsonLines,
     });
 
     const result = await orchestrator.execute({ context, steps: buildSteps() });
 
-    // Either it falls back to scripted prompt path (succeeded if user replies) or blocks gracefully
-    expect([0, 1, 2]).toContain(result.exitCode);
-    // The AI fallback flag was set but unavailable
-    expect(context.flags.ai).toBe(true);
+    // The scripted path resolves the ambiguous platform via the prompt → clean success.
+    expect(result.exitCode).toBe(0);
+    expect(context.project.platform).toBe('github');
+    // A warning about the unavailable AI fallback was actually emitted.
+    const warnings = jsonLines
+      .map((line): { status?: string; message?: unknown } => JSON.parse(line))
+      .filter((event) => event.status === 'warning');
+    expect(warnings.some((event) => String(event.message).includes('--ai'))).toBe(true);
   });
 
   it('Test 8 — ambiguous platform: prompt asked, project added correctly', async () => {

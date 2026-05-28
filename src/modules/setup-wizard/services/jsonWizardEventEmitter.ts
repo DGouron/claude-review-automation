@@ -28,6 +28,10 @@ export class JsonWizardEventEmitter implements WizardEventEmitter {
     this.emit({ step: stepId, status: 'awaiting_input', prompt });
   }
 
+  emitInstructions(lines: string[]): void {
+    this.emit({ step: 'instructions', status: 'info', lines });
+  }
+
   emitWarning(message: string): void {
     this.emit({ step: 'warning', status: 'warning', message });
   }
