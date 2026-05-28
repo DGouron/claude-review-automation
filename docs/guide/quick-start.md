@@ -51,7 +51,7 @@ The wizard walks you through:
 3. Scanning for local repositories to register
 4. Generating webhook secrets automatically
 
-Your configuration is saved to `~/.claude-review/config.json` and `~/.claude-review/.env`.
+Your configuration is saved to your platform config directory — on Linux `~/.config/reviewflow/config.json` and `~/.config/reviewflow/.env` (macOS: `~/Library/Application Support/reviewflow/`, Windows: `%APPDATA%\reviewflow\`). Set `XDG_CONFIG_HOME` to override.
 
 ::: tip Non-interactive mode
 Use `reviewflow init --yes` to accept all defaults. You can also pass `--scan-path /path/to/projects` to target specific directories.
@@ -60,6 +60,38 @@ Use `reviewflow init --yes` to accept all defaults. You can also pass `--scan-pa
 ::: tip Add repositories later
 Use `reviewflow discover` to scan for and add new repositories to your existing configuration.
 :::
+
+### Full setup wizard
+
+`reviewflow init` only writes configuration. For a guided end-to-end setup that also checks dependencies, signs you into Claude, installs the background daemon, and registers your project, run:
+
+```bash
+reviewflow setup
+```
+
+![Setup wizard flow](./assets/setup-wizard-flow.svg)
+
+The wizard runs ten ordered steps and stops at the first blocking error:
+
+1. **Check dependencies** — verify `git`, `claude`, and the platform CLI (`glab` / `gh`) are installed
+2. **Claude login** — confirm an authenticated `claude` session (OAuth, never an API key)
+3. **Install daemon** — set up the ReviewFlow background service
+4. **Generate secrets** — create webhook secrets and the `.env` file
+5. **Add project** — detect the git remote and target platform
+6. **Configure pipeline** — pick a review preset (`backend`, `frontend`, `fullstack`, `basic`, or `custom`)
+7. **Generate files** — write `.claude/reviews/config.json`, the review skills, and `.mcp.json`
+8. **Register project** — add the project to the daemon's repository list
+9. **Validate setup** — run final checks across schema, environment, paths, and remotes
+10. **Display next actions** — print the webhook URL and secret to finish configuration
+
+| Flag | Purpose |
+|------|---------|
+| `--path <dir>` | Target project directory (defaults to the current directory) |
+| `--json` | Emit a JSON event stream and read answers from stdin (non-interactive) |
+| `--force` | Overwrite existing project files (backs up the previous `config.json`) |
+| `--yes` | Accept suggested defaults without prompting |
+| `--ai` | Enable AI-assisted fallback for ambiguous prompts |
+| `--show-secrets` | Print full secret values instead of masking them |
 
 ## 3. Configure webhook
 

@@ -45,11 +45,11 @@ USECASES:
     test: src/tests/units/modules/review-execution/usecases/jobHistory/persistJobRecord.usecase.test.ts
     type: command
     input: { jobStatus: JobStatus, abortSignalAborted: boolean, now: () => Date }
-    output: Promise<void>             # best-effort, swallows errors and logs
+    output: `Promise<void>`             # best-effort, swallows errors and logs
     responsibility:
       - Build `JobRecord` from `JobStatus` (status mapping + duration computation)
       - Delegate to `JobHistoryGateway.appendRecord(record)`
-      - Catch any error: log warning ("Échec persistance job <id> : <reason>") then return
+      - Catch any error: log warning ("Échec persistance job `<id>` : `<reason>`") then return
     dependencies: { jobHistoryGateway: JobHistoryGateway, logger: Logger }
 
   - name: loadRecentJobHistory
@@ -57,7 +57,7 @@ USECASES:
     test: src/tests/units/modules/review-execution/usecases/jobHistory/loadRecentJobHistory.usecase.test.ts
     type: query
     input: { retentionDays: number, now: () => Date }
-    output: Promise<JobRecord[]>      # ordered most-recent-first
+    output: `Promise<JobRecord[]>`      # ordered most-recent-first
     responsibility:
       - Call `JobHistoryGateway.loadRecordsWithinWindow(retentionDays, now)`
       - Skip malformed lines (the gateway already filters; this use case just sorts + caps)
@@ -82,14 +82,14 @@ GATEWAYS:
     impl_test: src/tests/units/modules/review-execution/interface-adapters/gateways/fileSystem/jobHistory.fileSystem.gateway.test.ts
     stub: src/tests/stubs/jobHistory.stub.ts
     methods:
-      - appendRecord(record: JobRecord): Promise<void>
+      - `appendRecord(record: JobRecord): Promise<void>`
           • Writes one JSON line atomically using `fs/promises.appendFile` (POSIX append is atomic for sizes < PIPE_BUF, which our small JSON lines respect — satisfies "concurrent writes don't corrupt")
           • Ensures `~/.claude-review/jobs/` directory exists (mkdir recursive on first write)
           • Filename derived from `record.completedAt` slice 0..10 → `<YYYY-MM-DD>.jsonl`
-      - loadRecordsWithinWindow(retentionDays: number, now: Date): Promise<JobRecord[]>
+      - `loadRecordsWithinWindow(retentionDays: number, now: Date): Promise<JobRecord[]>`
           • Lists `.jsonl` files in the storage dir
           • Filters files by date in filename ≥ now - retentionDays
-          • For each file: read, split by `\n`, parse each line via `jobRecordGuard.safeParse`; on failure log "Ligne <n> illisible, ignorée"
+          • For each file: read, split by `\n`, parse each line via `jobRecordGuard.safeParse`; on failure log "Ligne `<n>` illisible, ignorée"
           • Returns flat array of valid records
       - deleteRecordsOutsideWindow(retentionDays: number, now: Date): Promise<{ deletedFilenames: string[] }>
           • Lists files, deletes those with date < now - retentionDays via `fs/promises.unlink`

@@ -12,7 +12,7 @@ The system uses two configuration files:
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `config.json` | `~/.claude-review/` (created by `reviewflow init`) | Server configuration, repositories |
+| `config.json` | `~/.config/reviewflow/` (created by `reviewflow init` or `reviewflow setup`) | Server configuration, repositories |
 | `.claude/reviews/config.json` | Each project | Project-specific review settings |
 
 ---
@@ -21,7 +21,7 @@ The system uses two configuration files:
 
 ### Location
 
-`~/.claude-review/config.json`, created automatically by `reviewflow init`.
+`~/.config/reviewflow/config.json` on Linux (macOS: `~/Library/Application Support/reviewflow/`, Windows: `%APPDATA%\reviewflow\`; override with `XDG_CONFIG_HOME`), created automatically by `reviewflow init` or `reviewflow setup`.
 
 ### Schema
 

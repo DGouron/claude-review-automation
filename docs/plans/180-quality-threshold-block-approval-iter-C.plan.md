@@ -262,7 +262,7 @@ PLAN:
         - GitHub: src/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.github.cli.gateway.ts
       stub: src/tests/stubs/approvalRevocation.stub.ts
       methods:
-        - revoke(input: { projectPath: string; mrNumber: number; reviewId?: number; dismissalMessage?: string }): Promise<void>
+        - `revoke(input: { projectPath: string; mrNumber: number; reviewId?: number; dismissalMessage?: string }): Promise<void>`
       decisions:
         - One method, one verb. The optional `reviewId` and `dismissalMessage` are present
           to accommodate GitHub's `reviews/<id>/dismissals` endpoint. GitLab impl ignores them.
@@ -374,7 +374,7 @@ PLAN:
       - new: GitHubApprovalRevocationCliGateway(defaultGitHubExecutor)
     no_new_executor_needed:
       Reuses `defaultGitLabExecutor` and `defaultGitHubExecutor` exported from
-      threadFetch.<platform>.gateway.ts.
+      `threadFetch.<platform>.gateway.ts`.
 
   MODIFICATIONS_TO_EXISTING_FILES:
     1. src/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.ts
@@ -620,7 +620,7 @@ PLAN:
     Visible end-to-end path:
       Platform webhook (GitLab "Merge Request Hook" with action=approved, OR GitHub
       "pull_request_review" with state=approved) → controller calls `transitionState`
-      with gate → gate fails (score<threshold, no bypass) → controller calls
+      with gate → gate fails (`score<threshold`, no bypass) → controller calls
       `handlePlatformApproval` → verdict `kind: 'reverted'` → controller calls
       `approvalRevocationGateway.revoke()` (unapprove on platform) → controller calls
       `noteCommentPostGateway.postComment()` (FR explanation) → 200 status 'unapproved'.

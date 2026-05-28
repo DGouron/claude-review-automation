@@ -11,7 +11,7 @@
 | File | Purpose |
 |------|---------|
 | `src/modules/tracking/entities/qualityGate/qualityGate.ts` | Pure evaluator: `evaluateQualityGate({ latestScore, blockingIssues, threshold }) → { allowed: true } \| { allowed: false; reason; message }`. French messages produced here. |
-| `src/tests/units/modules/tracking/entities/qualityGate/qualityGate.test.ts` | Unit tests covering: threshold=null, latestScore=null, blockers>0, score<threshold, score>=threshold, boundary cases. |
+| `src/tests/units/modules/tracking/entities/qualityGate/qualityGate.test.ts` | Unit tests covering: threshold=null, latestScore=null, blockers>0, `score<threshold`, score>=threshold, boundary cases. |
 | `src/tests/units/modules/tracking/interface-adapters/controllers/http/mrTracking.routes.test.ts` | Unit tests for the `POST /api/mr-tracking/approve` gate (200/409 + French messages). |
 | `src/tests/acceptance/180-quality-threshold-block-approval.acceptance.test.ts` | SDD acceptance test, 5 scenarios exercising the Fastify route end-to-end via `app.inject()`. |
 

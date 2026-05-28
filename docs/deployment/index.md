@@ -32,8 +32,8 @@ cd ~/reviewflow
 yarn install && yarn build
 yarn start
 
-# Terminal 2: Tunnel
-cloudflared tunnel --url http://localhost:3000
+# Terminal 2: Tunnel (3847 is the default config port)
+cloudflared tunnel --url http://localhost:3847
 ```
 
 Copy the generated URL and use it for your webhook configuration.

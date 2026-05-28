@@ -257,8 +257,8 @@ PLAN:
     file: docs/feature-tracker.md
     line: 50
     change: |
-      Before: | Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) | drafted | 2026-05-27 |
-      After:  | Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) — [plan](plans/182-mark-pending-fix-as-merged.plan.md) | planned | 2026-05-27 |
+      Before: `| Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) | drafted | 2026-05-27 |`
+      After:  `| Manually mark a pending-fix MR as merged | [182-mark-pending-fix-as-merged](specs/182-mark-pending-fix-as-merged.md) — [plan](plans/182-mark-pending-fix-as-merged.plan.md) | planned | 2026-05-27 |`
 
   VALIDATION_GATES:
     - yarn typecheck

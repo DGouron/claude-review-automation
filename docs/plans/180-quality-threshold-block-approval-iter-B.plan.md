@@ -154,7 +154,7 @@ PLAN:
         - GitHub: src/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.github.cli.gateway.ts
       stub: src/tests/stubs/noteCommentPost.stub.ts
       methods:
-        - postComment(input: { projectPath: string; mrNumber: number; body: string }): Promise<void>
+        - `postComment(input: { projectPath: string; mrNumber: number; body: string }): Promise<void>`
       decisions:
         - Required for scenario 5 (FR rejection comment back to the MR) and scenario 10
           (acknowledgement is optional — see scope decision below).
@@ -375,7 +375,7 @@ PLAN:
        src/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.github.cli.gateway.ts
        src/tests/stubs/noteCommentPost.stub.ts
        — CLI implementations reusing `glab api`/`gh api` patterns from
-         reviewAction.<platform>.cli.gateway.ts. Stub for tests.
+         `reviewAction.<platform>.cli.gateway.ts`. Stub for tests.
     10. src/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.ts
         (extend)
         — Add NoteFilterResult + filterGitLabNoteEvent + filterGitHubIssueCommentEvent.

@@ -374,7 +374,7 @@ The project convention is `src/main/commands/<name>.command.ts`, not `interface-
   test: src/tests/units/modules/setup-wizard/interface-adapters/presenters/nextActions.presenter.test.ts
   input: `{ platform, host, port, webhookSecret, projectPath, showSecrets }`
   output: `NextActionsViewModel { lines: string[], maskedSecret: string, fullSecret?: string, webhookUrl: string, eventType: string }`
-  purpose: builds the "Configurez le webhook sur <platform>..." instructions, masks secrets unless `--show-secrets` flag is on. Pure transformation.
+  purpose: builds the "Configurez le webhook sur `<platform>`..." instructions, masks secrets unless `--show-secrets` flag is on. Pure transformation.
 
 - name: WizardSummaryPresenter
   file: src/modules/setup-wizard/interface-adapters/presenters/wizardSummary.presenter.ts
