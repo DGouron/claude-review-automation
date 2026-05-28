@@ -33,6 +33,11 @@ import { setupWizardRoutes } from '@/modules/setup-wizard/interface-adapters/con
 import { SetupRunRegistry } from '@/modules/setup-wizard/usecases/streamSetupRun.usecase.js';
 import { SetupProcessChildProcessGateway } from '@/modules/setup-wizard/interface-adapters/gateways/setupProcess.childProcess.gateway.js';
 import { SetupStateFileSystemGateway } from '@/modules/setup-wizard/interface-adapters/gateways/setupState.fileSystem.gateway.js';
+import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/controllers/http/emberChat.routes.js';
+import { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
+import { EmberSessionTransportClaudeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberSessionTransport.claude.gateway.js';
+import { ProcessEnvironmentGateway } from '@/modules/claude-invocation/interface-adapters/gateways/environment.process.gateway.js';
+import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getConfigDir } from '@/shared/services/configDir.js';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
@@ -452,6 +457,27 @@ export async function registerRoutes(
 
   app.get('/setup', async (_request, reply) => {
     reply.redirect('/dashboard/setup.html');
+  });
+
+  const emberGroundingProjectPath = deps.config.repositories.find((repository) => repository.enabled)?.localPath ?? '';
+  const emberSessionRegistry = new EmberSessionRegistry({
+    transport: new EmberSessionTransportClaudeGateway({
+      claudePath: resolveClaudePath(),
+      mcpConfigJson: JSON.stringify({ mcpServers: {} }),
+      allowedTools: 'Read,Glob,Grep',
+      model: 'sonnet',
+    }),
+    now: () => new Date(),
+    idleTimeoutMs: 5 * 60 * 1000,
+  });
+  setInterval(() => emberSessionRegistry.onIdle(new Date()), 30_000).unref();
+
+  await app.register(emberChatRoutes, {
+    registry: emberSessionRegistry,
+    environment: new ProcessEnvironmentGateway(),
+    projectPath: emberGroundingProjectPath,
+    now: () => new Date(),
+    logger: deps.logger,
   });
 
   const repositoryConfigDeps = { readFileSync, writeFileSync, existsSync };
