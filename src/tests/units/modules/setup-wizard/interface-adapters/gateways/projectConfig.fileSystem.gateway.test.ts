@@ -1,0 +1,51 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ProjectConfigFileSystemGateway } from '@/modules/setup-wizard/interface-adapters/gateways/projectConfig.fileSystem.gateway.js';
+
+describe('ProjectConfigFileSystemGateway', () => {
+  let rootDir: string;
+
+  beforeEach(() => {
+    rootDir = mkdtempSync(join(tmpdir(), 'reviewflow-projcfg-fs-'));
+  });
+
+  afterEach(() => {
+    rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  it('returns false from exists() when file is absent', () => {
+    const gateway = new ProjectConfigFileSystemGateway();
+    expect(gateway.exists(rootDir)).toBe(false);
+  });
+
+  it('writes config under .claude/reviews/config.json', () => {
+    const gateway = new ProjectConfigFileSystemGateway();
+    gateway.write(rootDir, { preset: 'backend', language: 'en', agents: ['architecture'] });
+    expect(existsSync(join(rootDir, '.claude', 'reviews', 'config.json'))).toBe(true);
+  });
+
+  it('reads back what it wrote', () => {
+    const gateway = new ProjectConfigFileSystemGateway();
+    gateway.write(rootDir, { preset: 'fullstack', language: 'fr', agents: ['testing', 'security'] });
+    const reloaded = gateway.read(rootDir);
+    expect(reloaded).toEqual({ preset: 'fullstack', language: 'fr', agents: ['testing', 'security'] });
+  });
+
+  it('creates a .bak file when backup is requested on existing config', () => {
+    const gateway = new ProjectConfigFileSystemGateway();
+    gateway.write(rootDir, { preset: 'backend', language: 'en', agents: [] });
+    const backupPath = gateway.backup(rootDir);
+    expect(backupPath).not.toBeNull();
+    if (backupPath) {
+      expect(existsSync(backupPath)).toBe(true);
+      expect(readFileSync(backupPath, 'utf-8')).toContain('"preset"');
+    }
+  });
+
+  it('returns null from backup when config is absent', () => {
+    const gateway = new ProjectConfigFileSystemGateway();
+    expect(gateway.backup(rootDir)).toBeNull();
+  });
+});

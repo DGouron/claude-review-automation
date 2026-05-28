@@ -12,6 +12,7 @@ import { executeFollowupImportants, createFollowupImportantsDependencies } from 
 import { executeInit, createInitDependencies } from '@/main/commands/init.command.js';
 import { executeDiscover, createDiscoverDependencies } from '@/main/commands/discover.command.js';
 import { executeValidate, createValidateDependencies } from '@/main/commands/validate.command.js';
+import { executeSetup, createSetupDependencies } from '@/main/commands/setup.command.js';
 import { readVersion, printHelp, getGitRemoteUrl } from '@/main/shared/cliConstants.js';
 import { readPidFile, writePidFile, removePidFile, type PidFileDeps } from '@/shared/services/pidFileManager.js';
 import { isProcessRunning } from '@/shared/services/processChecker.js';
@@ -72,6 +73,20 @@ if (isDirectlyExecuted) {
 
     case 'followup-importants':
       executeFollowupImportants(args.project, createFollowupImportantsDependencies());
+      break;
+
+    case 'setup':
+      executeSetup(
+        {
+          path: args.path,
+          json: args.json,
+          force: args.force,
+          ai: args.ai,
+          yes: args.yes,
+          showSecrets: args.showSecrets,
+        },
+        createSetupDependencies(),
+      );
       break;
   }
 }

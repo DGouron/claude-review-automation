@@ -1,6 +1,7 @@
 ---
 title: "SPEC-183: Setup Wizard CLI orchestrator — Jarvis end-to-end"
-status: drafted
+status: implemented
+implemented_at: 2026-05-28
 milestone: Setup Wizard Jarvis
 supersedes:
   - "30-init-project-command"
@@ -15,6 +16,70 @@ related:
 ---
 
 # SPEC-183: Setup Wizard CLI orchestrator — Jarvis end-to-end
+
+## Status: implemented
+
+- Plan: [183-setup-wizard-cli-orchestrator.plan.md](../plans/183-setup-wizard-cli-orchestrator.plan.md)
+- Report: [183-setup-wizard-cli-orchestrator.report.md](../reports/183-setup-wizard-cli-orchestrator.report.md)
+- Branch: `worktree-spec-183-setup-wizard-cli`
+- Date: 2026-05-28
+
+## Implementation
+
+### Module
+
+- New bounded context `src/modules/setup-wizard/` (orchestration + state + event emitter + 12 wizard-specific gateways).
+
+### Entry point
+
+- CLI command: `reviewflow setup [path] [--json] [--force] [--ai] [--yes|-y] [--show-secrets]`
+- Controller: `src/main/commands/setup.command.ts` (matches `init.command.ts` / `validate.command.ts` pattern).
+- Wiring: `src/cli/parseCliArgs.ts` (added `setup` discriminant + 6 flags), `src/main/cli.ts` (added `case 'setup':` branch).
+
+### Use cases
+
+- Orchestrator: `orchestrateSetup.usecase.ts` (load state, iterate steps, detect → maybe execute, emit events, atomic save).
+- 10 steps, each a separate file under `src/modules/setup-wizard/usecases/steps/`: `checkDependencies`, `claudeLogin`, `daemonInstall`, `generateSecrets`, `addProject`, `configurePipeline`, `generateFiles`, `registerProject`, `validateSetup`, `displayNextActions`. All implement a shared `SetupStep` contract `{ id, title, detect, execute }`.
+
+### Gateways (12 net-new)
+
+`ClaudeAuthGateway`, `DaemonServiceGateway`, `DaemonHealthProbeGateway`, `DependencyProbeGateway`, `EnvFileGateway`, `GitRemoteGateway`, `ProjectConfigGateway`, `PromptGateway`, `ServerConfigGateway`, `SkillTemplateGateway`, `ValidationGateway`, `AiFallbackGateway`, `SetupStateGateway`. Contracts in `entities/<gw>/<gw>.gateway.ts`, implementations in `interface-adapters/gateways/`. Validation gateway delegates in-process to existing `ValidateConfigUseCase`. AI fallback is a no-op until SPEC-185.
+
+### State & resumability
+
+- State persisted at `~/.config/reviewflow/setup-state.json` via `setupState.fileSystem.gateway.ts` (atomic tmp + rename).
+- Per-step `detect()` interrogates live system; state file is a UX optimization, detection is the correctness mechanism.
+- Corrupted state → orchestrator warns, runs fresh, rewrites valid JSON.
+
+### JSON event stream
+
+- `WizardEventEmitter` interface with `HumanWizardEventEmitter` (colored text) + `JsonWizardEventEmitter` (newline-delimited JSON). Selected once at composition root via `--json` flag.
+
+### Reuse (no duplication)
+
+- `generateWebhookSecret` / `isValidSecret` from `src/shared/services/secretGenerator.ts`.
+- `ValidateConfigUseCase` from `src/modules/cli-configuration/` (called in-process).
+- `getConfigDir` from `src/shared/services/configDir.ts`.
+- `@inquirer/prompts` (already used by `init.command.ts`).
+
+### Architectural decisions
+
+- **D1**: Dedicated bounded context (`src/modules/setup-wizard/`), not spread across existing modules.
+- **D3**: Shared `SetupStep` contract (interface, not base class) → orchestrator iterates typed array, no switch over `StepId`.
+- **D5**: CLI flags parsed once via `setupCliArgs` discriminant, then carried by `WizardContext.flags`.
+- **D8**: `--ai` parseable today, inert via `aiFallback.noop.gateway.ts`; SPEC-185 will swap binding with zero step code changes.
+
+### Product decision
+
+`reviewflow init` is left intact as legacy. `reviewflow setup` is the recommended path. Specs 30, 52, 55, 56, 57, 58 marked `superseded by SPEC-183` in `docs/feature-tracker.md`.
+
+### Tests
+
+- 1 acceptance test (10 scenarios) at `src/tests/acceptance/183-setup-wizard.acceptance.test.ts`.
+- 35 unit tests across entities, steps, gateways, services, presenter, CLI.
+- 12 stub gateways at `src/tests/stubs/setup-wizard/`.
+- 4 factories at `src/tests/factories/`.
+- Full suite: 337 test files / 2603 tests, all GREEN.
 
 ## Context
 
