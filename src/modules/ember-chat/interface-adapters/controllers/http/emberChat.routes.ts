@@ -3,6 +3,7 @@ import type { Logger } from 'pino';
 import { emberMessageGuard } from '@/modules/ember-chat/entities/emberMessage/emberMessage.guard.js';
 import { askEmber } from '@/modules/ember-chat/usecases/askEmber/askEmber.usecase.js';
 import type { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
+import type { EmberReadDataGateway } from '@/modules/ember-chat/entities/emberTool/emberTool.gateway.js';
 import type { EnvironmentGateway } from '@/modules/claude-invocation/entities/billingState/environment.gateway.js';
 
 const UNAVAILABLE_MESSAGE = '// EMBER INDISPONIBLE — réessayer';
@@ -10,6 +11,7 @@ const UNAVAILABLE_MESSAGE = '// EMBER INDISPONIBLE — réessayer';
 export interface EmberChatRoutesOptions {
   registry: EmberSessionRegistry;
   environment: EnvironmentGateway;
+  readData: EmberReadDataGateway;
   projectPath: string;
   now: () => Date;
   logger: Logger;
@@ -19,7 +21,7 @@ export const emberChatRoutes: FastifyPluginAsync<EmberChatRoutesOptions> = async
   fastify,
   options,
 ) => {
-  const { registry, environment, projectPath, now, logger } = options;
+  const { registry, environment, readData, projectPath, now, logger } = options;
 
   fastify.post('/api/ember/ask', async (request, reply): Promise<void> => {
     const parsed = emberMessageGuard.safeParse(request.body);
@@ -28,7 +30,13 @@ export const emberChatRoutes: FastifyPluginAsync<EmberChatRoutesOptions> = async
       return;
     }
 
-    const result = await askEmber(parsed.data, { registry, environment, projectPath, now });
+    const result = await askEmber(parsed.data, {
+      registry,
+      environment,
+      readData,
+      projectPath,
+      now,
+    });
 
     reply.hijack();
     reply.raw.writeHead(200, {

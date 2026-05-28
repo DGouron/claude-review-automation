@@ -1,0 +1,71 @@
+import { describe, it, expect } from 'vitest';
+import {
+  parseStreamJsonEvent,
+  extractText,
+  isTurnComplete,
+} from '@/modules/ember-chat/interface-adapters/gateways/emberStreamJson.parser.js';
+
+describe('parseStreamJsonEvent', () => {
+  it('parses a JSON object line into an event', () => {
+    expect(parseStreamJsonEvent('{"type":"result"}')).toEqual({ type: 'result' });
+  });
+
+  it('returns null for a non-object JSON value', () => {
+    expect(parseStreamJsonEvent('42')).toBeNull();
+    expect(parseStreamJsonEvent('null')).toBeNull();
+  });
+
+  it('returns null for an invalid JSON line', () => {
+    expect(parseStreamJsonEvent('{not json')).toBeNull();
+    expect(parseStreamJsonEvent('')).toBeNull();
+  });
+});
+
+describe('extractText', () => {
+  it('reads a top-level text field', () => {
+    expect(extractText({ text: 'hello' })).toBe('hello');
+  });
+
+  it('reads a streamed delta text', () => {
+    expect(extractText({ delta: { text: 'world' } })).toBe('world');
+  });
+
+  it('joins text parts from a message content array', () => {
+    expect(
+      extractText({
+        message: { content: [{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }] },
+      }),
+    ).toBe('ab');
+  });
+
+  it('ignores non-text content parts', () => {
+    expect(
+      extractText({
+        message: { content: [{ type: 'tool_use' }, { type: 'text', text: 'kept' }] },
+      }),
+    ).toBe('kept');
+  });
+
+  it('returns null when content holds no text', () => {
+    expect(extractText({ message: { content: [{ type: 'tool_use' }] } })).toBeNull();
+  });
+
+  it('returns null when no text is present', () => {
+    expect(extractText({ type: 'result' })).toBeNull();
+  });
+});
+
+describe('isTurnComplete', () => {
+  it('is true on a result event', () => {
+    expect(isTurnComplete({ type: 'result' })).toBe(true);
+  });
+
+  it('is true on a message_stop event', () => {
+    expect(isTurnComplete({ type: 'message_stop' })).toBe(true);
+  });
+
+  it('is false on any other event', () => {
+    expect(isTurnComplete({ type: 'message_delta' })).toBe(false);
+    expect(isTurnComplete({})).toBe(false);
+  });
+});

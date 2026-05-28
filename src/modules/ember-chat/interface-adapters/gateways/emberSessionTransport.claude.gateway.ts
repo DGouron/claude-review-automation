@@ -2,6 +2,11 @@ import { spawn } from 'node:child_process';
 import type { ChildProcessByStdio } from 'node:child_process';
 import type { Readable, Writable } from 'node:stream';
 import { splitLines } from '@/modules/setup-wizard/interface-adapters/gateways/setupProcess.childProcess.gateway.js';
+import {
+  parseStreamJsonEvent,
+  extractText,
+  isTurnComplete,
+} from '@/modules/ember-chat/interface-adapters/gateways/emberStreamJson.parser.js';
 import type {
   EmberChunkHandler,
   EmberDoneHandler,
@@ -23,57 +28,16 @@ import type {
  * streaming-JSON mode (`--input-format stream-json --output-format stream-json`),
  * so consecutive questions are written on stdin as user messages and the answer
  * is streamed back as assistant text deltas on stdout — keeping one resumable
- * conversational thread per process. The four read tools are exposed via the
- * existing MCP server (`--mcp-config`). No API key: relies on the operator's
- * Claude login (subscription OAuth), exactly like the bg dispatch path.
+ * conversational thread per process. Grounding is injected into the appended
+ * system prompt (the review data is read through the typed EmberReadDataGateway
+ * in askEmber), so the session needs NO tools and gets none. No API key: relies
+ * on the operator's Claude login (subscription OAuth), like the bg dispatch path.
  *
  * MANUAL VERIFICATION REQUIRED: confirm the exact streaming-JSON event framing
  * (assistant text delta vs. message_stop) and that interactive stream-json input
  * keeps the thread alive across turns. Adjust extractText / isTurnComplete below
  * once verified against a live `claude` build.
  */
-
-interface StreamJsonEvent {
-  type?: string;
-  subtype?: string;
-  text?: string;
-  delta?: { text?: string };
-  message?: { content?: Array<{ type?: string; text?: string }> };
-}
-
-function parseStreamJsonEvent(line: string): StreamJsonEvent | null {
-  try {
-    const parsed: unknown = JSON.parse(line);
-    if (parsed !== null && typeof parsed === 'object') {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function extractText(event: StreamJsonEvent): string | null {
-  if (typeof event.text === 'string') {
-    return event.text;
-  }
-  if (event.delta !== undefined && typeof event.delta.text === 'string') {
-    return event.delta.text;
-  }
-  const content = event.message?.content;
-  if (content !== undefined) {
-    const text = content
-      .filter((part) => part.type === 'text' && typeof part.text === 'string')
-      .map((part) => part.text ?? '')
-      .join('');
-    return text.length > 0 ? text : null;
-  }
-  return null;
-}
-
-function isTurnComplete(event: StreamJsonEvent): boolean {
-  return event.type === 'result' || event.type === 'message_stop';
-}
 
 class ClaudeEmberSessionHandle implements EmberSessionHandle {
   private chunkHandler: EmberChunkHandler | null = null;

@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/controllers/http/emberChat.routes.js';
 import { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
 import { StubEmberSessionTransportGateway } from '@/tests/stubs/emberSessionTransport.stub.js';
+import { StubEmberReadDataGateway } from '@/tests/stubs/emberReadData.stub.js';
 import { StubEnvironmentGateway } from '@/tests/stubs/environment.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 
@@ -36,6 +37,7 @@ describe('emberChat routes', () => {
     void instance.register(emberChatRoutes, {
       registry,
       environment,
+      readData: new StubEmberReadDataGateway(),
       projectPath: PROJECT_PATH,
       now: () => new Date('2026-05-28T10:00:00Z'),
       logger: createStubLogger(),

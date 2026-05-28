@@ -8,6 +8,7 @@ import { askEmber } from '@/modules/ember-chat/usecases/askEmber/askEmber.usecas
 import type { EmberStreamSubscriber } from '@/modules/ember-chat/usecases/askEmber/askEmber.usecase.js';
 
 const PROJECT_PATH = '/projects/alpha';
+const FIXED_NOW = (): Date => new Date('2026-05-28T10:00:00Z');
 
 function fixedReviewData(): StubEmberReadDataGateway {
   const worstProject = ProjectStatsFactory.withReviews([
@@ -17,6 +18,16 @@ function fixedReviewData(): StubEmberReadDataGateway {
   const readData = new StubEmberReadDataGateway();
   readData.setReviewScores(PROJECT_PATH, worstProject);
   return readData;
+}
+
+function buildRegistry(transport: StubEmberSessionTransportGateway): EmberSessionRegistry {
+  return new EmberSessionRegistry({ transport, now: FIXED_NOW, idleTimeoutMs: 60_000 });
+}
+
+function buildEnvironment(hasApiKey: boolean): StubEnvironmentGateway {
+  const environment = new StubEnvironmentGateway();
+  environment.setHasAnthropicApiKey(hasApiKey);
+  return environment;
 }
 
 function collectStream(subscribe: (subscriber: EmberStreamSubscriber) => void): Promise<{
@@ -45,21 +56,20 @@ function collectStream(subscribe: (subscriber: EmberStreamSubscriber) => void): 
 
 describe('Ask Ember about your reviews (acceptance, SPEC-189 Phase A)', () => {
   describe('Ember answers from review data with a working then idle status sequence', () => {
-    it('ask about scores: returns an answer grounded in the current review scores', async () => {
+    it('ask about scores: the answer is grounded in the current review scores', async () => {
       const readData = fixedReviewData();
       const transport = new StubEmberSessionTransportGateway();
-      transport.respondFromReviewScores(readData, PROJECT_PATH);
-      const registry = new EmberSessionRegistry({
-        transport,
-        now: () => new Date('2026-05-28T10:00:00Z'),
-        idleTimeoutMs: 60_000,
-      });
-      const environment = new StubEnvironmentGateway();
-      environment.setHasAnthropicApiKey(false);
+      transport.answerFromSystemPrompt();
 
       const result = await askEmber(
         { question: 'Quel projet a le pire score moyen cette semaine ?' },
-        { registry, environment, projectPath: PROJECT_PATH, now: () => new Date('2026-05-28T10:00:00Z') },
+        {
+          registry: buildRegistry(transport),
+          environment: buildEnvironment(false),
+          readData,
+          projectPath: PROJECT_PATH,
+          now: FIXED_NOW,
+        },
       );
 
       expect(result.status).toBe('streaming');
@@ -69,6 +79,8 @@ describe('Ask Ember about your reviews (acceptance, SPEC-189 Phase A)', () => {
 
       const { answer, statuses } = await collectStream(result.subscribe);
 
+      // "42" reaches the answer only by traversing the production grounding path:
+      // readData -> askEmber -> system prompt -> session. The stub echoes the prompt.
       expect(answer).toContain('42');
       expect(statuses[0]).toBe('working');
       expect(statuses.at(-1)).toBe('idle');
@@ -77,20 +89,18 @@ describe('Ask Ember about your reviews (acceptance, SPEC-189 Phase A)', () => {
 
   describe('Ember requires no API key', () => {
     it('billing regression: declines to spawn when an Anthropic API key is present', async () => {
-      const readData = fixedReviewData();
       const transport = new StubEmberSessionTransportGateway();
-      transport.respondFromReviewScores(readData, PROJECT_PATH);
-      const registry = new EmberSessionRegistry({
-        transport,
-        now: () => new Date('2026-05-28T10:00:00Z'),
-        idleTimeoutMs: 60_000,
-      });
-      const environment = new StubEnvironmentGateway();
-      environment.setHasAnthropicApiKey(true);
+      transport.answerFromSystemPrompt();
 
       const result = await askEmber(
         { question: 'Quel projet a le pire score moyen cette semaine ?' },
-        { registry, environment, projectPath: PROJECT_PATH, now: () => new Date('2026-05-28T10:00:00Z') },
+        {
+          registry: buildRegistry(transport),
+          environment: buildEnvironment(true),
+          readData: fixedReviewData(),
+          projectPath: PROJECT_PATH,
+          now: FIXED_NOW,
+        },
       );
 
       expect(result.status).toBe('billing-regression-prevented');
@@ -100,21 +110,14 @@ describe('Ask Ember about your reviews (acceptance, SPEC-189 Phase A)', () => {
 
   describe('within a session, consecutive questions reuse one Ember', () => {
     it('follow-up keeps context: a second question does not cold-start a new session', async () => {
-      const readData = fixedReviewData();
       const transport = new StubEmberSessionTransportGateway();
-      transport.respondFromReviewScores(readData, PROJECT_PATH);
-      const registry = new EmberSessionRegistry({
-        transport,
-        now: () => new Date('2026-05-28T10:00:00Z'),
-        idleTimeoutMs: 60_000,
-      });
-      const environment = new StubEnvironmentGateway();
-      environment.setHasAnthropicApiKey(false);
+      transport.answerFromSystemPrompt();
       const deps = {
-        registry,
-        environment,
+        registry: buildRegistry(transport),
+        environment: buildEnvironment(false),
+        readData: fixedReviewData(),
         projectPath: PROJECT_PATH,
-        now: () => new Date('2026-05-28T10:00:00Z'),
+        now: FIXED_NOW,
       };
 
       const first = await askEmber({ question: 'Quel projet a le pire score moyen ?' }, deps);
@@ -134,17 +137,16 @@ describe('Ask Ember about your reviews (acceptance, SPEC-189 Phase A)', () => {
     it('assistant unreachable: returns unavailable when the transport fails to spawn', async () => {
       const transport = new StubEmberSessionTransportGateway();
       transport.failSpawn();
-      const registry = new EmberSessionRegistry({
-        transport,
-        now: () => new Date('2026-05-28T10:00:00Z'),
-        idleTimeoutMs: 60_000,
-      });
-      const environment = new StubEnvironmentGateway();
-      environment.setHasAnthropicApiKey(false);
 
       const result = await askEmber(
         { question: 'Quel projet a le pire score moyen ?' },
-        { registry, environment, projectPath: PROJECT_PATH, now: () => new Date('2026-05-28T10:00:00Z') },
+        {
+          registry: buildRegistry(transport),
+          environment: buildEnvironment(false),
+          readData: fixedReviewData(),
+          projectPath: PROJECT_PATH,
+          now: FIXED_NOW,
+        },
       );
 
       expect(result.status).toBe('unavailable');

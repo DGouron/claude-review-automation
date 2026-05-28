@@ -36,6 +36,7 @@ import { SetupStateFileSystemGateway } from '@/modules/setup-wizard/interface-ad
 import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/controllers/http/emberChat.routes.js';
 import { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
 import { EmberSessionTransportClaudeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberSessionTransport.claude.gateway.js';
+import { EmberReadDataCompositeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberReadData.composite.gateway.js';
 import { ProcessEnvironmentGateway } from '@/modules/claude-invocation/interface-adapters/gateways/environment.process.gateway.js';
 import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getConfigDir } from '@/shared/services/configDir.js';
@@ -460,11 +461,17 @@ export async function registerRoutes(
   });
 
   const emberGroundingProjectPath = deps.config.repositories.find((repository) => repository.enabled)?.localPath ?? '';
+  const emberReadData = new EmberReadDataCompositeGateway({
+    statsGateway: deps.statsGateway,
+    insightsGateway: deps.insightsGateway,
+    trackingGateway: deps.reviewRequestTrackingGateway,
+    worktreeGateway: deps.worktreeGateway,
+  });
   const emberSessionRegistry = new EmberSessionRegistry({
     transport: new EmberSessionTransportClaudeGateway({
       claudePath: resolveClaudePath(),
       mcpConfigJson: JSON.stringify({ mcpServers: {} }),
-      allowedTools: 'Read,Glob,Grep',
+      allowedTools: '',
       model: 'sonnet',
     }),
     now: () => new Date(),
@@ -475,6 +482,7 @@ export async function registerRoutes(
   await app.register(emberChatRoutes, {
     registry: emberSessionRegistry,
     environment: new ProcessEnvironmentGateway(),
+    readData: emberReadData,
     projectPath: emberGroundingProjectPath,
     now: () => new Date(),
     logger: deps.logger,

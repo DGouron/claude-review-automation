@@ -1,5 +1,6 @@
 import type { EnvironmentGateway } from '@/modules/claude-invocation/entities/billingState/environment.gateway.js';
 import type { EmberMessage } from '@/modules/ember-chat/entities/emberMessage/emberMessage.schema.js';
+import type { EmberReadDataGateway } from '@/modules/ember-chat/entities/emberTool/emberTool.gateway.js';
 import type {
   EmberSessionRegistry,
   EmberStreamSubscriber,
@@ -11,6 +12,7 @@ export type { EmberStreamSubscriber } from '@/modules/ember-chat/usecases/emberS
 export interface AskEmberDependencies {
   registry: EmberSessionRegistry;
   environment: EnvironmentGateway;
+  readData: EmberReadDataGateway;
   projectPath: string;
   now: () => Date;
 }
@@ -28,10 +30,18 @@ export async function askEmber(
     return { status: 'billing-regression-prevented' };
   }
 
+  const { readData, projectPath } = dependencies;
+  const systemPrompt = buildEmberSystemPrompt({
+    reviewScores: await readData.reviewScores(projectPath),
+    insights: await readData.insights(projectPath),
+    jobHistory: await readData.jobHistory(projectPath),
+    worktrees: await readData.worktrees(),
+  });
+
   const result = dependencies.registry.ask({
     question: message.question,
-    systemPrompt: buildEmberSystemPrompt(),
-    projectPath: dependencies.projectPath,
+    systemPrompt,
+    projectPath,
   });
 
   if (result.status === 'unavailable') {
