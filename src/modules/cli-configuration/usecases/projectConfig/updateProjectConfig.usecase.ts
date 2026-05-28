@@ -1,6 +1,7 @@
 import type { ProjectConfig } from '@/config/projectConfig.js';
 import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 import type { ProjectConfigGateway } from '@/modules/cli-configuration/entities/projectConfig/projectConfig.gateway.js';
+import { validateProjectConcurrencyCap } from '@/modules/cli-configuration/entities/projectConcurrencyCap/projectConcurrencyCap.valueObject.js';
 import type { UseCase } from '@/shared/foundation/usecase.base.js';
 
 export const EDITABLE_PROJECT_CONFIG_KEYS = [
@@ -10,6 +11,7 @@ export const EDITABLE_PROJECT_CONFIG_KEYS = [
   'reviewFollowupSkill',
   'externalLink',
   'qualityThreshold',
+  'maxConcurrentReviews',
 ] as const;
 
 export const EXTERNAL_LINK_PATTERN = /^https:\/\/.+/;
@@ -24,6 +26,7 @@ export type ProjectConfigPatch = Partial<
   Pick<ProjectConfig, 'language' | 'defaultModel' | 'reviewSkill' | 'reviewFollowupSkill' | 'externalLink'>
 > & {
   qualityThreshold?: number | null;
+  maxConcurrentReviews?: number | null;
 };
 
 export interface UpdateProjectConfigInput {
@@ -86,7 +89,7 @@ function isSupportedModel(value: unknown): value is ProjectConfig['defaultModel'
 }
 
 function mergeConfig(current: ProjectConfig, patch: ProjectConfigPatch): ProjectConfig {
-  const merged: ProjectConfig = { ...current };
+  let merged: ProjectConfig = { ...current };
   if (patch.language !== undefined && isSupportedLanguage(patch.language)) {
     merged.language = patch.language;
   }
@@ -102,16 +105,26 @@ function mergeConfig(current: ProjectConfig, patch: ProjectConfigPatch): Project
   if (Object.prototype.hasOwnProperty.call(patch, 'externalLink')) {
     if (patch.externalLink === undefined || patch.externalLink === '') {
       const { externalLink: _omitted, ...withoutLink } = merged;
-      return withoutLink;
+      merged = withoutLink;
+    } else {
+      merged.externalLink = patch.externalLink;
     }
-    merged.externalLink = patch.externalLink;
   }
   if (Object.prototype.hasOwnProperty.call(patch, 'qualityThreshold')) {
     if (patch.qualityThreshold === null || patch.qualityThreshold === undefined) {
       const { qualityThreshold: _omitted, ...withoutThreshold } = merged;
-      return withoutThreshold;
+      merged = withoutThreshold;
+    } else {
+      merged.qualityThreshold = patch.qualityThreshold;
     }
-    merged.qualityThreshold = patch.qualityThreshold;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'maxConcurrentReviews')) {
+    if (patch.maxConcurrentReviews === null || patch.maxConcurrentReviews === undefined) {
+      const { maxConcurrentReviews: _omitted, ...withoutCap } = merged;
+      merged = withoutCap;
+    } else {
+      merged.maxConcurrentReviews = patch.maxConcurrentReviews;
+    }
   }
   return merged;
 }
@@ -138,6 +151,16 @@ export class UpdateProjectConfigUseCase
       const thresholdValidation = validateQualityThreshold(sanitized.qualityThreshold);
       if (!thresholdValidation.ok) {
         return { status: 'invalid', reason: thresholdValidation.reason };
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitized, 'maxConcurrentReviews')) {
+      const raw = sanitized.maxConcurrentReviews;
+      if (raw !== null) {
+        const capValidation = validateProjectConcurrencyCap(raw);
+        if (!capValidation.ok) {
+          return { status: 'invalid', reason: capValidation.reason };
+        }
       }
     }
 

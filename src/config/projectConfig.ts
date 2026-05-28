@@ -11,6 +11,10 @@ import {
   reviewSkillForFocus,
 } from '@/modules/review-execution/entities/progress/reviewFocus.type.js';
 import { logWarn } from '@/frameworks/logging/logBuffer.js';
+import {
+  MAX_PROJECT_CONCURRENCY_CAP,
+  MIN_PROJECT_CONCURRENCY_CAP,
+} from '@/modules/cli-configuration/entities/projectConcurrencyCap/projectConcurrencyCap.valueObject.js';
 
 export interface ProjectConfig {
   github: boolean;
@@ -26,6 +30,7 @@ export interface ProjectConfig {
   routingPolicy?: RoutingPolicy;
   externalLink?: string;
   qualityThreshold?: number;
+  maxConcurrentReviews?: number;
 }
 
 function parseExternalLink(value: unknown): string | undefined {
@@ -53,6 +58,23 @@ function parseQualityThreshold(value: unknown): number | undefined {
   }
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 10) {
     throw new Error('Invalid qualityThreshold: must be an integer between 0 and 10');
+  }
+  return value;
+}
+
+function parseMaxConcurrentReviews(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < MIN_PROJECT_CONCURRENCY_CAP ||
+    value > MAX_PROJECT_CONCURRENCY_CAP
+  ) {
+    throw new Error(
+      `Invalid maxConcurrentReviews: must be an integer between ${MIN_PROJECT_CONCURRENCY_CAP} and ${MAX_PROJECT_CONCURRENCY_CAP}`,
+    );
   }
   return value;
 }
@@ -208,6 +230,11 @@ export function parseProjectConfig(parsed: Record<string, unknown>): ProjectConf
   const qualityThreshold = parseQualityThreshold(parsed.qualityThreshold);
   if (qualityThreshold !== undefined) {
     config.qualityThreshold = qualityThreshold;
+  }
+
+  const maxConcurrentReviews = parseMaxConcurrentReviews(parsed.maxConcurrentReviews);
+  if (maxConcurrentReviews !== undefined) {
+    config.maxConcurrentReviews = maxConcurrentReviews;
   }
 
   return config;

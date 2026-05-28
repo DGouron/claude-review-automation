@@ -100,6 +100,7 @@ async function buildApp(options: {
   statsByPath?: Record<string, ProjectStats | null>;
   reviewsByPath?: Record<string, ReviewFileInfo[]>;
   projectConfigsByPath?: Record<string, ProjectConfig>;
+  getCapacity?: () => { running: number; max: number };
 }): Promise<FastifyInstance> {
   const app = Fastify();
   await app.register(overviewRoutes, {
@@ -110,6 +111,7 @@ async function buildApp(options: {
     projectConfigGateway: options.projectConfigsByPath
       ? stubProjectConfigGateway(options.projectConfigsByPath)
       : undefined,
+    getCapacity: options.getCapacity,
   });
   return app;
 }
@@ -242,6 +244,41 @@ describe('overviewRoutes — GET /api/overview', () => {
     const apiCard = body.projectCards.items.find((card) => card.projectName === 'api');
     expect(frontendCard?.externalLink).toBe('https://notion.so/team/frontend');
     expect(apiCard?.externalLink).toBeUndefined();
+
+    await app.close();
+  });
+
+  it('exposes headerCapacity from the injected getCapacity option (SPEC-186)', async () => {
+    const app = await buildApp({
+      repositories: [
+        RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', enabled: true }),
+      ],
+      getCapacity: () => ({ running: 3, max: 5 }),
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/overview' });
+
+    const body = response.json() as OverviewViewModel;
+    expect(body.headerCapacity.label).toBe('3 / 5');
+    expect(body.headerCapacity.runningCount).toBe(3);
+    expect(body.headerCapacity.totalCapacity).toBe(5);
+    expect(body.headerCapacity.isSaturated).toBe(false);
+
+    await app.close();
+  });
+
+  it('headerCapacity defaults to "0 / 0" when getCapacity is not provided', async () => {
+    const app = await buildApp({
+      repositories: [
+        RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', enabled: true }),
+      ],
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/overview' });
+
+    const body = response.json() as OverviewViewModel;
+    expect(body.headerCapacity.label).toBe('0 / 0');
+    expect(body.headerCapacity.isSaturated).toBe(false);
 
     await app.close();
   });

@@ -74,6 +74,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
       qualityThreshold: '',
+      maxConcurrentReviews: '2',
       projectName: 'A',
     });
 
@@ -89,6 +90,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
       qualityThreshold: '',
+      maxConcurrentReviews: '2',
       projectName: 'A',
     });
 
@@ -105,6 +107,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewFollowupSkill: 'review-followup',
       externalLink: 'https://notion.so/x',
       qualityThreshold: '',
+      maxConcurrentReviews: '2',
       projectName: 'A',
     });
 
@@ -120,6 +123,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
       qualityThreshold: '',
+      maxConcurrentReviews: '2',
       projectName: 'frontend',
     });
 
@@ -135,6 +139,7 @@ describe('settingsModal — renderSettingsModalHtml', () => {
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
       qualityThreshold: '',
+      maxConcurrentReviews: '2',
       projectName: 'A',
     });
 
@@ -248,6 +253,7 @@ describe('settingsModal — renderSettingsModalHtml renders qualityThreshold inp
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
       qualityThreshold: '7',
+      maxConcurrentReviews: '2',
       projectName: 'A',
     });
 
@@ -265,6 +271,7 @@ describe('settingsModal — renderSettingsModalHtml renders qualityThreshold inp
       reviewFollowupSkill: 'review-followup',
       externalLink: '',
       qualityThreshold: '',
+      maxConcurrentReviews: '2',
       projectName: 'A',
     });
 

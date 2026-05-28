@@ -19,12 +19,18 @@ const EDITABLE_KEYS = [
   'reviewFollowupSkill',
   'externalLink',
   'qualityThreshold',
+  'maxConcurrentReviews',
 ];
 
 const SUPPORTED_LANGUAGES = ['fr', 'en'];
 const SUPPORTED_MODELS = ['haiku', 'sonnet', 'opus'];
 
 const QUALITY_THRESHOLD_ERROR = 'Le seuil doit être un entier entre 0 et 10';
+
+const PROJECT_CAP_REQUIRED_MESSAGE = 'La valeur est obligatoire';
+const PROJECT_CAP_NOT_INTEGER_MESSAGE = 'La valeur doit être un nombre entier';
+const PROJECT_CAP_OUT_OF_RANGE_MESSAGE = 'La valeur doit être comprise entre 1 et 10';
+const DEFAULT_MAX_CONCURRENT_REVIEWS = 2;
 
 /**
  * @typedef {Object} SettingsModalConfigInput
@@ -34,6 +40,7 @@ const QUALITY_THRESHOLD_ERROR = 'Le seuil doit être un entier entre 0 et 10';
  * @property {'en' | 'fr'} language
  * @property {string} [externalLink]
  * @property {number} [qualityThreshold]
+ * @property {number} [maxConcurrentReviews]
  * @property {boolean} [github]
  * @property {boolean} [gitlab]
  * @property {number} [retentionDays]
@@ -53,6 +60,7 @@ const QUALITY_THRESHOLD_ERROR = 'Le seuil doit être un entier entre 0 et 10';
  * @property {string} reviewFollowupSkill
  * @property {string} externalLink
  * @property {string} qualityThreshold
+ * @property {string} maxConcurrentReviews
  * @property {string} projectName
  */
 
@@ -71,6 +79,9 @@ export function buildSettingsViewModel(input) {
     qualityThreshold: typeof config.qualityThreshold === 'number'
       ? String(config.qualityThreshold)
       : '',
+    maxConcurrentReviews: typeof config.maxConcurrentReviews === 'number'
+      ? String(config.maxConcurrentReviews)
+      : String(DEFAULT_MAX_CONCURRENT_REVIEWS),
     projectName: typeof input.projectName === 'string' && input.projectName.length > 0
       ? input.projectName
       : '—',
@@ -170,6 +181,12 @@ export function renderSettingsModalHtml(viewModel) {
         <span class="settings-modal__hint">${escapeHtml(t('settings.qualityThresholdHint'))}</span>
       </label>
 
+      <label class="settings-modal__field">
+        <span class="settings-modal__label">${escapeHtml(t('settings.maxConcurrentReviews'))}</span>
+        <input name="maxConcurrentReviews" type="number" value="${escapeHtml(viewModel.maxConcurrentReviews)}" min="1" max="10" step="1" class="settings-modal__input" />
+        <span class="settings-modal__hint">${escapeHtml(t('settings.maxConcurrentReviewsHint'))}</span>
+      </label>
+
       <p class="settings-modal__error" aria-live="polite"></p>
 
       <div class="settings-modal__actions">
@@ -195,6 +212,27 @@ export function validateQualityThreshold(value) {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10) {
     return { ok: false, message: QUALITY_THRESHOLD_ERROR };
+  }
+  return { ok: true };
+}
+
+/**
+ * Mirrors the server-side validation in projectConcurrencyCap.valueObject.ts.
+ * Empty value is required; non-integer or out-of-range [1, 10] are rejected.
+ *
+ * @param {string} value
+ * @returns {{ ok: true } | { ok: false; message: string }}
+ */
+export function validateMaxConcurrentReviews(value) {
+  if (value === '') {
+    return { ok: false, message: PROJECT_CAP_REQUIRED_MESSAGE };
+  }
+  if (!/^-?\d+$/.test(value)) {
+    return { ok: false, message: PROJECT_CAP_NOT_INTEGER_MESSAGE };
+  }
+  const parsed = Number(value);
+  if (parsed < 1 || parsed > 10) {
+    return { ok: false, message: PROJECT_CAP_OUT_OF_RANGE_MESSAGE };
   }
   return { ok: true };
 }

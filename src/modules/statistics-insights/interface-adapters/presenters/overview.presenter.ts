@@ -39,12 +39,18 @@ export interface OverviewProjectConfigSummary {
   externalLink?: string;
 }
 
+export interface OverviewCapacityInput {
+  running: number;
+  max: number;
+}
+
 export interface OverviewPresenterInput {
   repositories: RepositoryConfig[];
   activeJobs: OverviewActiveJobInput[];
   projectStats: OverviewProjectStatsEntry[];
   recentReviews: ReviewFileInfo[];
   projectConfigs?: Record<string, OverviewProjectConfigSummary>;
+  capacity?: OverviewCapacityInput;
 }
 
 export interface OverviewActiveReviewItem {
@@ -96,10 +102,18 @@ export interface OverviewRecentReviewsFeedSection {
   emptyMessage: string;
 }
 
+export interface HeaderCapacityViewModel {
+  runningCount: number;
+  totalCapacity: number;
+  label: string;
+  isSaturated: boolean;
+}
+
 export interface OverviewViewModel {
   activeReviews: OverviewActiveReviewsSection;
   projectCards: OverviewProjectCardsSection;
   recentReviewsFeed: OverviewRecentReviewsFeedSection;
+  headerCapacity: HeaderCapacityViewModel;
 }
 
 export interface OverviewPresenterDependencies {
@@ -252,6 +266,14 @@ export class OverviewPresenter {
       .slice(0, RECENT_FEED_MAX_ITEMS)
       .map((review) => buildRecentReviewItem(review, input.repositories));
 
+    const capacity = input.capacity ?? { running: 0, max: 0 };
+    const headerCapacity: HeaderCapacityViewModel = {
+      runningCount: capacity.running,
+      totalCapacity: capacity.max,
+      label: `${capacity.running} / ${capacity.max}`,
+      isSaturated: capacity.max > 0 && capacity.running >= capacity.max,
+    };
+
     return {
       activeReviews: {
         items: activeItems,
@@ -268,6 +290,7 @@ export class OverviewPresenter {
         isEmpty: recentItems.length === 0,
         emptyMessage: 'Aucune review récente',
       },
+      headerCapacity,
     };
   }
 }

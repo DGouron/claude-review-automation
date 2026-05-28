@@ -1,6 +1,7 @@
 import PQueue from 'p-queue';
 import type { Logger } from 'pino';
 import { loadConfig } from '@/frameworks/config/configLoader.js';
+import { ProjectSemaphore } from '@/frameworks/queue/projectSemaphore.js';
 import type { ReviewProgress, ProgressEvent } from '@/modules/review-execution/entities/progress/progress.type.js';
 import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
 import type { ClaudeModelName } from '@/modules/review-execution/entities/modelRouting/modelRouting.schema.js';
@@ -95,6 +96,37 @@ export function __getMrChainsSize(): number {
 
 function createMrConcurrencyKey(platform: string, projectPath: string, mrNumber: number): string {
   return `${platform}:${projectPath}:${mrNumber}`;
+}
+
+// SPEC-186: per-project semaphore gates concurrent reviews for a given project.
+// Sits between the MR-chain wait and PQueue.add(): waits for available cap,
+// then proceeds. Decrement happens in the same finally block as activeJobs cleanup.
+const projectSemaphore = new ProjectSemaphore();
+const projectCaps = new Map<string, number>();
+
+export function setProjectConcurrencyCap(projectPath: string, cap: number): void {
+  projectCaps.set(projectPath, cap);
+  projectSemaphore.setCapacity(projectPath, cap);
+}
+
+export function setGlobalConcurrency(value: number): void {
+  if (queue) {
+    queue.concurrency = value;
+  }
+}
+
+export function getRunningCount(): number {
+  return projectSemaphore.totalRunning();
+}
+
+export function getTotalCapacity(): number {
+  let total = 0;
+  for (const cap of projectCaps.values()) total += cap;
+  return total;
+}
+
+export function __resetProjectConcurrencyState(): void {
+  projectCaps.clear();
 }
 
 let queue: PQueue | null = null;
@@ -226,11 +258,14 @@ export async function enqueueReview(
   // SPEC-170 FR-9: MR-scoped serialization. fresh + followup on the same MR
   // queue behind each other; different MRs still run in parallel within PQueue
   // concurrency.
+  // SPEC-186: after the MR-chain wait, the per-project semaphore gates entry
+  // into PQueue.add() so a single project cannot saturate the global queue.
   const mrKey = createMrConcurrencyKey(job.platform, job.projectPath, job.mrNumber);
   const previousTail = mrChains.get(mrKey) ?? Promise.resolve();
 
-  const newTail: Promise<void> = previousTail.then(() =>
-    q.add(async () => {
+  const newTail: Promise<void> = previousTail.then(async () => {
+    await projectSemaphore.acquire(job.projectPath);
+    await q.add(async () => {
       jobStatus.status = 'running';
       jobStatus.startedAt = new Date();
       log.info({ jobId: job.id }, 'Début du traitement');
@@ -268,6 +303,10 @@ export async function enqueueReview(
         if (completedJobs.length > MAX_COMPLETED_JOBS) {
           completedJobs.pop();
         }
+        // SPEC-186: release the per-project slot in the same finally block as
+        // the MR-chain teardown so a project never holds a phantom slot after a
+        // crash or abort.
+        projectSemaphore.release(job.projectPath);
 
         // Best-effort persistence (SPEC-176): fire the callback without
         // awaiting and swallow any rejection so the queue task is never
@@ -280,8 +319,8 @@ export async function enqueueReview(
         // Notify state change (job completed/failed)
         stateChangeCallback?.();
       }
-    }) as unknown as Promise<void>,
-  );
+    });
+  });
 
   mrChains.set(mrKey, newTail);
 

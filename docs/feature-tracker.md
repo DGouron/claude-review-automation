@@ -8,7 +8,7 @@
 | ~~Update README quickstart~~ | [32-update-readme-quickstart](specs/32-update-readme-quickstart.md) | obsolete (npm flow N/A — daemon local) | 2026-03-14 |
 | Zod guard GitLab webhook | [44-zod-guard-gitlab-webhook](specs/44-zod-guard-gitlab-webhook.md) | implemented | 2026-03-14 |
 | GitHub followup review on push | [46-github-followup-review-on-push](specs/46-github-followup-review-on-push.md) | implemented | 2026-05-20 |
-| Capture git diff stats | [47-capture-git-diff-stats](specs/47-capture-git-diff-stats.md) | drafted | 2026-03-14 |
+| Capture git diff stats | [47-capture-git-diff-stats](specs/47-capture-git-diff-stats.md) | implemented | 2026-05-27 |
 | Review focus selection | [48-review-focus-selection](specs/48-review-focus-selection.md) | implemented | 2026-05-23 |
 | Update skills project examples | [50-update-skills-project-examples](specs/50-update-skills-project-examples.md) | implemented | 2026-05-22 |
 | Dashboard unit tests | [51-dashboard-unit-tests](specs/51-dashboard-unit-tests.md) | implemented | 2026-05-20 |
@@ -52,3 +52,4 @@
 | Setup Wizard CLI orchestrator (Jarvis end-to-end) | [183-setup-wizard-cli-orchestrator](specs/183-setup-wizard-cli-orchestrator.md) — [plan](plans/183-setup-wizard-cli-orchestrator.plan.md) — [report](reports/183-setup-wizard-cli-orchestrator.report.md) | implemented | 2026-05-28 |
 | Setup Wizard Dashboard (Jarvis HUD) | [184-setup-wizard-dashboard-jarvis](specs/184-setup-wizard-dashboard-jarvis.md) | drafted | 2026-05-27 |
 | Setup Wizard MCP agent fallback (deferred) | [185-setup-wizard-mcp-agent-fallback](specs/185-setup-wizard-mcp-agent-fallback.md) | drafted (deferred) | 2026-05-27 |
+| Cap parallel reviews per project | [186-per-project-concurrency-cap](specs/186-per-project-concurrency-cap.md) — [plan](plans/186-per-project-concurrency-cap.plan.md) — [report](reports/186-per-project-concurrency-cap.report.md) | implemented | 2026-05-27 |
