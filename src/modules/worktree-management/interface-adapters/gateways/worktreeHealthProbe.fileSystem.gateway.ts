@@ -94,17 +94,10 @@ export class WorktreeHealthProbeFileSystemGateway implements WorktreeHealthProbe
       unresolvedConflict = false;
     }
 
-    const expectedPath = join(entry.path, 'node_modules');
-    const missingBuildArtifacts = {
-      missing: !existsSync(expectedPath),
-      expectedPath,
-    };
-
     return {
       mtime,
       orphanLock,
       unresolvedConflict,
-      missingBuildArtifacts,
     };
   }
 }

@@ -6,6 +6,8 @@
 - **Date**: 2026-05-27
 - **Status**: implemented
 
+> **Amendment (2026-05-28)**: the `missing-build-artifacts` signal documented below was removed. Review worktrees are never prebuilt with `node_modules`, so the check flagged every worktree as degraded. The three remaining signals (`stale`, `orphan-git-lock`, `unresolved-conflict`) are unaffected.
+
 ---
 
 ## Summary

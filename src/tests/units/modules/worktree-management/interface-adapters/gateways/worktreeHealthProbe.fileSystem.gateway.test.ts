@@ -128,27 +128,4 @@ describe('WorktreeHealthProbeFileSystemGateway', () => {
       expect(signals.unresolvedConflict).toBe(true);
     });
   });
-
-  describe('missingBuildArtifacts', () => {
-    it('reports missing: true when node_modules is absent', async () => {
-      const gateway = new WorktreeHealthProbeFileSystemGateway({ executor });
-      const entry = buildEntry(scaffold.worktreeDirectory);
-
-      const signals = await gateway.probe(entry);
-
-      expect(signals.missingBuildArtifacts.missing).toBe(true);
-      expect(signals.missingBuildArtifacts.expectedPath).toBe(join(scaffold.worktreeDirectory, 'node_modules'));
-    });
-
-    it('reports missing: false when node_modules exists', async () => {
-      mkdirSync(join(scaffold.worktreeDirectory, 'node_modules'));
-
-      const gateway = new WorktreeHealthProbeFileSystemGateway({ executor });
-      const entry = buildEntry(scaffold.worktreeDirectory);
-
-      const signals = await gateway.probe(entry);
-
-      expect(signals.missingBuildArtifacts.missing).toBe(false);
-    });
-  });
 });

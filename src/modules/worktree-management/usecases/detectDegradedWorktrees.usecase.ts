@@ -38,12 +38,6 @@ function decideReason(
   if (signals.unresolvedConflict) {
     return { kind: 'unresolved-conflict' };
   }
-  if (signals.missingBuildArtifacts.missing) {
-    return {
-      kind: 'missing-build-artifacts',
-      expectedPath: signals.missingBuildArtifacts.expectedPath,
-    };
-  }
   return null;
 }
 

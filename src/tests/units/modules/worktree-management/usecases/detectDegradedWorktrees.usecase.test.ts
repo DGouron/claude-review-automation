@@ -22,7 +22,6 @@ function freshSignals(): HealthSignals {
     mtime: new Date(NOW.getTime() - 5 * 60 * 1000),
     orphanLock: null,
     unresolvedConflict: false,
-    missingBuildArtifacts: { missing: false, expectedPath: '' },
   };
 }
 
@@ -98,26 +97,7 @@ describe('detectDegradedWorktrees use case', () => {
     }
   });
 
-  it('flags missing-build-artifacts when node_modules is absent', async () => {
-    const probe = new StubWorktreeHealthProbeGateway();
-    const entry = buildEntry(5, new Date(NOW.getTime() - 5 * 60 * 1000), '/tmp/worktrees/gitlab-group-project-5');
-    probe.setSignals(entry.path, {
-      ...freshSignals(),
-      missingBuildArtifacts: { missing: true, expectedPath: `${entry.path}/node_modules` },
-    });
-
-    const reports = await detectDegradedWorktrees(
-      { entries: [entry], staleThresholdMs: STALE_THRESHOLD_MS, now: () => NOW },
-      { healthProbe: probe },
-    );
-
-    expect(reports[0]?.health.status).toBe('degraded');
-    if (reports[0]?.health.status === 'degraded' && reports[0].health.reason.kind === 'missing-build-artifacts') {
-      expect(reports[0].health.reason.expectedPath).toBe(`${entry.path}/node_modules`);
-    }
-  });
-
-  it('returns stale first when stale and orphan-lock both apply (detection order is stale → orphan-lock → conflict → missing-artifacts)', async () => {
+  it('returns stale first when stale and orphan-lock both apply (detection order is stale → orphan-lock → conflict)', async () => {
     const probe = new StubWorktreeHealthProbeGateway();
     const staleMtime = new Date(NOW.getTime() - 30 * ONE_HOUR_MS);
     const entry = buildEntry(6, staleMtime, '/tmp/worktrees/gitlab-group-project-6');
@@ -125,7 +105,6 @@ describe('detectDegradedWorktrees use case', () => {
       mtime: staleMtime,
       orphanLock: { present: true, path: '/main/.git/worktrees/x/index.lock', ageMs: 1 * ONE_HOUR_MS },
       unresolvedConflict: true,
-      missingBuildArtifacts: { missing: true, expectedPath: `${entry.path}/node_modules` },
     });
 
     const reports = await detectDegradedWorktrees(

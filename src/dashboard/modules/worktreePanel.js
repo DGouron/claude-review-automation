@@ -36,7 +36,7 @@
  */
 
 /**
- * @typedef {'stale' | 'orphan-git-lock' | 'unresolved-conflict' | 'missing-build-artifacts'} DegradedReasonCode
+ * @typedef {'stale' | 'orphan-git-lock' | 'unresolved-conflict'} DegradedReasonCode
  */
 
 /**

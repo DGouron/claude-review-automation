@@ -15,10 +15,6 @@ export const degradedReasonSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('unresolved-conflict'),
   }),
-  z.object({
-    kind: z.literal('missing-build-artifacts'),
-    expectedPath: z.string().min(1),
-  }),
 ]);
 
 export type DegradedReason = z.infer<typeof degradedReasonSchema>;
