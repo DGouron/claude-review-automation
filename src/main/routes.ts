@@ -29,6 +29,11 @@ import { cleanupRoutes } from '@/modules/data-lifecycle/interface-adapters/contr
 import { versionRoutes } from '@/modules/cli-configuration/interface-adapters/controllers/http/version.routes.js';
 import { insightsRoutes } from '@/modules/statistics-insights/interface-adapters/controllers/http/insights.routes.js';
 import { registerWebSocketRoutes } from '@/main/websocket.js';
+import { setupWizardRoutes } from '@/modules/setup-wizard/interface-adapters/controllers/http/setupWizard.routes.js';
+import { SetupRunRegistry } from '@/modules/setup-wizard/usecases/streamSetupRun.usecase.js';
+import { SetupProcessChildProcessGateway } from '@/modules/setup-wizard/interface-adapters/gateways/setupProcess.childProcess.gateway.js';
+import { SetupStateFileSystemGateway } from '@/modules/setup-wizard/interface-adapters/gateways/setupState.fileSystem.gateway.js';
+import { getConfigDir } from '@/shared/services/configDir.js';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
 import {
@@ -433,6 +438,20 @@ export async function registerRoutes(
 
   app.get('/', async (_request, reply) => {
     reply.redirect('/dashboard/');
+  });
+
+  await app.register(setupWizardRoutes, {
+    registry: new SetupRunRegistry(
+      new SetupProcessChildProcessGateway({ cliPath: join(__dirname, 'cli.js') }),
+    ),
+    setupStateGateway: new SetupStateFileSystemGateway({
+      filePath: join(getConfigDir(), 'setup-state.json'),
+    }),
+    logger: deps.logger,
+  });
+
+  app.get('/setup', async (_request, reply) => {
+    reply.redirect('/dashboard/setup.html');
   });
 
   const repositoryConfigDeps = { readFileSync, writeFileSync, existsSync };
