@@ -101,24 +101,24 @@
 
     <div class="dashboard-layout">
       <aside class="dashboard-sidebar" aria-label="Project tools">
-        <button type="button" id="open-settings-modal-btn" class="sidebar-settings-button" hidden>
-          <span class="sidebar-settings-button__prefix">// SETTINGS</span>
-        </button>
-        <button type="button" id="open-economics-sheet-btn" class="sidebar-settings-button" onclick="openEconomicsSheet()">
-          <span class="sidebar-settings-button__prefix">// CLAUDE ECONOMICS</span>
-        </button>
-        <button type="button" id="open-stats-sheet-btn" class="sidebar-settings-button" onclick="openStatsSheet()" disabled aria-disabled="true">
-          <span class="sidebar-settings-button__prefix">// PROJECT STATS</span>
-        </button>
+        <div class="sidebar-tool-buttons">
+          <button type="button" id="open-settings-modal-btn" class="sidebar-settings-button" hidden>
+            <span class="sidebar-settings-button__prefix">// SETTINGS</span>
+          </button>
+          <button type="button" id="open-economics-sheet-btn" class="sidebar-settings-button" onclick="openEconomicsSheet()">
+            <span class="sidebar-settings-button__prefix">// ECONOMICS</span>
+          </button>
+          <button type="button" id="open-stats-sheet-btn" class="sidebar-settings-button" onclick="openStatsSheet()" disabled aria-disabled="true">
+            <span class="sidebar-settings-button__prefix">// STATS</span>
+          </button>
+        </div>
 
         <span id="config-status" class="config-status hidden"></span>
-
-        <section id="worktree-section" aria-label="Worktree pool"></section>
 
         <section id="ember-chat-panel" class="ember-chat-panel" aria-label="Ember">
           <div class="ember-chat-panel__header">
             <span class="ember-chat-panel__prefix">// EMBER</span>
-            <canvas id="ember-avatar" class="ember-chat-panel__avatar" width="72" height="72" aria-hidden="true"></canvas>
+            <canvas id="ember-avatar" class="ember-chat-panel__avatar" width="360" height="360" aria-hidden="true"></canvas>
           </div>
           <output id="ember-answer" class="ember-chat-panel__answer" aria-live="polite"></output>
           <div id="ember-status" class="ember-chat-panel__status" role="status" aria-live="polite"></div>
@@ -133,6 +133,8 @@
             />
           </form>
         </section>
+
+        <section id="worktree-section" aria-label="Worktree pool"></section>
       </aside>
 
       <main class="dashboard-main">
@@ -449,7 +451,7 @@
       renderHeaderCapacityBadgeHtml,
     } from './modules/headerCapacityBadge.js';
     import { connectEmberStream, shouldSendQuestion } from './modules/emberChat.js';
-    import { mountSetupWizardAvatar } from './modules/setupWizardAvatarRenderer.js';
+    import { mountEmberAvatar } from './modules/emberAvatarRenderer.js';
 
     const API_URL = window.location.origin;
     const WS_URL = `ws://${window.location.host}/ws`;
@@ -3868,9 +3870,10 @@
       const status = document.getElementById('ember-status');
       const retry = document.getElementById('ember-retry');
       const canvas = document.getElementById('ember-avatar');
+      const panel = document.getElementById('ember-chat-panel');
       if (!form || !input || !answer || !status || !canvas) return;
 
-      const avatar = mountSetupWizardAvatar({ canvas, initialState: 'idle' });
+      const avatar = mountEmberAvatar({ canvas, initialState: 'idle' });
 
       const ask = async () => {
         const question = input.value;
@@ -3878,6 +3881,7 @@
           input.focus();
           return;
         }
+        panel?.classList.add('ember-chat-panel--active');
         answer.textContent = '';
         status.textContent = '';
         retry.hidden = true;

@@ -5442,6 +5442,20 @@ body.overview-tab-active .dashboard-main > *:not(#overview-section) {
 
 /* SPEC-179 — Settings modal + sidebar Settings button (Agentic OS DNA) */
 
+.sidebar-tool-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sidebar-tool-buttons .sidebar-settings-button {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-top: 0;
+  padding: 0.45rem 0.3rem;
+  justify-content: center;
+  font-size: 0.68rem;
+}
+
 .sidebar-settings-button {
   display: flex;
   align-items: center;
@@ -6388,20 +6402,47 @@ input:focus-visible,
 
 .ember-chat-panel__header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .ember-chat-panel__prefix {
+  align-self: flex-start;
   color: var(--accent);
   font-size: 12px;
   letter-spacing: 0.04em;
 }
 
 .ember-chat-panel__avatar {
-  width: 48px;
-  height: 48px;
+  width: 260px;
+  height: 260px;
+  transition: width 0.45s ease, height 0.45s ease;
+}
+
+.ember-chat-panel--active .ember-chat-panel__header {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ember-chat-panel--active .ember-chat-panel__avatar {
+  width: 104px;
+  height: 104px;
+}
+
+.ember-chat-panel:not(.ember-chat-panel--active) .ember-chat-panel__answer,
+.ember-chat-panel:not(.ember-chat-panel--active) .ember-chat-panel__status,
+.ember-chat-panel:not(.ember-chat-panel--active) .ember-chat-panel__retry {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-chat-panel__avatar {
+    transition: none;
+    animation: none;
+  }
 }
 
 .ember-chat-panel__answer {
