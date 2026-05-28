@@ -9,6 +9,13 @@ import type {
   SetupProcessSpawnOptions,
 } from '@/modules/setup-wizard/entities/setupProcess/setupProcess.gateway.js';
 
+export function splitLines(buffer: string, chunk: string): { lines: string[]; rest: string } {
+  const parts = (buffer + chunk).split('\n');
+  const rest = parts.pop() ?? '';
+  const lines = parts.map((part) => part.trim()).filter((part) => part.length > 0);
+  return { lines, rest };
+}
+
 class ChildProcessSetupHandle implements SetupProcessHandle {
   private lineHandler: SetupProcessLineHandler | null = null;
   private exitHandler: SetupProcessExitHandler | null = null;
@@ -45,15 +52,10 @@ class ChildProcessSetupHandle implements SetupProcessHandle {
   }
 
   private consume(chunk: string): void {
-    this.buffer += chunk;
-    let newlineIndex = this.buffer.indexOf('\n');
-    while (newlineIndex !== -1) {
-      const line = this.buffer.slice(0, newlineIndex).trim();
-      this.buffer = this.buffer.slice(newlineIndex + 1);
-      if (line.length > 0) {
-        this.lineHandler?.(line);
-      }
-      newlineIndex = this.buffer.indexOf('\n');
+    const { lines, rest } = splitLines(this.buffer, chunk);
+    this.buffer = rest;
+    for (const line of lines) {
+      this.lineHandler?.(line);
     }
   }
 
@@ -66,9 +68,15 @@ class ChildProcessSetupHandle implements SetupProcessHandle {
   }
 }
 
+export interface SetupProcessChildProcessGatewayOptions {
+  cliPath: string;
+}
+
 export class SetupProcessChildProcessGateway implements SetupProcessGateway {
+  constructor(private readonly options: SetupProcessChildProcessGatewayOptions) {}
+
   spawn(options?: SetupProcessSpawnOptions): SetupProcessHandle {
-    const args = [process.argv[1], 'setup', '--json'];
+    const args = [this.options.cliPath, 'setup', '--json'];
     const projectPath = options?.projectPath ?? null;
     if (projectPath !== null) {
       args.push(projectPath);

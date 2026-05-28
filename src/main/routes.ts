@@ -441,7 +441,9 @@ export async function registerRoutes(
   });
 
   await app.register(setupWizardRoutes, {
-    registry: new SetupRunRegistry(new SetupProcessChildProcessGateway()),
+    registry: new SetupRunRegistry(
+      new SetupProcessChildProcessGateway({ cliPath: join(__dirname, 'cli.js') }),
+    ),
     setupStateGateway: new SetupStateFileSystemGateway({
       filePath: join(getConfigDir(), 'setup-state.json'),
     }),
