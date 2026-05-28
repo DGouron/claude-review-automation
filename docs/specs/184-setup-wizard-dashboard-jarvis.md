@@ -1,6 +1,6 @@
 ---
 title: "SPEC-184: Setup Wizard Dashboard — Jarvis HUD"
-status: drafted
+status: implemented
 milestone: Setup Wizard Jarvis
 depends_on:
   - "183-setup-wizard-cli-orchestrator"
@@ -9,6 +9,44 @@ related:
 ---
 
 # SPEC-184: Setup Wizard Dashboard — Jarvis HUD
+
+## Status: implemented (Iteration A)
+
+Iteration A (read-only live view) is implemented. The interactive forms / stdin duplex
+(Iteration B) is deferred — it requires a SPEC-183 change (a `PromptStdinJsonGateway` so
+`--json` mode reads answers from stdin instead of the TTY). See
+[implementation report](../reports/184-setup-wizard-dashboard-jarvis.report.md) and
+[plan](../plans/184-setup-wizard-dashboard-jarvis.plan.md).
+
+## Implementation
+
+### Artefacts (Iteration A)
+
+- **Entity (boundary contract)**: `wizardStreamEvent.schema.ts` / `.guard.ts` (7 event shapes, 9 statuses), `setupProcess.gateway.ts` (subprocess contract).
+- **Use case**: `streamSetupRun.usecase.ts` — `SetupRunRegistry` (single-active-run, line buffering, late-subscriber replay).
+- **Gateway impl**: `setupProcess.childProcess.gateway.ts` — spawns `reviewflow setup --json`, line-splits stdout, surfaces exit code.
+- **Controller (HTTP + SSE)**: `setupWizard.routes.ts`.
+- **Views (humble objects)**: `setupWizard.js` (rows + banners + status mapping + ARIA), `setupWizardStream.js` (EventSource + polling fallback + multi-tab + reduced-motion), `setup.html`.
+
+### Endpoints
+
+| Method | Route | Behaviour |
+|--------|-------|-----------|
+| POST | `/api/setup/start` | Spawns `reviewflow setup --json` (single active run); returns `runId`, `409` if already active |
+| GET | `/api/setup/events?runId=` | SSE stream (text/event-stream) of validated stdout events; replays buffered lines; ends on subprocess exit or client disconnect |
+| GET | `/api/setup/state` | Returns persisted `setup-state.json` for the polling fallback |
+| GET | `/setup` | Redirects to the dashboard wizard page |
+
+### Decisions
+
+- Transport: **SSE isolated per run** (not the existing WebSocket bus) — each run is a per-request subprocess with a stream that dies on disconnect.
+- Every subprocess stdout line is validated through `wizardStreamEventGuard` at the boundary; malformed lines are skipped.
+- Status→visual mapping lives in the browser humble object (no backend presenter), matching existing dashboard panels.
+- No new dependency: CSS + already-vendored `animejs` (no `lottie-web`).
+
+### Reconciliations vs spec prose
+
+Step ids are the real SPEC-183 string ids (not `secrets-rotation`/`configure-pipeline`/numbers); 9 observable statuses (not 4); `--json` only (no `--pipe`); `instructions/warning/resume/done` are banners, not rows; real CSS tokens (`--bg-0..4`, `--accent`, `--success`, `--warning`, `--danger`, `--font-mono`).
 
 ## Context
 

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviewflow — Setup Wizard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="setup-body">
+  <main class="setup-shell" data-boot="pending">
+    <span class="setup-corner setup-corner--tl" aria-hidden="true"></span>
+    <span class="setup-corner setup-corner--tr" aria-hidden="true"></span>
+    <span class="setup-corner setup-corner--bl" aria-hidden="true"></span>
+    <span class="setup-corner setup-corner--br" aria-hidden="true"></span>
+
+    <header class="setup-header">
+      <div class="setup-boot" aria-hidden="true">
+        <span class="setup-boot-bar"></span>
+        <span class="setup-boot-bar"></span>
+        <span class="setup-boot-bar"></span>
+      </div>
+      <div class="setup-title-block">
+        <p class="setup-eyebrow">// REVIEWFLOW SETUP</p>
+        <h1 id="setup-heading" class="setup-heading">// SÉQUENCE DE DÉMARRAGE</h1>
+      </div>
+    </header>
+
+    <div id="setup-banners" class="setup-banners"></div>
+
+    <div id="setup-disconnect" class="setup-disconnect" hidden role="alert">
+      <span class="setup-banner-title">// CONNEXION PERDUE</span>
+      <span class="setup-disconnect-detail">Lecture dégradée via interrogation périodique de l'état.</span>
+      <a class="btn btn-secondary" href="/setup">Relancer le wizard</a>
+    </div>
+
+    <div id="setup-readonly" class="setup-readonly" hidden role="status"></div>
+
+    <ol id="setup-steps" class="setup-steps" aria-label="Étapes de configuration"></ol>
+
+    <div id="setup-live" class="setup-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+    import {
+      buildStepRowsModel,
+      buildBannerModel,
+      renderStepRow,
+      renderBanner,
+      buildAriaAnnouncement,
+    } from './modules/setupWizard.js';
+    import {
+      connectSetupWizardStream,
+      pollingStateToEvents,
+      buildMultiTabViewState,
+      prefersReducedMotion,
+    } from './modules/setupWizardStream.js';
+
+    const stepsContainer = document.getElementById('setup-steps');
+    const bannersContainer = document.getElementById('setup-banners');
+    const disconnectBanner = document.getElementById('setup-disconnect');
+    const readOnlyBanner = document.getElementById('setup-readonly');
+    const liveRegion = document.getElementById('setup-live');
+    const shell = document.querySelector('.setup-shell');
+    const headingElement = document.getElementById('setup-heading');
+
+    const reducedMotion = prefersReducedMotion(
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null,
+    );
+    if (reducedMotion) {
+      shell.setAttribute('data-reduced-motion', 'true');
+    }
+
+    let lastAnnouncedKey = '';
+
+    function announce(rows) {
+      const active = rows.find((row) => row.status === 'in_progress')
+        ?? [...rows].reverse().find((row) => row.status !== 'pending');
+      if (!active) {
+        return;
+      }
+      const key = `${active.id}:${active.status}`;
+      if (key === lastAnnouncedKey) {
+        return;
+      }
+      lastAnnouncedKey = key;
+      liveRegion.textContent = buildAriaAnnouncement(active);
+    }
+
+    function applyResumeHeading(banners) {
+      const resume = banners.find((banner) => banner.kind === 'resume');
+      if (resume && resume.position !== null && resume.total !== null) {
+        headingElement.textContent = `// REPRISE — Étape ${resume.position}/${resume.total}`;
+      }
+    }
+
+    function render(events) {
+      const rows = buildStepRowsModel(events);
+      const banners = buildBannerModel(events);
+      stepsContainer.innerHTML = rows.map(renderStepRow).join('');
+      bannersContainer.innerHTML = banners.map(renderBanner).join('');
+      applyResumeHeading(banners);
+      announce(rows);
+    }
+
+    function showDisconnect() {
+      disconnectBanner.hidden = false;
+    }
+
+    function showReadOnly(notice) {
+      readOnlyBanner.hidden = false;
+      readOnlyBanner.textContent = notice;
+    }
+
+    async function pollOnce() {
+      try {
+        const response = await fetch('/api/setup/state');
+        if (!response.ok) {
+          return;
+        }
+        const payload = await response.json();
+        render(pollingStateToEvents(payload.state));
+      } catch {
+        /* polling is best-effort; the disconnect banner already informs the user */
+      }
+    }
+
+    function startPolling() {
+      showDisconnect();
+      pollOnce();
+      window.setInterval(pollOnce, 2000);
+    }
+
+    async function startRun() {
+      const response = await fetch('/api/setup/start', { method: 'POST' });
+      if (response.status === 409) {
+        const body = await response.json();
+        const viewState = buildMultiTabViewState({ isPrimaryTab: false, hasActiveRun: true });
+        if (viewState.notice) {
+          showReadOnly(viewState.notice);
+        }
+        subscribe(body.runId, true);
+        return;
+      }
+      const body = await response.json();
+      subscribe(body.runId, false);
+    }
+
+    function subscribe(runId, readOnly) {
+      shell.setAttribute('data-boot', 'ready');
+      connectSetupWizardStream({
+        runId,
+        onEvents: render,
+        onDisconnected: () => {
+          if (!readOnly) {
+            startPolling();
+          } else {
+            pollOnce();
+          }
+        },
+        onComplete: () => {
+          window.setTimeout(() => {
+            window.location.href = '/dashboard/';
+          }, reducedMotion ? 0 : 3000);
+        },
+      });
+    }
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'reviewflow.setup.completed') {
+        window.location.href = '/dashboard/';
+      }
+    });
+
+    render([]);
+    startRun();
+  </script>
+</body>
+</html>
