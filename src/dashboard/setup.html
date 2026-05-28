@@ -38,6 +38,18 @@
 
     <div id="setup-readonly" class="setup-readonly" hidden role="status"></div>
 
+    <div id="setup-avatar" class="setup-avatar" hidden>
+      <span class="setup-corner setup-corner--tl" aria-hidden="true"></span>
+      <span class="setup-corner setup-corner--tr" aria-hidden="true"></span>
+      <span class="setup-corner setup-corner--bl" aria-hidden="true"></span>
+      <span class="setup-corner setup-corner--br" aria-hidden="true"></span>
+      <canvas id="setup-avatar-canvas" class="setup-avatar-canvas" width="220" height="220" aria-hidden="true"></canvas>
+      <div class="setup-avatar-side">
+        <div id="setup-avatar-status" class="setup-avatar-status">// ÉTAT — INITIALISATION</div>
+        <div id="setup-avatar-form" class="setup-avatar-form"></div>
+      </div>
+    </div>
+
     <ol id="setup-steps" class="setup-steps" aria-label="Étapes de configuration"></ol>
 
     <div id="setup-live" class="setup-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -62,6 +74,11 @@
       renderForm,
       buildInputPayload,
     } from './modules/setupWizardForms.js';
+    import {
+      avatarStateFromEvents,
+      shouldUseAvatar,
+    } from './modules/setupWizardAvatar.js';
+    import { mountSetupWizardAvatar } from './modules/setupWizardAvatarRenderer.js';
 
     const stepsContainer = document.getElementById('setup-steps');
     const bannersContainer = document.getElementById('setup-banners');
@@ -70,6 +87,10 @@
     const liveRegion = document.getElementById('setup-live');
     const shell = document.querySelector('.setup-shell');
     const headingElement = document.getElementById('setup-heading');
+    const avatarContainer = document.getElementById('setup-avatar');
+    const avatarCanvas = document.getElementById('setup-avatar-canvas');
+    const avatarStatusSlot = document.getElementById('setup-avatar-status');
+    const avatarFormSlot = document.getElementById('setup-avatar-form');
 
     const reducedMotion = prefersReducedMotion(
       typeof window.matchMedia === 'function'
@@ -79,6 +100,12 @@
     if (reducedMotion) {
       shell.setAttribute('data-reduced-motion', 'true');
     }
+
+    const canvasSupported =
+      typeof document.createElement('canvas').getContext === 'function' &&
+      document.createElement('canvas').getContext('2d') !== null;
+    const useAvatar = shouldUseAvatar({ canvasSupported, reducedMotion });
+    let avatar = null;
 
     let lastAnnouncedKey = '';
     let activeRunId = null;
@@ -191,6 +218,20 @@
       }
     }
 
+    function renderAvatarForm(events) {
+      const awaiting = latestAwaitingInput(events);
+      const model = activeRunReadOnly || activeRunId === null ? null : buildFormModel(awaiting);
+      if (model === null) {
+        avatarFormSlot.innerHTML = '';
+        return;
+      }
+      avatarFormSlot.innerHTML = renderForm(model);
+      const form = avatarFormSlot.querySelector('.setup-form');
+      if (form) {
+        bindForm(form, model);
+      }
+    }
+
     function render(events) {
       const rows = buildStepRowsModel(events);
       const banners = buildBannerModel(events);
@@ -200,6 +241,22 @@
       renderActiveForm(events);
       announce(rows);
     }
+
+    function renderAvatar(events) {
+      const rows = buildStepRowsModel(events);
+      const banners = buildBannerModel(events);
+      const state = avatarStateFromEvents(events);
+      if (avatar) {
+        avatar.setState(state);
+      }
+      avatarStatusSlot.textContent = `// ÉTAT — ${state.toUpperCase()}`;
+      bannersContainer.innerHTML = banners.map(renderBanner).join('');
+      applyResumeHeading(banners);
+      renderAvatarForm(events);
+      announce(rows);
+    }
+
+    const renderEvents = useAvatar ? renderAvatar : render;
 
     function showDisconnect() {
       disconnectBanner.hidden = false;
@@ -217,7 +274,7 @@
           return;
         }
         const payload = await response.json();
-        render(pollingStateToEvents(payload.state));
+        renderEvents(pollingStateToEvents(payload.state));
       } catch {
         /* polling is best-effort; the disconnect banner already informs the user */
       }
@@ -250,7 +307,7 @@
       shell.setAttribute('data-boot', 'ready');
       connectSetupWizardStream({
         runId,
-        onEvents: render,
+        onEvents: renderEvents,
         onDisconnected: () => {
           if (!readOnly) {
             startPolling();
@@ -260,6 +317,10 @@
         },
         onComplete: () => {
           window.setTimeout(() => {
+            if (avatar) {
+              avatar.destroy();
+              avatar = null;
+            }
             window.location.href = '/dashboard/';
           }, reducedMotion ? 0 : 3000);
         },
@@ -268,11 +329,21 @@
 
     window.addEventListener('storage', (event) => {
       if (event.key === 'reviewflow.setup.completed') {
+        if (avatar) {
+          avatar.destroy();
+          avatar = null;
+        }
         window.location.href = '/dashboard/';
       }
     });
 
-    render([]);
+    if (useAvatar) {
+      avatarContainer.hidden = false;
+      stepsContainer.hidden = true;
+      avatar = mountSetupWizardAvatar({ canvas: avatarCanvas, initialState: 'idle' });
+    }
+
+    renderEvents([]);
     startRun();
   </script>
 </body>
