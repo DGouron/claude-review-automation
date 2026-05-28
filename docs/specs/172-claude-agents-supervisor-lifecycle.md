@@ -2,11 +2,15 @@
 title: "SPEC-172: Claude Agents Supervisor Lifecycle Managed by ReviewFlow"
 labels: enhancement, P1-critical, operational, claude-invocation
 milestone: June 15 Migration
-status: DRAFT
+status: implemented
 blocked-by: SPEC-169
 ---
 
 # SPEC-172: Claude Agents Supervisor Lifecycle Managed by ReviewFlow
+
+## Status: implemented
+
+Shipped 2026-05-23 (acceptance test at `src/tests/acceptance/172-claude-agents-supervisor-lifecycle.acceptance.test.ts`, supervisor probe/lock/respawn and `/health` wiring in place). Front-matter aligned with the tracker.
 
 ## Context
 
@@ -63,15 +67,15 @@ blocked-by: SPEC-169
 
 ## Acceptance Criteria
 
-- [ ] AC-1: At daemon boot, a `SupervisorHealthCheckUseCase` runs and logs `claude agents` supervisor reachability
-- [ ] AC-2: If unreachable at boot, the daemon spawns `claude agents` detached and logs the new PID
-- [ ] AC-3: The `/health` endpoint returns `{ status: 'ok' | 'degraded', supervisor: 'up' | 'down' | 'unknown', reason?: string }` reflecting the latest probe
-- [ ] AC-4: A periodic re-check runs every 60s; if a previously-up supervisor goes down, a warning is logged and a respawn is attempted
-- [ ] AC-5: A file lock at `~/.reviewflow/supervisor.lock` prevents two ReviewFlow processes from spawning two supervisors
-- [ ] AC-6: The probe is bounded by a 5-second timeout to avoid blocking the daemon boot indefinitely
-- [ ] AC-7: When the daemon shuts down, it does NOT kill the spawned supervisor (detached + unref); only systemd or operator action terminates it
-- [ ] AC-8: Acceptance test at `src/tests/acceptance/172-claude-agents-supervisor-lifecycle.acceptance.test.ts` covers the four main scenarios (up, down→spawn-ok, down→spawn-fail, periodic-respawn)
-- [ ] AC-9: Tracker updated — SPEC-172 → status `implemented`
+- [x] AC-1: At daemon boot, a `SupervisorHealthCheckUseCase` runs and logs `claude agents` supervisor reachability
+- [x] AC-2: If unreachable at boot, the daemon spawns `claude agents` detached and logs the new PID
+- [x] AC-3: The `/health` endpoint returns `{ status: 'ok' | 'degraded', supervisor: 'up' | 'down' | 'unknown', reason?: string }` reflecting the latest probe
+- [x] AC-4: A periodic re-check runs every 60s; if a previously-up supervisor goes down, a warning is logged and a respawn is attempted
+- [x] AC-5: A file lock at `~/.reviewflow/supervisor.lock` prevents two ReviewFlow processes from spawning two supervisors
+- [x] AC-6: The probe is bounded by a 5-second timeout to avoid blocking the daemon boot indefinitely
+- [x] AC-7: When the daemon shuts down, it does NOT kill the spawned supervisor (detached + unref); only systemd or operator action terminates it
+- [x] AC-8: Acceptance test at `src/tests/acceptance/172-claude-agents-supervisor-lifecycle.acceptance.test.ts` covers the four main scenarios (up, down→spawn-ok, down→spawn-fail, periodic-respawn)
+- [x] AC-9: Tracker updated — SPEC-172 → status `implemented`
 
 ## Operational Notes
 
