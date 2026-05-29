@@ -1,11 +1,43 @@
 import { execSync } from 'node:child_process'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import { tmpdir } from 'node:os'
 import type { ThreadFetchGateway } from '@/modules/platform-integration/entities/threadFetch/threadFetch.gateway.js'
 import type { ReviewContextThread } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
+import { createScopedGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/scopedGitLabExecutor.js'
+import type { ExecutorFileWriter, ScopedExecutorEnv } from '@/modules/platform-integration/services/scopedExecutorEnvironment.js'
 
 export type CommandExecutor = (command: string) => string
 
-export const defaultGitLabExecutor: CommandExecutor = (command: string) => {
-  return execSync(command, { encoding: 'utf-8', timeout: 30000 })
+const realFileWriter: ExecutorFileWriter = {
+  write(path: string, contents: string): void {
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, contents, { mode: 0o600 })
+  },
+}
+
+const scopedSpawn = (command: string, env: ScopedExecutorEnv, cwd: string): string =>
+  execSync(command, { encoding: 'utf-8', timeout: 30000, env, cwd })
+
+let scopedExecutor: CommandExecutor | null = null
+
+/**
+ * Fail-closed scoped GitLab executor (SPEC-196 AC1-AC4). Built lazily on first use so the
+ * dedicated service token is read at construction time; if absent it throws and no job is
+ * started. The token never enters the child env (AC3); it lives in an isolated glab config
+ * file under a per-process HOME/GLAB_CONFIG_DIR (AC4). Never inherits the ambient admin token.
+ */
+export const defaultGitLabExecutor: CommandExecutor = (command: string): string => {
+  if (scopedExecutor === null) {
+    const isolatedDir = `${tmpdir()}/reviewflow-executor-${process.pid}`
+    scopedExecutor = createScopedGitLabExecutor({
+      parentEnv: process.env,
+      isolatedDir,
+      fileWriter: realFileWriter,
+      spawn: scopedSpawn,
+    })
+  }
+  return scopedExecutor(command)
 }
 
 interface GitLabNotePosition {

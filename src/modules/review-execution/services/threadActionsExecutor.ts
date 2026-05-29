@@ -3,6 +3,7 @@ import type { ReviewAction } from '@/modules/review-execution/entities/reviewAct
 import { GitLabReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
 import { GitHubReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
 import type { ExecutionResult, CommandExecutor, ExecutionContext as GatewayExecutionContext } from '@/modules/review-execution/entities/reviewAction/reviewAction.gateway.js'
+import { filterAutoExecutorActions } from '@/modules/platform-integration/services/autoExecutorActionFilter.js'
 
 const COMMAND_TIMEOUT_MS = 30000
 
@@ -34,7 +35,7 @@ interface Logger {
 export async function executeThreadActions(
   actions: ThreadAction[],
   context: ExecutionContext,
-  _logger: Logger,
+  logger: Logger,
   executor: CommandExecutor
 ): Promise<ExecutionResult> {
   const gatewayContext: GatewayExecutionContext = {
@@ -45,12 +46,21 @@ export async function executeThreadActions(
     baseUrl: null,
   }
 
+  const { allowed, dropped } = filterAutoExecutorActions(actions)
+
+  if (dropped.length > 0) {
+    logger.warn(
+      { droppedTypes: dropped.map(action => action.type) },
+      'Auto executor dropped write-capable actions outside the read+postComment capability set',
+    )
+  }
+
   const gateway =
     context.platform === 'gitlab'
       ? new GitLabReviewActionCliGateway(executor)
       : new GitHubReviewActionCliGateway(executor)
 
-  return gateway.execute(actions, gatewayContext)
+  return gateway.execute(allowed, gatewayContext)
 }
 
 export const defaultCommandExecutor: CommandExecutor = (

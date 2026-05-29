@@ -5,6 +5,7 @@ import { gitLabMergeRequestEventGuard } from '@/modules/platform-integration/ent
 import { gitLabNoteEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabNoteEvent.guard.js';
 import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove, filterGitLabNoteEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { findRepositoryByProjectPath, type RepositoryConfig } from '@/config/loader.js';
+import { resolvePinnedThreadFetchTarget } from '@/modules/platform-integration/services/pinnedThreadFetchTarget.js';
 import {
   enqueueReview,
   createJobId,
@@ -868,8 +869,26 @@ export function buildGitLabReviewProcessor(
       const threadFetchGw = deps.threadFetchGateway;
       const diffMetadataFetchGw = deps.diffMetadataFetchGateway;
 
+      const pinnedTarget = resolvePinnedThreadFetchTarget({
+        payloadProjectPath: j.projectPath,
+        payloadMrNumber: j.mrNumber,
+        findRepository: (projectPath) => {
+          const matched = findRepositoryByProjectPath(projectPath);
+          return matched ? { projectPath } : null;
+        },
+        gatedMrNumber: j.mrNumber,
+      });
+
       try {
-        const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
+        const threads = pinnedTarget
+          ? threadFetchGw.fetchThreads(pinnedTarget.projectPath, pinnedTarget.mrNumber)
+          : [];
+        if (!pinnedTarget) {
+          logger.warn(
+            { projectPath: j.projectPath, mrNumber: j.mrNumber },
+            'Thread-fetch target failed provenance pin; action surface is empty'
+          );
+        }
         let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
         try {
           diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
