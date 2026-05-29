@@ -50,6 +50,10 @@ describe('extractText', () => {
     expect(extractText({ message: { content: [{ type: 'tool_use' }] } })).toBeNull();
   });
 
+  it('returns null when message content is a plain string (user line, not an array)', () => {
+    expect(extractText({ type: 'user', message: { content: 'Quelle est ma question ?' } })).toBeNull();
+  });
+
   it('returns null when no text is present', () => {
     expect(extractText({ type: 'result' })).toBeNull();
   });

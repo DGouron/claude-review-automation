@@ -3,7 +3,10 @@ export interface StreamJsonEvent {
   subtype?: string;
   text?: string;
   delta?: { text?: string };
-  message?: { content?: Array<{ type?: string; text?: string }>; stop_reason?: string | null };
+  message?: {
+    content?: Array<{ type?: string; text?: string }> | string;
+    stop_reason?: string | null;
+  };
 }
 
 export function parseStreamJsonEvent(line: string): StreamJsonEvent | null {
@@ -26,7 +29,7 @@ export function extractText(event: StreamJsonEvent): string | null {
     return event.delta.text;
   }
   const content = event.message?.content;
-  if (content !== undefined) {
+  if (Array.isArray(content)) {
     const text = content
       .filter((part) => part.type === 'text' && typeof part.text === 'string')
       .map((part) => part.text ?? '')
