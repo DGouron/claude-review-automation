@@ -6391,6 +6391,9 @@ input:focus-visible,
 }
 
 .ember-chat-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
   margin-top: 16px;
   padding: 12px;
   background: var(--bg-1);
@@ -6401,11 +6404,17 @@ input:focus-visible,
 }
 
 .ember-chat-panel__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+  padding-bottom: 8px;
+  background: var(--bg-1);
 }
 
 .ember-chat-panel__prefix {
@@ -6447,11 +6456,16 @@ input:focus-visible,
 
 .ember-chat-panel__thread {
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   flex-direction: column;
   gap: 8px;
-  max-height: 320px;
   margin-bottom: 8px;
   overflow-y: auto;
+}
+
+.ember-chat-panel__form {
+  flex-shrink: 0;
 }
 
 .ember-chat-panel__msg {
@@ -6460,7 +6474,6 @@ input:focus-visible,
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.5;
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
@@ -6469,6 +6482,7 @@ input:focus-visible,
   background: var(--accent-ghost);
   border: 1px solid var(--accent);
   color: var(--accent);
+  white-space: pre-wrap;
 }
 
 .ember-chat-panel__msg--ember {
@@ -6476,6 +6490,77 @@ input:focus-visible,
   background: var(--bg-0);
   border: 1px solid var(--ink-4);
   color: var(--ink-0);
+}
+
+.ember-chat-panel__msg--ember.is-generating {
+  animation: ember-pulse 1.2s ease-in-out infinite;
+  border-color: var(--accent);
+}
+
+.ember-chat-panel__msg--ember.is-answered {
+  animation: ember-appear 0.35s ease-out;
+}
+
+.ember-chat-panel__msg--ember.is-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Markdown inside an Ember bubble: tame default block margins. */
+.ember-chat-panel__msg--ember p {
+  margin: 0 0 6px;
+}
+.ember-chat-panel__msg--ember p:last-child {
+  margin-bottom: 0;
+}
+.ember-chat-panel__msg--ember ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.ember-chat-panel__msg--ember code {
+  padding: 1px 4px;
+  background: var(--bg-1);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.ember-chat-panel__msg--ember strong {
+  color: var(--accent);
+}
+
+.ember-typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.ember-typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: ember-typing-dot 1s ease-in-out infinite;
+}
+.ember-typing i:nth-child(2) { animation-delay: 0.15s; }
+.ember-typing i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes ember-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 169, 61, 0); }
+  50% { box-shadow: 0 0 10px 1px var(--accent-ghost); }
+}
+@keyframes ember-appear {
+  from { opacity: 0.3; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ember-typing-dot {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-chat-panel__msg--ember.is-generating,
+  .ember-chat-panel__msg--ember.is-answered,
+  .ember-typing i {
+    animation: none;
+  }
 }
 
 .ember-chat-panel__status {
