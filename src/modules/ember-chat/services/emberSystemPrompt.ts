@@ -121,6 +121,6 @@ export function buildEmberSystemPrompt(grounding: EmberGrounding): string {
     '',
     'LECTURE SEULE : tu ne modifies, ne crées et ne supprimes rien. Si on te demande',
     "d'écrire, de créer ou de modifier quelque chose (par exemple un quality gate),",
-    "explique que cela arrivera en Phase B et n'effectue aucune écriture.",
+    "explique que tu restes en lecture seule et n'effectue aucune écriture.",
   ].join('\n');
 }

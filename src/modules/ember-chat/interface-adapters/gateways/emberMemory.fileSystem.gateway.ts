@@ -14,7 +14,7 @@ export interface EmberMemoryFileSystemGatewayOptions {
 
 /**
  * Ember's private per-project notebook. One file per project under
- * ~/.claude-review/ember-memory/<slug>.md — never inside the reviewed repo and
+ * ~/.claude-review/ember-memory/<slug>.json — never inside the reviewed repo and
  * never a write to project state (reviews, threads, config). A corrupted or
  * unreadable notebook resolves to null so it can never block an answer.
  */
@@ -66,6 +66,6 @@ export class EmberMemoryFileSystemGateway implements EmberMemoryGateway {
 
   private notebookFor(projectPath: string): string {
     const slug = projectPath.replace(/\//g, '-');
-    return join(this.directory, `${slug}.md`);
+    return join(this.directory, `${slug}.json`);
   }
 }

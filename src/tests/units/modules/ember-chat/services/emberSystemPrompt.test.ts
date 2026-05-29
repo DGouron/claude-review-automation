@@ -27,10 +27,10 @@ describe('buildEmberSystemPrompt', () => {
     expect(prompt).toMatch(/ne sait répondre|ne sais pas|reviews/i);
   });
 
-  it('instructs that writing arrives in Phase B and to perform no writes', () => {
+  it('instructs it stays read-only and performs no writes', () => {
     const prompt = buildEmberSystemPrompt(EMPTY_GROUNDING);
-    expect(prompt).toContain('Phase B');
     expect(prompt.toLowerCase()).toContain('lecture seule');
+    expect(prompt).toMatch(/n'effectue aucune écriture/i);
   });
 
   it('identifies the assistant as Ember', () => {

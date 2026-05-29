@@ -23,7 +23,7 @@ The transport already dispatches `claude --bg` with `allowedTools: 'Read,Glob,Gr
 
 ### Milestone 2 — per-project durable conversation memory
 - **Entity** — `entities/emberMemory/`: `emberMemory.schema.ts` (Zod, `{turns, insights}`), `emberMemory.guard.ts` (tolerant `safeParse`), `emberMemory.gateway.ts` (port: `load` / `appendTurn` / `appendInsight` / `clear` — the only write path Ember has, a private notebook, never project state).
-- **Gateway** — `interface-adapters/gateways/emberMemory.fileSystem.gateway.ts`: one `.md` notebook per project at `~/.claude-review/ember-memory/<slug>.md` (slug = `projectPath` with `/`→`-`). `load` returns `null` on absent/corrupted/unreadable, never throws.
+- **Gateway** — `interface-adapters/gateways/emberMemory.fileSystem.gateway.ts`: one JSON notebook per project at `~/.claude-review/ember-memory/<slug>.json` (slug = `projectPath` with `/`→`-`). `load` returns `null` on absent/corrupted/unreadable, never throws. (Shipped as guard-validated JSON; a human-readable `.md`/DSL serialization is a possible future refinement, deferred since the notebook is opaque — UI inspection is out of scope.)
 - **Use case** — `askEmber` reads memory before the prompt via `loadMemorySafely` (try/catch → `null`, so a failing memory can never kill the stream) and appends `{question, answer}` after the terminal `done` (best-effort; empty answers skipped, write failures swallowed).
 - **Service** — `emberSystemPrompt` renders a "MÉMOIRE — conversation précédente" section when turns exist.
 - **Controller / wiring** — `emberChat.routes` threads the memory dependency; `main/routes.ts` instantiates the filesystem gateway (DI in the composition root only).
@@ -117,7 +117,7 @@ Verdict: **READY (pending user validation)** — no KO; Small/Estimable WARN tra
 Recorded so the planner does not relitigate the framing:
 
 - The operator chose to keep on-demand grounding and durable memory in **one** Phase C spec, after being shown the split option (Phase C grounding / Phase D memory). To protect INVEST-Small in practice, implement in internal milestones, each shippable behind the same acceptance: (1) on-demand grounding (lift the recent-window cap), (2) conversation memory persisted per project across restarts, (3) recorded recurring insights + the clear control.
-- Memory is **per project** and persisted as a `.md`/DSL notebook (consistent with the Ember vision); read back at answer time, written by Ember as its own notebook — never a write to project state.
+- Memory is **per project** and persisted as a guard-validated JSON notebook (a human-readable `.md`/DSL form, per the Ember vision, is a future refinement); read back at answer time, written by Ember as its own notebook — never a write to project state.
 - Memory content is limited to conversation turns + derived recurring insights. Operator preferences/facts were explicitly excluded (Out of Scope).
 - Read-only stays compile-enforced where it already is (the transport port has no write method); the memory notebook is the only thing Ember writes, and it is not project state.
 
