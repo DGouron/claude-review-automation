@@ -1,6 +1,6 @@
 ---
 title: "SPEC-192: Ground Ember on demand and remember per project"
-status: drafted
+status: implemented
 milestone: Ember Assistant
 depends_on:
   - "190-ember-live-answers-subscription"
@@ -11,6 +11,42 @@ related:
 ---
 
 # SPEC-192: Ground Ember on demand and remember per project
+
+## Status: implemented
+
+See [plan](../plans/192-ember-ondemand-grounding-and-memory.plan.md). Delivered in three internal milestones over one acceptance test, all on stubs (no real `claude` process in CI).
+
+## Implementation
+
+### Milestone 1 — on-demand grounding (no new capability, a framing fix)
+The transport already dispatches `claude --bg` with `allowedTools: 'Read,Glob,Grep'` over the project's `localPath`, so Ember could already read review data on disk. The recent-window ceiling lived only in the system prompt, which falsely claimed Ember had "aucun accès … système de fichiers" and that older reviews were "résumé agrégé seulement". `emberSystemPrompt` was reframed: the bounded snapshot is now a starting point (not a ceiling), Ember is told it may read any item on demand recent or old, and it must never refuse merely because data lies outside the snapshot. GROUNDING, no-invention and read-only clauses are kept.
+
+### Milestone 2 — per-project durable conversation memory
+- **Entity** — `entities/emberMemory/`: `emberMemory.schema.ts` (Zod, `{turns, insights}`), `emberMemory.guard.ts` (tolerant `safeParse`), `emberMemory.gateway.ts` (port: `load` / `appendTurn` / `appendInsight` / `clear` — the only write path Ember has, a private notebook, never project state).
+- **Gateway** — `interface-adapters/gateways/emberMemory.fileSystem.gateway.ts`: one `.md` notebook per project at `~/.claude-review/ember-memory/<slug>.md` (slug = `projectPath` with `/`→`-`). `load` returns `null` on absent/corrupted/unreadable, never throws.
+- **Use case** — `askEmber` reads memory before the prompt via `loadMemorySafely` (try/catch → `null`, so a failing memory can never kill the stream) and appends `{question, answer}` after the terminal `done` (best-effort; empty answers skipped, write failures swallowed).
+- **Service** — `emberSystemPrompt` renders a "MÉMOIRE — conversation précédente" section when turns exist.
+- **Controller / wiring** — `emberChat.routes` threads the memory dependency; `main/routes.ts` instantiates the filesystem gateway (DI in the composition root only).
+
+### Milestone 3 — recurring insights + clear control
+- **Schema** — `insights: string[]` (`.default([])`, so a legacy turns-only notebook still parses — corruption tolerance preserved); `appendInsight` on the port + filesystem gateway, normalizing `{turns, insights}` so neither field is lost.
+- **Service** — `emberSystemPrompt` renders a "CONSTATS RÉCURRENTS" section instructing Ember to reuse recorded findings instead of recomputing.
+- **Use case + endpoint** — `clearEmberMemory` (thin delegating function) + `POST /api/ember/memory/clear` → `200 {status:'cleared'}`.
+
+### Endpoints
+| Method | Route | Use case |
+|--------|-------|----------|
+| POST | `/api/ember/ask` | `askEmber` (unchanged path; now memory-aware: prior turns/insights injected, new turn appended after `done`) |
+| POST | `/api/ember/memory/clear` | `clearEmberMemory` (empties the project's notebook) |
+
+### Decisions
+- **On-demand grounding is a prompt reframing, not a new gateway** — the read capability already existed; only the false ceiling was removed (anti-overengineering).
+- **Memory is a private notebook under `~/.claude-review/`, never project state** — the transport port stays write-free, so read-only over the reviewed project is compile-enforced as before.
+- **Corruption is non-fatal everywhere** — both the gateway (`load` → `null`) and the use case (`loadMemorySafely`) tolerate absent/corrupted memory; error events come only from the transport.
+- **Automatic insight *derivation* is deferred (honest scope cut).** The notebook can hold recurring insights and surfaces them for reuse (`appendInsight` + prompt section + acceptance), but Ember does not yet auto-detect a recurring finding from its own one-shot `--bg` output — the transport tails free-form transcript text with no structured "this is a recurring finding" signal, and parsing prose would be an untestable guess. The natural follow-up is an explicit MCP tool the model calls to record an insight, mirroring the review path's `add_action`. The "reused insight" scenario is satisfied by a pre-recorded insight, not by faked derivation.
+
+### Tests
+3044 tests green (384 files); `yarn verify` clean. The 192 acceptance carries all nine scenarios (on-demand grounding, no window-refusal, follow-up across restart, per-project isolation, reused insight, clear, corrupted memory non-fatal, read-only preserved, api-key refusal) on stubs; the 190 acceptance stays unchanged and green.
 
 ## Context
 

@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { buildEmberSystemPrompt } from '@/modules/ember-chat/services/emberSystemPrompt.js';
 import type { EmberGrounding } from '@/modules/ember-chat/services/emberSystemPrompt.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
+import { EmberMemoryFactory, EmberMemoryTurnFactory } from '@/tests/factories/emberMemory.factory.js';
 
 const EMPTY_GROUNDING: EmberGrounding = {
   reviewScores: null,
   insights: null,
   jobHistory: null,
   worktrees: [],
+  memory: null,
 };
 
 describe('buildEmberSystemPrompt', () => {
@@ -72,5 +74,97 @@ describe('buildEmberSystemPrompt', () => {
     expect(prompt).toContain('"totalReviews":500');
     expect(prompt).toContain('"mrNumber":499');
     expect(prompt).not.toContain('"mrNumber":0');
+  });
+
+  it('does not declare the filesystem off-limits or cap older reviews as a ceiling', () => {
+    const reviews = Array.from({ length: 500 }, (_, index) =>
+      ReviewStatsFactory.create({ mrNumber: index, score: index % 10 }),
+    );
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      reviewScores: ProjectStatsFactory.withReviews(reviews),
+    };
+
+    const prompt = buildEmberSystemPrompt(grounding);
+
+    expect(prompt).not.toContain('aucun autre accès');
+    expect(prompt).not.toContain('ni système de fichiers');
+    expect(prompt).not.toContain('résumé agrégé seulement');
+  });
+
+  it('permits reading the project review data on demand for items beyond the snapshot', () => {
+    const reviews = Array.from({ length: 500 }, (_, index) =>
+      ReviewStatsFactory.create({ mrNumber: index, score: index % 10 }),
+    );
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      reviewScores: ProjectStatsFactory.withReviews(reviews),
+    };
+
+    const prompt = buildEmberSystemPrompt(grounding);
+
+    expect(prompt.toLowerCase()).toContain('à la demande');
+    expect(prompt).toMatch(/peux\s+lire|tu\s+peux\s+consulter/i);
+    expect(prompt.toLowerCase()).toContain('point de départ');
+  });
+
+  it('omits any conversation-memory section when there is no prior memory', () => {
+    const prompt = buildEmberSystemPrompt(EMPTY_GROUNDING);
+
+    expect(prompt.toLowerCase()).not.toContain('conversation précédente');
+  });
+
+  it('renders prior conversation turns so a follow-up keeps context', () => {
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      memory: EmberMemoryFactory.create({
+        turns: [
+          EmberMemoryTurnFactory.create({
+            question: 'Quel est le statut du projet X ?',
+            answer: 'Le projet X régresse chaque vendredi.',
+          }),
+        ],
+      }),
+    };
+
+    const prompt = buildEmberSystemPrompt(grounding);
+
+    expect(prompt.toLowerCase()).toContain('conversation précédente');
+    expect(prompt).toContain('Quel est le statut du projet X ?');
+    expect(prompt).toContain('Le projet X régresse chaque vendredi.');
+  });
+
+  it('omits the conversation-memory section when memory holds no turns', () => {
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      memory: EmberMemoryFactory.create({ turns: [] }),
+    };
+
+    expect(buildEmberSystemPrompt(grounding).toLowerCase()).not.toContain('conversation précédente');
+  });
+
+  it('omits any recurring-insights section when there is no recorded insight', () => {
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      memory: EmberMemoryFactory.create({ turns: [], insights: [] }),
+    };
+
+    expect(buildEmberSystemPrompt(grounding).toLowerCase()).not.toContain('constats récurrents');
+  });
+
+  it('renders recorded recurring insights so Ember reuses them instead of recomputing', () => {
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      memory: EmberMemoryFactory.create({
+        turns: [],
+        insights: ['Le projet X régresse chaque vendredi.'],
+      }),
+    };
+
+    const prompt = buildEmberSystemPrompt(grounding);
+
+    expect(prompt.toLowerCase()).toContain('constats récurrents');
+    expect(prompt).toContain('Le projet X régresse chaque vendredi.');
+    expect(prompt.toLowerCase()).toMatch(/réutilise|sans .*recalcul/i);
   });
 });
