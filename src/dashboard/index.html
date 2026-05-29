@@ -120,8 +120,8 @@
             <span class="ember-chat-panel__prefix">// EMBER</span>
             <canvas id="ember-avatar" class="ember-chat-panel__avatar" width="360" height="360" aria-hidden="true"></canvas>
           </div>
-          <output id="ember-answer" class="ember-chat-panel__answer" aria-live="polite"></output>
-          <div id="ember-status" class="ember-chat-panel__status" role="status" aria-live="polite"></div>
+          <div id="ember-thread" class="ember-chat-panel__thread" role="log" aria-live="polite" aria-label="Conversation Ember"></div>
+          <div id="ember-status" class="ember-chat-panel__status visually-hidden" role="status" aria-live="polite"></div>
           <button type="button" id="ember-retry" class="ember-chat-panel__retry" hidden>// RÉESSAYER</button>
           <form id="ember-form" class="ember-chat-panel__form" autocomplete="off">
             <label class="visually-hidden" for="ember-question">Posez une question à Ember</label>
@@ -3866,32 +3866,56 @@
     function initEmberChat() {
       const form = document.getElementById('ember-form');
       const input = document.getElementById('ember-question');
-      const answer = document.getElementById('ember-answer');
+      const thread = document.getElementById('ember-thread');
       const status = document.getElementById('ember-status');
       const retry = document.getElementById('ember-retry');
       const canvas = document.getElementById('ember-avatar');
       const panel = document.getElementById('ember-chat-panel');
-      if (!form || !input || !answer || !status || !canvas) return;
+      if (!form || !input || !thread || !status || !canvas) return;
 
       const avatar = mountEmberAvatar({ canvas, initialState: 'idle' });
 
-      const ask = async () => {
-        const question = input.value;
+      const appendBubble = (role, text) => {
+        const bubble = document.createElement('div');
+        bubble.className = 'ember-chat-panel__msg ember-chat-panel__msg--' + role;
+        bubble.textContent = text;
+        thread.appendChild(bubble);
+        thread.scrollTop = thread.scrollHeight;
+        return bubble;
+      };
+
+      let lastQuestion = '';
+      const ask = async (questionText) => {
+        const question = questionText ?? input.value;
         if (!shouldSendQuestion(question)) {
           input.focus();
           return;
         }
+        lastQuestion = question;
         panel?.classList.add('ember-chat-panel--active');
-        answer.textContent = '';
         status.textContent = '';
         retry.hidden = true;
+        appendBubble('user', question);
+        input.value = '';
+        input.disabled = true;
+        const answerBubble = appendBubble('ember', '');
+        answerBubble.classList.add('is-generating');
+        answerBubble.innerHTML = '<span class="ember-typing" aria-hidden="true"><i></i><i></i><i></i></span>';
+        let errored = false;
         await connectEmberStream({
           question,
-          onAnswer: (text) => { answer.textContent = text; },
-          onAvatarState: (state) => avatar.setState(state),
-          onAnnounce: (text) => { status.textContent = text; },
+          onAnswer: (text) => { answerBubble.innerHTML = markdownToHtml(text); thread.scrollTop = thread.scrollHeight; },
+          onAvatarState: (state) => { avatar.setState(state); if (state === 'error') errored = true; },
+          onAnnounce: (text) => {
+            status.textContent = text;
+            if (errored) answerBubble.innerHTML = markdownToHtml(text);
+          },
           onRetryVisible: (visible) => { retry.hidden = !visible; },
         });
+        answerBubble.classList.remove('is-generating');
+        answerBubble.classList.add(errored ? 'is-error' : 'is-answered');
+        thread.scrollTop = thread.scrollHeight;
+        input.disabled = false;
         input.focus();
       };
 
@@ -3899,7 +3923,7 @@
         event.preventDefault();
         void ask();
       });
-      retry.addEventListener('click', () => { void ask(); });
+      retry.addEventListener('click', () => { void ask(lastQuestion); });
     }
 
     // Boot animations & observers exactly once, regardless of readyState timing

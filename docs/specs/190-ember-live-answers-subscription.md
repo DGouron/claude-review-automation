@@ -1,6 +1,6 @@
 ---
 title: "SPEC-190: Answer Ember questions live via the Claude subscription"
-status: DRAFT
+status: implemented
 milestone: Ember Assistant
 depends_on:
   - "189-ember-readonly-review-chat"
@@ -11,7 +11,46 @@ related:
 
 # SPEC-190: Answer Ember questions live via the Claude subscription
 
-## Status: DRAFT
+## Status: implemented
+
+See [plan](../plans/190-ember-live-answers-subscription.plan.md) and
+[report](../reports/190-ember-live-answers-subscription.report.md).
+
+## Implementation
+
+Each question now spawns ONE `claude --bg` one-shot dispatch on the operator's Claude
+subscription (the same path reviews use — never `--print`, which switches to API billing on
+2026-06-15), grounded on a bounded system prompt, with the answer tailed from the session
+transcript JSONL and streamed back over the existing SSE channel. No memory between questions;
+the SPEC-189 long-lived-session machinery (registry, idle state machine, interactive stdin
+transport) was removed.
+
+### Artefacts
+- **Entity** — `emberAnswer/emberAnswerTransport.gateway.ts` (one-shot transport port; no write method → read-only by construction).
+- **Use case** — `askEmber` (no-API-key guard → bounded grounding → one-shot transport; `AnswerRelay` buffers chunks until the SSE subscriber attaches). `emberStream.ts` holds `EmberStatus`/`EmberStreamSubscriber`.
+- **Service** — `buildEmberSystemPrompt` now **bounds** the grounding (recent N reviews/MRs/developers/worktrees + an aggregate note) so a large history never blows the context.
+- **Gateway** — `emberAnswerTransport.claude.gateway.ts`: `--bg` dispatch (`--permission-mode plan`, read-only tools) + transcript-JSONL tail; done-detection via terminal line OR a `listAgents()` poll fallback. **Humble glue — not unit-tested; acceptance runs on the stub.**
+- **Controller** — `emberChat.routes.ts` (`POST /api/ember/ask`, SSE; client `close` → `cancel()`).
+
+### Endpoints
+| Method | Route | Use case |
+|--------|-------|----------|
+| POST | `/api/ember/ask` | `askEmber` (API-key guard → bounded grounding → one-shot `--bg` dispatch → SSE `chunk`/`status`/`error`/`end`) |
+
+### Decisions
+- **`--bg`, never `-p`** — `--print`/headless switches to API billing on 2026-06-15; `--bg` keeps Ember on the subscription, consistent with reviews. No Anthropic API key, ever.
+- **One-shot, no memory** — per spec; the SPEC-189 long-lived session + idle/revive was removed as dead weight.
+- **Bounded grounding** — caps + aggregate summary instead of MCP read-tools (deferred, with `.md`/DSL memory, to a future Phase C spec).
+- **Read-only structurally** — the transport port has no write method; the dispatch runs `--permission-mode plan` with a read-only tool whitelist.
+
+### Manual verification (done — claude 2.1.154)
+Verified live against a real `claude --bg` dispatch; the transport glue was corrected accordingly:
+- `--permission-mode auto` (proven reviews path; read-only kept by tool whitelist/blacklist + no MCP).
+- Transcript resolved by **prefix glob** `<shortId>*.jsonl` — the file uses the full UUID while `backgrounded · <id>` only gives the short prefix.
+- Completion via `assistant` `stop_reason: end_turn` + `system` `turn_duration` (no `result` line exists); the `listAgents()` fallback was removed (a `--bg` session stays persistent/`idle` after answering) in favour of a bounded no-hang attempt budget; the session is stopped on done.
+- A fresh dispatch produced a grounded streamed answer end-to-end.
+
+Still open: drive the chat end-to-end in a browser (humble SSE client glue).
 
 ## Context
 

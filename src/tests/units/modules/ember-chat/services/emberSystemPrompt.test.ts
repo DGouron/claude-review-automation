@@ -45,4 +45,32 @@ describe('buildEmberSystemPrompt', () => {
 
     expect(buildEmberSystemPrompt(grounding)).toContain('42');
   });
+
+  it('bounds the prompt under a ceiling even for a huge review history', () => {
+    const reviews = Array.from({ length: 500 }, (_, index) =>
+      ReviewStatsFactory.create({ mrNumber: index, score: index % 10 }),
+    );
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      reviewScores: ProjectStatsFactory.withReviews(reviews),
+    };
+
+    expect(buildEmberSystemPrompt(grounding).length).toBeLessThan(60_000);
+  });
+
+  it('keeps the aggregates and the most-recent reviews when capping a huge history', () => {
+    const reviews = Array.from({ length: 500 }, (_, index) =>
+      ReviewStatsFactory.create({ mrNumber: index, score: index % 10 }),
+    );
+    const grounding: EmberGrounding = {
+      ...EMPTY_GROUNDING,
+      reviewScores: ProjectStatsFactory.withReviews(reviews),
+    };
+
+    const prompt = buildEmberSystemPrompt(grounding);
+
+    expect(prompt).toContain('"totalReviews":500');
+    expect(prompt).toContain('"mrNumber":499');
+    expect(prompt).not.toContain('"mrNumber":0');
+  });
 });

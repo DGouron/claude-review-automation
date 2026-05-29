@@ -50,6 +50,10 @@ describe('extractText', () => {
     expect(extractText({ message: { content: [{ type: 'tool_use' }] } })).toBeNull();
   });
 
+  it('returns null when message content is a plain string (user line, not an array)', () => {
+    expect(extractText({ type: 'user', message: { content: 'Quelle est ma question ?' } })).toBeNull();
+  });
+
   it('returns null when no text is present', () => {
     expect(extractText({ type: 'result' })).toBeNull();
   });
@@ -64,8 +68,25 @@ describe('isTurnComplete', () => {
     expect(isTurnComplete({ type: 'message_stop' })).toBe(true);
   });
 
+  it('is true on a background-session turn_duration system line', () => {
+    expect(isTurnComplete({ type: 'system', subtype: 'turn_duration' })).toBe(true);
+  });
+
+  it('is true on an assistant message that ended the turn', () => {
+    expect(
+      isTurnComplete({ type: 'assistant', message: { stop_reason: 'end_turn' } }),
+    ).toBe(true);
+  });
+
+  it('is false on a streaming assistant message with no stop reason', () => {
+    expect(
+      isTurnComplete({ type: 'assistant', message: { content: [{ type: 'text', text: 'partial' }] } }),
+    ).toBe(false);
+  });
+
   it('is false on any other event', () => {
     expect(isTurnComplete({ type: 'message_delta' })).toBe(false);
+    expect(isTurnComplete({ type: 'system', subtype: 'init' })).toBe(false);
     expect(isTurnComplete({})).toBe(false);
   });
 });

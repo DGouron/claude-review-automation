@@ -10,7 +10,55 @@ export interface EmberGrounding {
   worktrees: WorktreeEntry[];
 }
 
+const MAX_RECENT_REVIEWS = 20;
+const MAX_RECENT_MRS = 20;
+const MAX_DEVELOPERS = 10;
+const MAX_DEVELOPER_RECENT_REVIEWS = 5;
+const MAX_WORKTREES = 20;
+
+function boundReviewScores(stats: ProjectStats | null): ProjectStats | null {
+  if (stats === null) {
+    return null;
+  }
+  return { ...stats, reviews: mostRecent(stats.reviews, MAX_RECENT_REVIEWS) };
+}
+
+function boundJobHistory(jobHistory: MrTrackingData | null): MrTrackingData | null {
+  if (jobHistory === null) {
+    return null;
+  }
+  return { ...jobHistory, mrs: mostRecent(jobHistory.mrs, MAX_RECENT_MRS) };
+}
+
+function boundInsights(insights: PersistedInsightsData | null): PersistedInsightsData | null {
+  if (insights === null) {
+    return null;
+  }
+  return {
+    ...insights,
+    developers: mostRecent(insights.developers, MAX_DEVELOPERS).map((developer) => ({
+      ...developer,
+      recentReviews: mostRecent(developer.recentReviews, MAX_DEVELOPER_RECENT_REVIEWS),
+    })),
+    processedReviewIds: mostRecent(insights.processedReviewIds, MAX_RECENT_REVIEWS),
+  };
+}
+
+function mostRecent<Item>(items: ReadonlyArray<Item>, limit: number): Item[] {
+  return items.slice(Math.max(0, items.length - limit));
+}
+
+function reviewCountSummary(stats: ProjectStats | null): string {
+  if (stats === null || stats.reviews.length <= MAX_RECENT_REVIEWS) {
+    return '';
+  }
+  const olderCount = stats.reviews.length - MAX_RECENT_REVIEWS;
+  return `… et ${olderCount} reviews plus anciennes (résumé agrégé seulement).`;
+}
+
 export function buildEmberSystemPrompt(grounding: EmberGrounding): string {
+  const reviewScores = boundReviewScores(grounding.reviewScores);
+  const olderReviewsNote = reviewCountSummary(grounding.reviewScores);
   return [
     "Tu es Ember, l'assistant conversationnel du tableau de bord ReviewFlow.",
     '',
@@ -18,16 +66,17 @@ export function buildEmberSystemPrompt(grounding: EmberGrounding): string {
     "Tu n'as aucun autre accès : ni système de fichiers, ni outil, ni réseau.",
     '',
     'reviewScores (scores et statistiques de review) :',
-    JSON.stringify(grounding.reviewScores),
+    JSON.stringify(reviewScores),
+    olderReviewsNote,
     '',
     'insights (insights développeur et équipe) :',
-    JSON.stringify(grounding.insights),
+    JSON.stringify(boundInsights(grounding.insights)),
     '',
     'jobHistory (historique des jobs de review) :',
-    JSON.stringify(grounding.jobHistory),
+    JSON.stringify(boundJobHistory(grounding.jobHistory)),
     '',
     'worktrees (état des worktrees) :',
-    JSON.stringify(grounding.worktrees),
+    JSON.stringify(mostRecent(grounding.worktrees, MAX_WORKTREES)),
     '',
     'GROUNDING : réponds uniquement à partir de ces données de review.',
     "Si la question sort de ces données, dis que tu ne sais répondre qu'à propos des reviews",

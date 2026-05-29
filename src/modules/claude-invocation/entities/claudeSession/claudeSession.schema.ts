@@ -19,7 +19,7 @@ export const claudeSessionStatusSchema = z.enum([
   'cleaned',
 ]);
 
-export const claudeSessionJobTypeSchema = z.enum(['review', 'followup']);
+export const claudeSessionJobTypeSchema = z.enum(['review', 'followup', 'ember-chat']);
 
 export const claudeSessionSchema = z.object({
   sessionId: sessionIdSchema,
