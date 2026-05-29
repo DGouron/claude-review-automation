@@ -16,6 +16,7 @@ import {
   verifyGitLabSignature,
   verifyGitHubSignature,
   getGitLabEventType,
+  getGitLabEventUuid,
   getGitHubEventType,
 } from '../../../security/verifier.js'
 
@@ -228,6 +229,30 @@ describe('getGitLabEventType', () => {
     })
 
     const result = getGitLabEventType(request)
+
+    expect(result).toBeUndefined()
+  })
+})
+
+describe('getGitLabEventUuid', () => {
+  it('should extract the event UUID from the header', () => {
+    const request = createFastifyRequestStub({
+      headers: {
+        'x-gitlab-event-uuid': '13be3e1e-1d3f-4c2a-9b1a-0f0e0d0c0b0a',
+      },
+    })
+
+    const result = getGitLabEventUuid(request)
+
+    expect(result).toBe('13be3e1e-1d3f-4c2a-9b1a-0f0e0d0c0b0a')
+  })
+
+  it('should return undefined when the header is missing', () => {
+    const request = createFastifyRequestStub({
+      headers: {},
+    })
+
+    const result = getGitLabEventUuid(request)
 
     expect(result).toBeUndefined()
   })

@@ -43,6 +43,7 @@ import { getConfigDir } from '@/shared/services/configDir.js';
 import { homedir } from 'node:os';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
+import { InMemoryIdempotencyStore } from '@/modules/platform-integration/interface-adapters/gateways/inMemoryIdempotencyStore.gateway.js';
 import {
   cancelJob,
   getJobStatus,
@@ -376,6 +377,13 @@ export async function registerRoutes(
   const trackingGw = deps.reviewRequestTrackingGateway;
   const threadFetchGw = new GitLabThreadFetchGateway(defaultGitLabExecutor);
 
+  // TTL must be >= the platform's maximum webhook retry window so a
+  // legitimately re-delivered event past that window is reprocessed, while any
+  // redelivery/replay inside it is acted upon at most once. 24h is a safe upper
+  // bound for GitLab's redelivery window.
+  const WEBHOOK_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+  const idempotencyStore = new InMemoryIdempotencyStore({ ttlMs: WEBHOOK_IDEMPOTENCY_TTL_MS });
+
   const removeWorktreeAction = (input: {
     identity: WorktreeIdentity;
     sourceCheckoutPath: string;
@@ -407,6 +415,7 @@ export async function registerRoutes(
       noteCommentPostGateway: new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
       handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
       approvalRevocationGateway: new GitLabApprovalRevocationCliGateway(defaultGitLabExecutor),
+      idempotencyStore,
       getQualityThreshold: (projectPath: string) =>
         loadProjectConfig(projectPath)?.qualityThreshold ?? null,
       now: () => new Date().toISOString(),

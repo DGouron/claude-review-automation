@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
-import { verifyGitLabSignature, getGitLabEventType } from '@/security/verifier.js';
+import { verifyGitLabSignature, getGitLabEventType, getGitLabEventUuid } from '@/security/verifier.js';
 import { gitLabMergeRequestEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
 import { gitLabNoteEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabNoteEvent.guard.js';
 import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove, filterGitLabNoteEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
@@ -25,6 +25,7 @@ import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tra
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import type { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
 import type { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
+import type { IdempotencyStore } from '@/modules/platform-integration/entities/idempotency/idempotencyStore.gateway.js';
 import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js';
 import type { ApprovalRevocationGateway } from '@/modules/platform-integration/entities/approvalRevocation/approvalRevocation.gateway.js';
 import { evaluateQualityGate } from '@/modules/tracking/entities/qualityGate/qualityGate.js';
@@ -88,6 +89,7 @@ export interface GitLabWebhookDependencies {
   noteCommentPostGateway: NoteCommentPostGateway;
   handlePlatformApproval: HandlePlatformApprovalUseCase;
   approvalRevocationGateway: ApprovalRevocationGateway;
+  idempotencyStore?: IdempotencyStore;
   getQualityThreshold: (projectPath: string) => number | null;
   now: () => string;
 }
@@ -175,6 +177,23 @@ export async function handleGitLabWebhook(
     logger.warn({ error: verification.error }, 'GitLab signature verification failed');
     reply.status(401).send({ error: verification.error });
     return;
+  }
+
+  // 1a. Idempotency guard: at most once per event UUID within the TTL window.
+  // Runs right after auth and before any side effect. A missing UUID degrades
+  // to the normal (gated) pipeline rather than being rejected.
+  if (deps.idempotencyStore) {
+    const eventUuid = getGitLabEventUuid(request);
+    if (eventUuid !== undefined) {
+      const accepted = await deps.idempotencyStore.recordIfAbsent(eventUuid);
+      if (!accepted) {
+        logger.info({ eventUuid }, 'Duplicate GitLab event UUID, no-op');
+        reply.status(200).send({ status: 'ignored', reason: 'Duplicate event' });
+        return;
+      }
+    } else {
+      logger.debug('GitLab event without UUID, proceeding without deduplication');
+    }
   }
 
   // 2. Check event type

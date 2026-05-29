@@ -84,6 +84,15 @@ export function getGitLabEventType(request: FastifyRequest): string | undefined 
   return typeof eventHeader === 'string' ? eventHeader : undefined;
 }
 
+/**
+ * Extract the per-event delivery identifier from request headers.
+ * Symmetric to getGitLabEventType; reads X-Gitlab-Event-UUID.
+ */
+export function getGitLabEventUuid(request: FastifyRequest): string | undefined {
+  const uuidHeader = request.headers['x-gitlab-event-uuid'];
+  return typeof uuidHeader === 'string' ? uuidHeader : undefined;
+}
+
 export function getGitHubEventType(request: FastifyRequest): string | undefined {
   const eventHeader = request.headers['x-github-event'];
   return typeof eventHeader === 'string' ? eventHeader : undefined;
