@@ -72,6 +72,10 @@ import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/record
 import { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import { GitLabNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.gitlab.cli.gateway.js';
 import { GitHubNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.github.cli.gateway.js';
+import { EgressScannedNoteCommentPostGateway } from '@/modules/platform-integration/interface-adapters/gateways/egressScanned.noteCommentPost.gateway.js';
+import { LoggerEgressTraceGateway } from '@/modules/platform-integration/interface-adapters/gateways/loggerEgressTrace.gateway.js';
+import { createEgressScanner } from '@/modules/platform-integration/entities/egressScan/egressScan.scanner.js';
+import { defaultEgressScanConfig } from '@/modules/platform-integration/entities/egressScan/egressScan.defaults.js';
 import { GitLabApprovalRevocationCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.gitlab.cli.gateway.js';
 import { GitHubApprovalRevocationCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.github.cli.gateway.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
@@ -377,6 +381,9 @@ export async function registerRoutes(
   const trackingGw = deps.reviewRequestTrackingGateway;
   const threadFetchGw = new GitLabThreadFetchGateway(defaultGitLabExecutor);
 
+  const egressScanner = createEgressScanner(defaultEgressScanConfig);
+  const egressTraceGateway = new LoggerEgressTraceGateway(deps.logger);
+
   // TTL must be >= the platform's maximum webhook retry window so a
   // legitimately re-delivered event past that window is reprocessed, while any
   // redelivery/replay inside it is acted upon at most once. 24h is a safe upper
@@ -412,7 +419,11 @@ export async function registerRoutes(
       gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
-      noteCommentPostGateway: new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
+      noteCommentPostGateway: new EgressScannedNoteCommentPostGateway(
+        new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
+        egressScanner,
+        egressTraceGateway,
+      ),
       handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
       approvalRevocationGateway: new GitLabApprovalRevocationCliGateway(defaultGitLabExecutor),
       idempotencyStore,
@@ -443,7 +454,11 @@ export async function registerRoutes(
       gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
-      noteCommentPostGateway: new GitHubNoteCommentPostCliGateway(defaultGitHubExecutor),
+      noteCommentPostGateway: new EgressScannedNoteCommentPostGateway(
+        new GitHubNoteCommentPostCliGateway(defaultGitHubExecutor),
+        egressScanner,
+        egressTraceGateway,
+      ),
       handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
       approvalRevocationGateway: new GitHubApprovalRevocationCliGateway(defaultGitHubExecutor),
       getQualityThreshold: (projectPath: string) =>
