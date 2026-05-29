@@ -5,6 +5,7 @@ import { GitHubReviewActionCliGateway } from '@/modules/review-execution/interfa
 import type { ExecutionResult, CommandExecutor, ExecutionContext as GatewayExecutionContext } from '@/modules/review-execution/entities/reviewAction/reviewAction.gateway.js'
 import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js'
 import { executePublicOutput, isPublicOutputAction } from '@/modules/review-execution/services/publicOutputExecutor.js'
+import { filterAutoExecutorActions } from '@/modules/platform-integration/services/autoExecutorActionFilter.js'
 
 const COMMAND_TIMEOUT_MS = 30000
 
@@ -36,7 +37,7 @@ interface Logger {
 export async function executeThreadActions(
   actions: ThreadAction[],
   context: ExecutionContext,
-  _logger: Logger,
+  logger: Logger,
   executor: CommandExecutor,
   postGateway: NoteCommentPostGateway | null = null
 ): Promise<ExecutionResult> {
@@ -48,17 +49,26 @@ export async function executeThreadActions(
     baseUrl: null,
   }
 
+  const { allowed, dropped } = filterAutoExecutorActions(actions)
+
+  if (dropped.length > 0) {
+    logger.warn(
+      { droppedTypes: dropped.map(action => action.type) },
+      'Auto executor dropped write-capable actions outside the read+postComment capability set',
+    )
+  }
+
   const gateway =
     context.platform === 'gitlab'
       ? new GitLabReviewActionCliGateway(executor)
       : new GitHubReviewActionCliGateway(executor)
 
   if (postGateway === null) {
-    return gateway.execute(actions, gatewayContext)
+    return gateway.execute(allowed, gatewayContext)
   }
 
-  const publicOutputActions = actions.filter(isPublicOutputAction)
-  const remainingActions = actions.filter(action => !isPublicOutputAction(action))
+  const publicOutputActions = allowed.filter(isPublicOutputAction)
+  const remainingActions = allowed.filter(action => !isPublicOutputAction(action))
 
   await executePublicOutput(
     publicOutputActions,
@@ -69,7 +79,7 @@ export async function executeThreadActions(
   const cliResult = await gateway.execute(remainingActions, gatewayContext)
 
   return {
-    total: actions.length,
+    total: allowed.length,
     succeeded: cliResult.succeeded + publicOutputActions.length,
     failed: cliResult.failed,
     skipped: cliResult.skipped,

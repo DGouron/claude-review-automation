@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js'
 import type { ReviewContext } from '@/modules/review-execution/entities/reviewContext/reviewContext.js'
 
-describe('executeActionsFromContext', () => {
+// AC6/AC7: the context auto-path executor is bounded to read + postComment.
+// THREAD_RESOLVE / ADD_LABEL are dropped (no-op, logged), POST_COMMENT executes.
+describe('executeActionsFromContext (auto path, capability-bounded)', () => {
   const mockLogger = {
     info: vi.fn(),
     warn: vi.fn(),
@@ -28,7 +30,7 @@ describe('executeActionsFromContext', () => {
     vi.clearAllMocks()
   })
 
-  it('should return empty result when no actions in context', async () => {
+  it('returns an empty result when no actions are present', async () => {
     const context = { ...baseContext, actions: [] }
 
     const result = await executeActionsFromContext(context, '/tmp/repo', mockLogger, mockExecutor)
@@ -38,31 +40,22 @@ describe('executeActionsFromContext', () => {
     expect(mockExecutor).not.toHaveBeenCalled()
   })
 
-  it('should execute THREAD_RESOLVE action via GitHub API', async () => {
+  it('drops THREAD_RESOLVE without invoking the executor', async () => {
     const context: ReviewContext = {
       ...baseContext,
-      actions: [
-        { type: 'THREAD_RESOLVE', threadId: 'PRRT_kwDONxxx' },
-      ],
+      actions: [{ type: 'THREAD_RESOLVE', threadId: 'PRRT_kwDONxxx' }],
     }
 
     const result = await executeActionsFromContext(context, '/tmp/repo', mockLogger, mockExecutor)
 
-    expect(result.total).toBe(1)
-    expect(result.succeeded).toBe(1)
-    expect(mockExecutor).toHaveBeenCalledWith(
-      'gh',
-      expect.arrayContaining(['api', 'graphql']),
-      '/tmp/repo'
-    )
+    expect(result.total).toBe(0)
+    expect(mockExecutor).not.toHaveBeenCalled()
   })
 
-  it('should execute POST_COMMENT action', async () => {
+  it('executes POST_COMMENT action', async () => {
     const context: ReviewContext = {
       ...baseContext,
-      actions: [
-        { type: 'POST_COMMENT', body: '## Follow-up Review\n\nAll fixed.' },
-      ],
+      actions: [{ type: 'POST_COMMENT', body: '## Follow-up Review\n\nAll fixed.' }],
     }
 
     const result = await executeActionsFromContext(context, '/tmp/repo', mockLogger, mockExecutor)
@@ -76,26 +69,19 @@ describe('executeActionsFromContext', () => {
     )
   })
 
-  it('should execute ADD_LABEL action', async () => {
+  it('drops ADD_LABEL without invoking the executor', async () => {
     const context: ReviewContext = {
       ...baseContext,
-      actions: [
-        { type: 'ADD_LABEL', label: 'needs_approve' },
-      ],
+      actions: [{ type: 'ADD_LABEL', label: 'needs_approve' }],
     }
 
     const result = await executeActionsFromContext(context, '/tmp/repo', mockLogger, mockExecutor)
 
-    expect(result.total).toBe(1)
-    expect(result.succeeded).toBe(1)
-    expect(mockExecutor).toHaveBeenCalledWith(
-      'gh',
-      expect.arrayContaining(['repos/owner/repo/issues/42/labels']),
-      '/tmp/repo'
-    )
+    expect(result.total).toBe(0)
+    expect(mockExecutor).not.toHaveBeenCalled()
   })
 
-  it('should execute multiple actions in order', async () => {
+  it('keeps only allowed verbs in a mixed stream', async () => {
     const context: ReviewContext = {
       ...baseContext,
       actions: [
@@ -108,18 +94,17 @@ describe('executeActionsFromContext', () => {
 
     const result = await executeActionsFromContext(context, '/tmp/repo', mockLogger, mockExecutor)
 
-    expect(result.total).toBe(4)
-    expect(result.succeeded).toBe(4)
-    expect(mockExecutor).toHaveBeenCalledTimes(4)
+    // Only the single POST_COMMENT survives the capability filter.
+    expect(result.total).toBe(1)
+    expect(result.succeeded).toBe(1)
+    expect(mockExecutor).toHaveBeenCalledTimes(1)
   })
 
-  it('should handle GitLab platform', async () => {
+  it('handles GitLab platform postComment', async () => {
     const context: ReviewContext = {
       ...baseContext,
       platform: 'gitlab',
-      actions: [
-        { type: 'THREAD_RESOLVE', threadId: 'abc123' },
-      ],
+      actions: [{ type: 'POST_COMMENT', body: 'note' }],
     }
 
     const result = await executeActionsFromContext(context, '/tmp/repo', mockLogger, mockExecutor)
@@ -132,7 +117,7 @@ describe('executeActionsFromContext', () => {
     )
   })
 
-  it('should continue executing when one action fails', async () => {
+  it('continues executing when one allowed action fails', async () => {
     mockExecutor.mockImplementationOnce(() => {
       throw new Error('API error')
     })
@@ -140,8 +125,8 @@ describe('executeActionsFromContext', () => {
     const context: ReviewContext = {
       ...baseContext,
       actions: [
-        { type: 'THREAD_RESOLVE', threadId: 'thread-1' },
-        { type: 'POST_COMMENT', body: 'Done' },
+        { type: 'POST_COMMENT', body: 'first' },
+        { type: 'POST_COMMENT', body: 'second' },
       ],
     }
 
