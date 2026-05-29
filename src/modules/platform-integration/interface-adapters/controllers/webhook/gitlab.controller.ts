@@ -33,7 +33,11 @@ import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execut
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { ReviewContextResultFactory } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.factory.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { dispatchConstrainedActions } from '@/modules/review-execution/services/dispatchConstrainedActions.js';
+import { resolveProvenance } from '@/modules/review-execution/entities/actionProvenance/actionProvenance.js';
+import { GitLabThreadInventoryGateway } from '@/modules/review-execution/interface-adapters/gateways/threadInventory.gitlab.gateway.js';
+import { defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
@@ -597,16 +601,20 @@ export async function handleGitLabWebhook(
                 const threadActions = parseThreadActions(result.stdout);
                 if (threadActions.length > 0) {
                   threadResolveCount = threadActions.filter(a => a.type === 'THREAD_RESOLVE').length;
-                  const actionResult = await executeThreadActions(
+                  const actionResult = await dispatchConstrainedActions(
                     threadActions,
                     {
-                      platform: 'gitlab',
-                      projectPath: j.projectPath,
-                      mrNumber: j.mrNumber,
-                      localPath: j.localPath,
-                    },
-                    logger,
-                    defaultCommandExecutor
+                      context: {
+                        platform: 'gitlab',
+                        projectPath: j.projectPath,
+                        mrNumber: j.mrNumber,
+                        localPath: j.localPath,
+                      },
+                      provenance: resolveProvenance(null),
+                      inventoryGateway: new GitLabThreadInventoryGateway(defaultGitLabExecutor),
+                      logger,
+                      executor: defaultCommandExecutor,
+                    }
                   );
                   logger.info(
                     { ...actionResult, threadResolveCount, mrNumber: j.mrNumber },
@@ -959,16 +967,20 @@ export function buildGitLabReviewProcessor(
           // FALLBACK: Execute thread actions from stdout markers (backward compatibility)
           const threadActions = parseThreadActions(result.stdout);
           if (threadActions.length > 0) {
-            const actionResult = await executeThreadActions(
+            const actionResult = await dispatchConstrainedActions(
               threadActions,
               {
-                platform: 'gitlab',
-                projectPath: j.projectPath,
-                mrNumber: j.mrNumber,
-                localPath: j.localPath,
-              },
-              logger,
-              defaultCommandExecutor
+                context: {
+                  platform: 'gitlab',
+                  projectPath: j.projectPath,
+                  mrNumber: j.mrNumber,
+                  localPath: j.localPath,
+                },
+                provenance: resolveProvenance(null),
+                inventoryGateway: new GitLabThreadInventoryGateway(defaultGitLabExecutor),
+                logger,
+                executor: defaultCommandExecutor,
+              }
             );
             logger.info(
               { ...actionResult, mrNumber: j.mrNumber },
