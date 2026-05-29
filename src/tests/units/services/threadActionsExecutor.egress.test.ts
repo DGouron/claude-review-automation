@@ -84,7 +84,27 @@ describe('executeThreadActions — egress routing (pentest amendment AC7/AC9)', 
     expect(rawSecretCalls).toHaveLength(0);
   });
 
-  it('still routes non-public-output verbs (THREAD_RESOLVE) through the CLI primitive', async () => {
+  it('routes non-public-output postComment verbs (POST_INLINE_COMMENT) through the CLI primitive', async () => {
+    const { sink, gateway } = buildDecoratedSink();
+    const rawCalls: string[][] = [];
+    const recordingExecutor: CommandExecutor = (_command, args) => {
+      rawCalls.push(args);
+    };
+    const actions: ThreadAction[] = [
+      { type: 'POST_INLINE_COMMENT', filePath: 'src/a.ts', line: 3, body: 'inline note' },
+    ];
+    const inlineContext: ExecutionContext = {
+      ...gitlabContext,
+      diffMetadata: { baseSha: 'base', headSha: 'head', startSha: 'start' },
+    };
+
+    await executeThreadActions(actions, inlineContext, silentLogger, recordingExecutor, gateway);
+
+    expect(sink.calls).toHaveLength(0);
+    expect(rawCalls.some((args) => args.some((arg) => arg.includes('/discussions')))).toBe(true);
+  });
+
+  it('drops THREAD_RESOLVE from the auto path (SPEC-196 unwire): neither sink nor CLI write', async () => {
     const { sink, gateway } = buildDecoratedSink();
     const rawCalls: string[][] = [];
     const recordingExecutor: CommandExecutor = (_command, args) => {
@@ -95,7 +115,7 @@ describe('executeThreadActions — egress routing (pentest amendment AC7/AC9)', 
     await executeThreadActions(actions, gitlabContext, silentLogger, recordingExecutor, gateway);
 
     expect(sink.calls).toHaveLength(0);
-    expect(rawCalls.some((args) => args.includes('resolved=true'))).toBe(true);
+    expect(rawCalls.some((args) => args.includes('resolved=true'))).toBe(false);
   });
 
   it('AC9 — every auto-path public-output verb reaches only the decorated sink', async () => {

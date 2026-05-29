@@ -49,5 +49,7 @@ export async function dispatchConstrainedActions(
 
   const constrained = constrainActionSurface(actions, { provenance, threadInventory })
 
-  return executeThreadActions(constrained, context, logger, executor, postGateway)
+  return executeThreadActions(constrained, context, logger, executor, postGateway, {
+    skipAutoCapabilityFilter: true,
+  })
 }

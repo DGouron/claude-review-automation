@@ -88,7 +88,7 @@ describe('executeActionsFromContext — egress routing (pentest amendment AC7/AC
     expect(rawSecretCalls).toHaveLength(0);
   });
 
-  it('AC9 — public-output verbs reach the decorated sink while other verbs use the CLI primitive', async () => {
+  it('AC9 — public-output verbs reach the decorated sink while other allowed verbs use the CLI primitive', async () => {
     const { sink, gateway } = buildDecoratedSink();
     const rawCalls: string[][] = [];
     const recordingExecutor: CommandExecutor = (_command, args) => {
@@ -96,11 +96,11 @@ describe('executeActionsFromContext — egress routing (pentest amendment AC7/AC
     };
     const context: ReviewContext = {
       ...baseContext,
+      diffMetadata: { baseSha: 'base', headSha: 'head', startSha: 'start' },
       actions: [
         { type: 'POST_COMMENT', body: `comment ${SECRET}` },
         { type: 'THREAD_REPLY', threadId: 't1', message: `reply ${SECRET}` },
-        { type: 'THREAD_RESOLVE', threadId: 't1' },
-        { type: 'ADD_LABEL', label: 'approved' },
+        { type: 'POST_INLINE_COMMENT', filePath: 'src/a.ts', line: 3, body: 'inline note' },
       ],
     };
 
@@ -112,6 +112,27 @@ describe('executeActionsFromContext — egress routing (pentest amendment AC7/AC
     }
     const rawSecretCalls = rawCalls.filter((args) => args.some((arg) => arg.includes(SECRET)));
     expect(rawSecretCalls).toHaveLength(0);
-    expect(rawCalls.some((args) => args.includes('resolved=true'))).toBe(true);
+    expect(rawCalls.some((args) => args.some((arg) => arg.includes('/discussions')))).toBe(true);
+  });
+
+  it('SPEC-196 unwire: THREAD_RESOLVE / ADD_LABEL are dropped from the sinked auto path', async () => {
+    const { sink, gateway } = buildDecoratedSink();
+    const rawCalls: string[][] = [];
+    const recordingExecutor: CommandExecutor = (_command, args) => {
+      rawCalls.push(args);
+    };
+    const context: ReviewContext = {
+      ...baseContext,
+      actions: [
+        { type: 'POST_COMMENT', body: 'comment' },
+        { type: 'THREAD_RESOLVE', threadId: 't1' },
+        { type: 'ADD_LABEL', label: 'approved' },
+      ],
+    };
+
+    await executeActionsFromContext(context, '/tmp/repo', silentLogger, recordingExecutor, null, gateway);
+
+    expect(sink.calls).toHaveLength(1);
+    expect(rawCalls.some((args) => args.includes('resolved=true'))).toBe(false);
   });
 });

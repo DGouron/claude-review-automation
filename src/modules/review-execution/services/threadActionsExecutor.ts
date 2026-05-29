@@ -24,6 +24,16 @@ export interface ExecutionContext {
 
 export type { ExecutionResult, CommandExecutor }
 
+export interface ExecuteThreadActionsOptions {
+  /**
+   * Skip the auto-path capability filter (SPEC-196). Set by the constrained
+   * dispatch chokepoint (SPEC-198), where provenance + authenticated-inventory
+   * validation has already bounded the surface and must NOT be re-narrowed by
+   * the auto-path read+postComment gate.
+   */
+  skipAutoCapabilityFilter?: boolean
+}
+
 interface Logger {
   info: (obj: object, msg: string) => void
   warn: (obj: object, msg: string) => void
@@ -39,7 +49,8 @@ export async function executeThreadActions(
   context: ExecutionContext,
   logger: Logger,
   executor: CommandExecutor,
-  postGateway: NoteCommentPostGateway | null = null
+  postGateway: NoteCommentPostGateway | null = null,
+  options: ExecuteThreadActionsOptions = {}
 ): Promise<ExecutionResult> {
   const gatewayContext: GatewayExecutionContext = {
     projectPath: context.projectPath,
@@ -49,13 +60,16 @@ export async function executeThreadActions(
     baseUrl: null,
   }
 
-  const { allowed, dropped } = filterAutoExecutorActions(actions)
-
-  if (dropped.length > 0) {
-    logger.warn(
-      { droppedTypes: dropped.map(action => action.type) },
-      'Auto executor dropped write-capable actions outside the read+postComment capability set',
-    )
+  let effectiveActions = actions
+  if (!options.skipAutoCapabilityFilter) {
+    const { allowed, dropped } = filterAutoExecutorActions(actions)
+    if (dropped.length > 0) {
+      logger.warn(
+        { droppedTypes: dropped.map(action => action.type) },
+        'Auto executor dropped write-capable actions outside the read+postComment capability set',
+      )
+    }
+    effectiveActions = allowed
   }
 
   const gateway =
@@ -64,11 +78,11 @@ export async function executeThreadActions(
       : new GitHubReviewActionCliGateway(executor)
 
   if (postGateway === null) {
-    return gateway.execute(allowed, gatewayContext)
+    return gateway.execute(effectiveActions, gatewayContext)
   }
 
-  const publicOutputActions = allowed.filter(isPublicOutputAction)
-  const remainingActions = allowed.filter(action => !isPublicOutputAction(action))
+  const publicOutputActions = effectiveActions.filter(isPublicOutputAction)
+  const remainingActions = effectiveActions.filter(action => !isPublicOutputAction(action))
 
   await executePublicOutput(
     publicOutputActions,
@@ -79,7 +93,7 @@ export async function executeThreadActions(
   const cliResult = await gateway.execute(remainingActions, gatewayContext)
 
   return {
-    total: allowed.length,
+    total: effectiveActions.length,
     succeeded: cliResult.succeeded + publicOutputActions.length,
     failed: cliResult.failed,
     skipped: cliResult.skipped,
