@@ -6462,6 +6462,7 @@ input:focus-visible,
   gap: 8px;
   margin-bottom: 8px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .ember-chat-panel__form {
@@ -6470,10 +6471,12 @@ input:focus-visible,
 
 .ember-chat-panel__msg {
   max-width: 85%;
+  min-width: 0;
   padding: 6px 9px;
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -6522,6 +6525,24 @@ input:focus-visible,
   background: var(--bg-1);
   border-radius: 3px;
   font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ember-chat-panel__msg--ember pre {
+  max-width: 100%;
+  margin: 4px 0;
+  overflow-x: auto;
+}
+.ember-chat-panel__msg--ember pre code {
+  white-space: pre;
+  word-break: normal;
+}
+.ember-chat-panel__msg--ember table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
 }
 .ember-chat-panel__msg--ember strong {
   color: var(--accent);
