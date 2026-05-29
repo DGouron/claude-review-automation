@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.31.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.30.0...reviewflow-v3.31.0) (2026-05-29)
+
+
+### Added
+
+* **ember:** echo user message and clear/disable input during answer ([a831339](https://github.com/DGouron/review-flow/commit/a8313396c487b08ad74a520ebf87b7b0d041db10))
+* **ember:** implement SPEC-190 live answers via --bg subscription ([3e59692](https://github.com/DGouron/review-flow/commit/3e59692242602bd9e94baf8e28601daea5b72396))
+* **ember:** SPEC-190 live answers via Claude subscription + chat UX ([dd3c35d](https://github.com/DGouron/review-flow/commit/dd3c35dbb2cae75943a7b607ed735cba4d2936bb))
+* **ember:** sticky header, markdown answers, typing/answered animations ([401f534](https://github.com/DGouron/review-flow/commit/401f5344319c6801ec72171ad8cecae57bbf4338))
+
+
+### Fixed
+
+* **ember:** contain wide content (inline code, pre, tables) in chat bubble ([586b9b3](https://github.com/DGouron/review-flow/commit/586b9b3673362a5aefb0d3c75bb15679c6e4e762))
+* **ember:** correct --bg transcript tail and done-detection (SPEC-190) ([8f71836](https://github.com/DGouron/review-flow/commit/8f718361b68aa9eb9a1800298690dd3bde30c127))
+* **ember:** guard extractText against non-array message content (SPEC-190) ([af3d9e5](https://github.com/DGouron/review-flow/commit/af3d9e53f45318a67329051d4daad47bef86766f))
+
 ## [3.30.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.29.0...reviewflow-v3.30.0) (2026-05-28)
 
 
