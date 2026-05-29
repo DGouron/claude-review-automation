@@ -1,15 +1,30 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
 import { loadEnvSecrets } from '@/config/loader.js';
+import { currentGitlabWebhookToken } from '@/security/gitlabWebhookTokenSource.js';
 
 export interface VerificationResult {
   valid: boolean;
   error?: string;
 }
 
+// Per-process random key used only to fold both candidate and expected tokens
+// into fixed-length digests before comparison. It never leaves the process and
+// is not a secret in the trust model; its sole purpose is to make timingSafeEqual
+// operate on equal-length inputs so no length-based oracle precedes the compare.
+const comparisonKey = randomBytes(32);
+
+function constantTimeStringEqual(candidate: string, expected: string): boolean {
+  const candidateDigest = createHmac('sha256', comparisonKey).update(candidate).digest();
+  const expectedDigest = createHmac('sha256', comparisonKey).update(expected).digest();
+  return timingSafeEqual(candidateDigest, expectedDigest);
+}
+
 /**
- * Verify GitLab webhook signature
- * GitLab uses a simple secret token sent in the X-Gitlab-Token header
+ * Verify GitLab webhook signature.
+ * GitLab uses a simple secret token sent in the X-Gitlab-Token header.
+ * The expected token is read from the current configuration on every call so it
+ * can be rotated without restarting the process (see gitlabWebhookTokenSource).
  */
 export function verifyGitLabSignature(request: FastifyRequest): VerificationResult {
   const token = request.headers['x-gitlab-token'];
@@ -18,18 +33,12 @@ export function verifyGitLabSignature(request: FastifyRequest): VerificationResu
     return { valid: false, error: 'Header X-Gitlab-Token manquant' };
   }
 
-  const secrets = loadEnvSecrets();
-  const expectedToken = secrets.gitlabWebhookToken;
-
-  // Use timing-safe comparison to prevent timing attacks
-  const tokenBuffer = Buffer.from(token);
-  const expectedBuffer = Buffer.from(expectedToken);
-
-  if (tokenBuffer.length !== expectedBuffer.length) {
+  const expectedToken = currentGitlabWebhookToken();
+  if (expectedToken === null) {
     return { valid: false, error: 'Token invalide' };
   }
 
-  if (!timingSafeEqual(tokenBuffer, expectedBuffer)) {
+  if (!constantTimeStringEqual(token, expectedToken)) {
     return { valid: false, error: 'Token invalide' };
   }
 

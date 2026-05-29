@@ -43,6 +43,9 @@ import { getConfigDir } from '@/shared/services/configDir.js';
 import { homedir } from 'node:os';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
+import { transportGuardMiddleware } from '@/modules/platform-integration/interface-adapters/controllers/webhook/transportGuard.middleware.js';
+import { ForwardedForClientIpResolver } from '@/modules/platform-integration/interface-adapters/gateways/transport/clientIpResolver.forwardedFor.gateway.js';
+import { resolveTransportGuardConfig } from '@/security/transportGuardConfig.js';
 import {
   cancelJob,
   getJobStatus,
@@ -385,7 +388,25 @@ export async function registerRoutes(
       sourceCheckoutPath: input.sourceCheckoutPath,
     });
 
+  const transportGuardConfig = resolveTransportGuardConfig();
+  const clientIpResolver = new ForwardedForClientIpResolver();
+
   app.post('/webhooks/gitlab', async (request, reply) => {
+    let proceed = false;
+    transportGuardMiddleware(
+      {
+        request: { socket: { remoteAddress: request.socket.remoteAddress }, headers: request.headers },
+        reply: { code: (status) => reply.code(status), send: () => reply.send() },
+        next: () => {
+          proceed = true;
+        },
+        resolver: clientIpResolver,
+      },
+      transportGuardConfig,
+    );
+    if (!proceed) {
+      return;
+    }
     await handleGitLabWebhook(request, reply, deps.logger, trackingGw, {
       reviewContextGateway: deps.reviewContextGateway,
       threadFetchGateway: threadFetchGw,
@@ -416,6 +437,21 @@ export async function registerRoutes(
   const gitHubThreadFetchGw = new GitHubThreadFetchGateway(defaultGitHubExecutor);
 
   app.post('/webhooks/github', async (request, reply) => {
+    let proceedGitHub = false;
+    transportGuardMiddleware(
+      {
+        request: { socket: { remoteAddress: request.socket.remoteAddress }, headers: request.headers },
+        reply: { code: (status) => reply.code(status), send: () => reply.send() },
+        next: () => {
+          proceedGitHub = true;
+        },
+        resolver: clientIpResolver,
+      },
+      transportGuardConfig,
+    );
+    if (!proceedGitHub) {
+      return;
+    }
     await handleGitHubWebhook(request, reply, deps.logger, trackingGw, {
       reviewContextGateway: deps.reviewContextGateway,
       threadFetchGateway: gitHubThreadFetchGw,

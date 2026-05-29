@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi, beforeAll, afterAll } from 'vitest'
 import { createHmac } from 'node:crypto'
 import { createFastifyRequestStub } from '../../stubs/fastifyRequest.stub.js'
 
@@ -20,6 +20,21 @@ import {
 } from '../../../security/verifier.js'
 
 describe('verifyGitLabSignature', () => {
+  let originalToken: string | undefined
+
+  beforeAll(() => {
+    originalToken = process.env.GITLAB_WEBHOOK_TOKEN
+    process.env.GITLAB_WEBHOOK_TOKEN = TEST_GITLAB_TOKEN
+  })
+
+  afterAll(() => {
+    if (originalToken === undefined) {
+      Reflect.deleteProperty(process.env, 'GITLAB_WEBHOOK_TOKEN')
+    } else {
+      process.env.GITLAB_WEBHOOK_TOKEN = originalToken
+    }
+  })
+
   describe('when token is valid', () => {
     it('should return valid: true', () => {
       const request = createFastifyRequestStub({
