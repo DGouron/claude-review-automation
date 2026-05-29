@@ -3,6 +3,8 @@ import type { ReviewAction } from '@/modules/review-execution/entities/reviewAct
 import { GitLabReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.gitlab.cli.gateway.js'
 import { GitHubReviewActionCliGateway } from '@/modules/review-execution/interface-adapters/gateways/cli/reviewAction.github.cli.gateway.js'
 import type { ExecutionResult, CommandExecutor, ExecutionContext as GatewayExecutionContext } from '@/modules/review-execution/entities/reviewAction/reviewAction.gateway.js'
+import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js'
+import { executePublicOutput, isPublicOutputAction } from '@/modules/review-execution/services/publicOutputExecutor.js'
 
 const COMMAND_TIMEOUT_MS = 30000
 
@@ -35,7 +37,8 @@ export async function executeThreadActions(
   actions: ThreadAction[],
   context: ExecutionContext,
   _logger: Logger,
-  executor: CommandExecutor
+  executor: CommandExecutor,
+  postGateway: NoteCommentPostGateway | null = null
 ): Promise<ExecutionResult> {
   const gatewayContext: GatewayExecutionContext = {
     projectPath: context.projectPath,
@@ -50,7 +53,27 @@ export async function executeThreadActions(
       ? new GitLabReviewActionCliGateway(executor)
       : new GitHubReviewActionCliGateway(executor)
 
-  return gateway.execute(actions, gatewayContext)
+  if (postGateway === null) {
+    return gateway.execute(actions, gatewayContext)
+  }
+
+  const publicOutputActions = actions.filter(isPublicOutputAction)
+  const remainingActions = actions.filter(action => !isPublicOutputAction(action))
+
+  await executePublicOutput(
+    publicOutputActions,
+    { projectPath: context.projectPath, mrNumber: context.mrNumber },
+    postGateway
+  )
+
+  const cliResult = await gateway.execute(remainingActions, gatewayContext)
+
+  return {
+    total: actions.length,
+    succeeded: cliResult.succeeded + publicOutputActions.length,
+    failed: cliResult.failed,
+    skipped: cliResult.skipped,
+  }
 }
 
 export const defaultCommandExecutor: CommandExecutor = (

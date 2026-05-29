@@ -601,6 +601,7 @@ export async function handleGitLabWebhook(
                   logger,
                   defaultCommandExecutor,
                   followupBaseUrl,
+                  deps.noteCommentPostGateway,
                 );
                 logger.info(
                   { ...contextActionResult, threadResolveCount, mrNumber: j.mrNumber },
@@ -625,7 +626,8 @@ export async function handleGitLabWebhook(
                       localPath: j.localPath,
                     },
                     logger,
-                    defaultCommandExecutor
+                    defaultCommandExecutor,
+                    deps.noteCommentPostGateway
                   );
                   logger.info(
                     { ...actionResult, threadResolveCount, mrNumber: j.mrNumber },
@@ -863,6 +865,7 @@ type GitLabReviewProcessorDeps = Pick<GitLabWebhookDependencies,
   | 'diffStatsFetchGateway'
   | 'recordCompletion'
   | 'claudeInvokerDeps'
+  | 'noteCommentPostGateway'
 >;
 
 export function buildGitLabReviewProcessor(
@@ -964,6 +967,7 @@ export function buildGitLabReviewProcessor(
             logger,
             defaultCommandExecutor,
             reviewBaseUrl,
+            deps.noteCommentPostGateway,
           );
           logger.info(
             { ...contextActionResult, mrNumber: j.mrNumber },
@@ -987,7 +991,8 @@ export function buildGitLabReviewProcessor(
                 localPath: j.localPath,
               },
               logger,
-              defaultCommandExecutor
+              defaultCommandExecutor,
+              deps.noteCommentPostGateway
             );
             logger.info(
               { ...actionResult, mrNumber: j.mrNumber },

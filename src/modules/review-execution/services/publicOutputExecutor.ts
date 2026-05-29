@@ -19,6 +19,10 @@ function publicOutputBody(action: ReviewAction): string | null {
   }
 }
 
+export function isPublicOutputAction(action: ReviewAction): boolean {
+  return publicOutputBody(action) !== null;
+}
+
 export async function executePublicOutput(
   actions: PublicOutputAction[],
   context: PublicOutputContext,

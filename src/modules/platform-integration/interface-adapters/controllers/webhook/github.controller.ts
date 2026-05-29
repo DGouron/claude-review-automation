@@ -570,6 +570,8 @@ export async function handleGitHubWebhook(
                   j.localPath,
                   logger,
                   defaultCommandExecutor,
+                  null,
+                  deps.noteCommentPostGateway,
                 );
                 logger.info(
                   { ...contextActionResult, threadResolveCount, prNumber: j.mrNumber },
@@ -593,7 +595,8 @@ export async function handleGitHubWebhook(
                       localPath: j.localPath,
                     },
                     logger,
-                    defaultCommandExecutor
+                    defaultCommandExecutor,
+                    deps.noteCommentPostGateway
                   );
                   logger.info(
                     { ...actionResult, threadResolveCount, prNumber: j.mrNumber },
@@ -874,7 +877,8 @@ export async function handleGitHubWebhook(
             localPath: j.localPath,
           },
           logger,
-          defaultCommandExecutor
+          defaultCommandExecutor,
+          deps.noteCommentPostGateway
         );
         logger.info(
           { ...actionResult, prNumber: j.mrNumber },
@@ -889,7 +893,9 @@ export async function handleGitHubWebhook(
           reviewContext,
           j.localPath,
           logger,
-          defaultCommandExecutor
+          defaultCommandExecutor,
+          null,
+          deps.noteCommentPostGateway
         );
         logger.info(
           { ...contextActionResult, prNumber: j.mrNumber },
