@@ -2,18 +2,17 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { Logger } from 'pino';
 import { emberMessageGuard } from '@/modules/ember-chat/entities/emberMessage/emberMessage.guard.js';
 import { askEmber } from '@/modules/ember-chat/usecases/askEmber/askEmber.usecase.js';
-import type { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
+import type { EmberAnswerTransportGateway } from '@/modules/ember-chat/entities/emberAnswer/emberAnswerTransport.gateway.js';
 import type { EmberReadDataGateway } from '@/modules/ember-chat/entities/emberTool/emberTool.gateway.js';
 import type { EnvironmentGateway } from '@/modules/claude-invocation/entities/billingState/environment.gateway.js';
 
 const UNAVAILABLE_MESSAGE = '// EMBER INDISPONIBLE — réessayer';
 
 export interface EmberChatRoutesOptions {
-  registry: EmberSessionRegistry;
+  transport: EmberAnswerTransportGateway;
   environment: EnvironmentGateway;
   readData: EmberReadDataGateway;
   projectPath: string;
-  now: () => Date;
   logger: Logger;
 }
 
@@ -21,7 +20,7 @@ export const emberChatRoutes: FastifyPluginAsync<EmberChatRoutesOptions> = async
   fastify,
   options,
 ) => {
-  const { registry, environment, readData, projectPath, now, logger } = options;
+  const { transport, environment, readData, projectPath, logger } = options;
 
   fastify.post('/api/ember/ask', async (request, reply): Promise<void> => {
     const parsed = emberMessageGuard.safeParse(request.body);
@@ -31,11 +30,10 @@ export const emberChatRoutes: FastifyPluginAsync<EmberChatRoutesOptions> = async
     }
 
     const result = await askEmber(parsed.data, {
-      registry,
+      transport,
       environment,
       readData,
       projectPath,
-      now,
     });
 
     reply.hijack();
@@ -81,7 +79,10 @@ export const emberChatRoutes: FastifyPluginAsync<EmberChatRoutesOptions> = async
         onDone: finish,
       });
 
-      request.raw.on('close', finish);
+      request.raw.on('close', () => {
+        result.cancel();
+        finish();
+      });
     });
   });
 };

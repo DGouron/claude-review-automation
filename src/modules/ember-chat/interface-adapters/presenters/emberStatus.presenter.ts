@@ -1,4 +1,4 @@
-import type { EmberStatus } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
+import type { EmberStatus } from '@/modules/ember-chat/usecases/askEmber/emberStream.js';
 
 export type EmberAvatarState = 'idle' | 'working' | 'error';
 

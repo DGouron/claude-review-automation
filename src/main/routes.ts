@@ -34,12 +34,13 @@ import { SetupRunRegistry } from '@/modules/setup-wizard/usecases/streamSetupRun
 import { SetupProcessChildProcessGateway } from '@/modules/setup-wizard/interface-adapters/gateways/setupProcess.childProcess.gateway.js';
 import { SetupStateFileSystemGateway } from '@/modules/setup-wizard/interface-adapters/gateways/setupState.fileSystem.gateway.js';
 import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/controllers/http/emberChat.routes.js';
-import { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
-import { EmberSessionTransportClaudeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberSessionTransport.claude.gateway.js';
+import { EmberAnswerTransportClaudeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberAnswerTransport.claude.gateway.js';
 import { EmberReadDataCompositeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberReadData.composite.gateway.js';
+import { ClaudeSessionCliGateway } from '@/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.js';
+import { defaultProcessRunner } from '@/frameworks/claude/claudeInvoker.js';
 import { ProcessEnvironmentGateway } from '@/modules/claude-invocation/interface-adapters/gateways/environment.process.gateway.js';
-import { resolveClaudePath } from '@/shared/services/claudePathResolver.js';
 import { getConfigDir } from '@/shared/services/configDir.js';
+import { homedir } from 'node:os';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
 import {
@@ -467,24 +468,16 @@ export async function registerRoutes(
     trackingGateway: deps.reviewRequestTrackingGateway,
     worktreeGateway: deps.worktreeGateway,
   });
-  const emberSessionRegistry = new EmberSessionRegistry({
-    transport: new EmberSessionTransportClaudeGateway({
-      claudePath: resolveClaudePath(),
-      mcpConfigJson: JSON.stringify({ mcpServers: {} }),
-      allowedTools: '',
-      model: 'sonnet',
-    }),
-    now: () => new Date(),
-    idleTimeoutMs: 5 * 60 * 1000,
-  });
-  setInterval(() => emberSessionRegistry.onIdle(new Date()), 30_000).unref();
+  const emberAnswerTransport = new EmberAnswerTransportClaudeGateway(
+    new ClaudeSessionCliGateway(defaultProcessRunner()),
+    { homeDir: homedir() },
+  );
 
   await app.register(emberChatRoutes, {
-    registry: emberSessionRegistry,
+    transport: emberAnswerTransport,
     environment: new ProcessEnvironmentGateway(),
     readData: emberReadData,
     projectPath: emberGroundingProjectPath,
-    now: () => new Date(),
     logger: deps.logger,
   });
 

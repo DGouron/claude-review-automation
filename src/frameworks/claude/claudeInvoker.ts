@@ -122,7 +122,7 @@ export function buildSpawnEnv(
  * composition root does not provide one. Wraps node:child_process.spawn so
  * tests can inject a fake runner instead.
  */
-function defaultProcessRunner(): ClaudeProcessRunner {
+export function defaultProcessRunner(): ClaudeProcessRunner {
   return async ({ args, cwd, env }) =>
     new Promise((resolve, reject) => {
       const child = spawn(resolveClaudePath(), args, {

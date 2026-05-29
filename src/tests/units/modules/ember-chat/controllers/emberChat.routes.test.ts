@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/controllers/http/emberChat.routes.js';
-import { EmberSessionRegistry } from '@/modules/ember-chat/usecases/emberSession/emberSessionRegistry.js';
-import { StubEmberSessionTransportGateway } from '@/tests/stubs/emberSessionTransport.stub.js';
+import { StubEmberAnswerTransportGateway } from '@/tests/stubs/emberAnswerTransport.stub.js';
 import { StubEmberReadDataGateway } from '@/tests/stubs/emberReadData.stub.js';
 import { StubEnvironmentGateway } from '@/tests/stubs/environment.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
@@ -19,27 +18,21 @@ function parseSseEvents(body: string): Array<Record<string, unknown>> {
 
 describe('emberChat routes', () => {
   let application: FastifyInstance;
-  let transport: StubEmberSessionTransportGateway;
+  let transport: StubEmberAnswerTransportGateway;
   let environment: StubEnvironmentGateway;
 
   function buildApplication(): FastifyInstance {
-    transport = new StubEmberSessionTransportGateway();
+    transport = new StubEmberAnswerTransportGateway();
     transport.respondWith(async (question) => `Réponse à ${question}`);
     environment = new StubEnvironmentGateway();
     environment.setHasAnthropicApiKey(false);
-    const registry = new EmberSessionRegistry({
-      transport,
-      now: () => new Date('2026-05-28T10:00:00Z'),
-      idleTimeoutMs: 60_000,
-    });
 
     const instance = Fastify();
     void instance.register(emberChatRoutes, {
-      registry,
+      transport,
       environment,
       readData: new StubEmberReadDataGateway(),
       projectPath: PROJECT_PATH,
-      now: () => new Date('2026-05-28T10:00:00Z'),
       logger: createStubLogger(),
     });
     return instance;
@@ -54,7 +47,7 @@ describe('emberChat routes', () => {
     await application.close();
   });
 
-  it('rejects an empty question with 400 and never spawns', async () => {
+  it('rejects an empty question with 400 and never starts', async () => {
     const response = await application.inject({
       method: 'POST',
       url: '/api/ember/ask',
@@ -62,7 +55,7 @@ describe('emberChat routes', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(transport.spawnCount).toBe(0);
+    expect(transport.startCount).toBe(0);
   });
 
   it('streams chunk, status and end events for a valid question', async () => {
@@ -86,7 +79,25 @@ describe('emberChat routes', () => {
 
   it('emits an error event when the assistant is unreachable', async () => {
     application = buildApplication();
-    transport.failSpawn();
+    transport.failStart();
+    await application.ready();
+
+    const response = await application.inject({
+      method: 'POST',
+      url: '/api/ember/ask',
+      payload: { question: 'Quel projet a le pire score ?' },
+    });
+
+    const events = parseSseEvents(response.body);
+    const errors = events.filter((event) => event.type === 'error');
+
+    expect(errors.length).toBeGreaterThan(0);
+    expect(String(errors[0].message)).toContain('INDISPONIBLE');
+  });
+
+  it('emits an error event when answering fails mid-stream', async () => {
+    application = buildApplication();
+    transport.failMidStream();
     await application.ready();
 
     const response = await application.inject({
@@ -117,6 +128,6 @@ describe('emberChat routes', () => {
     const errors = events.filter((event) => event.type === 'error');
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(transport.spawnCount).toBe(0);
+    expect(transport.startCount).toBe(0);
   });
 });

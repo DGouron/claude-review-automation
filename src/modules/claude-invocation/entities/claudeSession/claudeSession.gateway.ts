@@ -10,7 +10,7 @@ export interface ClaudeDispatchFlags {
   systemPrompt: string;
   allowedTools: string;
   disallowedTools: string;
-  permissionMode: 'auto';
+  permissionMode: 'auto' | 'plan';
 }
 
 export interface DispatchInput {
