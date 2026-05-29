@@ -57,9 +57,15 @@ memory between questions; the SPEC-189 long-lived-session machinery was removed.
 
 All out-of-plan modifications are justified consequences of the plan (runner export for reuse, `permissionMode` widening, `ember-chat` job type, presenter import re-point). No scope pollution. A mid-implementation interruption left the `now`-removal refactor half-applied (typecheck broke in 8 spots); the orchestrator completed the cleanup consistently across the route, wiring, and tests.
 
-## Unresolved / manual-verification risks (carried from the plan)
+## Manual verification — DONE (claude 2.1.154, real `--bg` dispatch)
 
-1. **`--permission-mode plan` answer behavior** — must confirm a `--bg` run in `plan` mode still emits a text answer (vs. only a plan) for a pure Q&A. If it blocks, switch to a read-only-by-tooling `auto` mode.
-2. **Terminal-line shape** — whether the one-shot `--bg` transcript writes a terminal `result`/`message_stop` line; a `listAgents()` poll is wired as a belt-and-suspenders fallback either way.
-3. **Assistant-text framing** — chunks are whole-message granularity (coarse progressive), not token deltas; acceptable per spec ("progressively").
-4. Drive end-to-end in a browser (the SSE client glue is humble, browser-only).
+Verified live against `claude --bg`; the glue was corrected to match the real transcript shape:
+
+1. **Permission mode** — switched `plan` → **`auto`** (proven reviews path). Read-only stays enforced by the tool whitelist (`Read,Glob,Grep`) + blacklist (`Edit,Write,Bash,Task`) + no MCP. (`plan` also answered, but `auto` removes any risk of "plan-instead-of-answer".)
+2. **Transcript filename** — the file is named with the FULL session UUID, while `backgrounded · <id>` only yields the short prefix. Fixed: resolve by prefix glob `<shortId>*.jsonl` in the project dir (was an exact-name lookup that would never match → no streaming).
+3. **Done-detection** — there is NO `result`/`message_stop` line; completion is the `assistant` `stop_reason: end_turn` + a `system` `subtype: turn_duration` line (both now in `isTurnComplete`, TDD-covered). The earlier `listAgents()` fallback was removed: a `--bg` session is persistent and goes `idle` (non-terminal) after answering, and `agents --json` reports the full UUID, so the poll could neither match nor detect done. A bounded attempt budget (`MAX_TAIL_ATTEMPTS`) replaces it as the no-hang safeguard.
+4. **One-shot cleanup** — the persistent `--bg` session is now `stop`-ped on done/cancel.
+5. **End-to-end algorithm replay** — a fresh dispatch + the corrected tail produced the grounded chunk "Le score de la MR 7 est **9**." and detected completion. Assistant text is whole-message granularity (coarse progressive), per `message.content[].text`.
+
+### Still open
+- Drive the chat end-to-end in a browser (the SSE client glue is humble, browser-only).

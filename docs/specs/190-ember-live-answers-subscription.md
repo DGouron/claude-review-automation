@@ -43,10 +43,14 @@ transport) was removed.
 - **Bounded grounding** — caps + aggregate summary instead of MCP read-tools (deferred, with `.md`/DSL memory, to a future Phase C spec).
 - **Read-only structurally** — the transport port has no write method; the dispatch runs `--permission-mode plan` with a read-only tool whitelist.
 
-### Manual-verification follow-ups
-- Confirm a `--bg` run in `--permission-mode plan` still emits a text answer for a pure Q&A (vs. only a plan); if not, switch to read-only-by-tooling `auto`.
-- Confirm the one-shot `--bg` transcript's terminal-line shape (a `listAgents()` poll is wired as fallback).
-- Drive the chat end-to-end in a browser (the SSE client glue is humble, browser-only).
+### Manual verification (done — claude 2.1.154)
+Verified live against a real `claude --bg` dispatch; the transport glue was corrected accordingly:
+- `--permission-mode auto` (proven reviews path; read-only kept by tool whitelist/blacklist + no MCP).
+- Transcript resolved by **prefix glob** `<shortId>*.jsonl` — the file uses the full UUID while `backgrounded · <id>` only gives the short prefix.
+- Completion via `assistant` `stop_reason: end_turn` + `system` `turn_duration` (no `result` line exists); the `listAgents()` fallback was removed (a `--bg` session stays persistent/`idle` after answering) in favour of a bounded no-hang attempt budget; the session is stopped on done.
+- A fresh dispatch produced a grounded streamed answer end-to-end.
+
+Still open: drive the chat end-to-end in a browser (humble SSE client glue).
 
 ## Context
 

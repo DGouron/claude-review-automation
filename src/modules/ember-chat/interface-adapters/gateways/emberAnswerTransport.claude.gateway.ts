@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClaudeSessionGateway } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.gateway.js';
 import type { SessionId } from '@/modules/claude-invocation/entities/claudeSession/claudeSession.schema.js';
@@ -21,22 +21,31 @@ import type {
  * StubEmberAnswerTransportGateway; this file is the swappable real
  * implementation, validated by acceptance/manual only.
  *
- * Transport: ONE one-shot `claude --bg` dispatch per question (subscription /
- * OAuth billing, the same path reviews use — NEVER `--print`/headless, which
- * switches to API billing on 2026-06-15). After dispatch, tail the session
- * transcript JSONL at ~/.claude/projects/<slug>/<sessionId>.jsonl, emitting
- * onChunk per new assistant text segment and onDone on the terminal line.
+ * Transport: ONE `claude --bg` dispatch per question (subscription / OAuth
+ * billing, the same path reviews use — NEVER `--print`/headless, which switches
+ * to API billing on 2026-06-15). After dispatch, tail the session transcript
+ * JSONL, emitting onChunk per new assistant text segment and onDone on the
+ * turn-complete marker, then stop the (persistent) background session.
  *
- * Read-only is enforced structurally: `--permission-mode plan`, no write tools
- * in allowedTools, and Edit/Write/Bash/Task in disallowedTools. No MCP servers.
+ * Read-only is enforced structurally: read-only tools (Read,Glob,Grep), with
+ * Edit/Write/Bash/Task in disallowedTools and no MCP servers. `--permission-mode
+ * auto` matches the proven reviews path (`plan` would risk the agent emitting a
+ * plan instead of an answer).
  *
- * MANUAL VERIFICATION REQUIRED:
- *  1. Whether a one-shot `--bg` transcript actually writes a terminal `result`
- *     line. Belt-and-suspenders: a listAgents() poll detects terminal status as
- *     a fallback (pattern proven in awaitSessionCompletion.usecase).
- *  2. That `--bg` transcript `assistant` lines carry text under
- *     message.content[].text (what extractText reads). Chunks are whole-message
- *     granularity (coarse progressive), not deltas.
+ * Verified against claude 2.1.154 (`claude --bg --permission-mode auto`):
+ *  - The transcript file is named with the FULL session UUID, while `backgrounded
+ *    · <id>` only yields the short prefix — so the file is resolved by prefix glob
+ *    (<shortId>*.jsonl) in the project dir, NOT by exact name.
+ *  - There is NO `result`/`message_stop` line. Turn completion is signalled by an
+ *    `assistant` message with stop_reason `end_turn` and a `system` line with
+ *    subtype `turn_duration` (both handled by isTurnComplete).
+ *  - A `--bg` session is persistent: after answering it goes `idle` (not a
+ *    terminal status), so a listAgents() poll cannot detect "done" — completion
+ *    relies on the transcript marker; the session is then stopped here.
+ *  - Assistant text is carried under message.content[].text (what extractText
+ *    reads); chunks are whole-message granularity (coarse progressive), not deltas.
+ *
+ * STILL TO VERIFY MANUALLY: drive the chat end-to-end in a browser.
  */
 
 export interface EmberAnswerTransportClaudeGatewayOptions {
@@ -68,12 +77,18 @@ export class EmberAnswerTransportClaudeGateway implements EmberAnswerTransportGa
   }
 }
 
+const MAX_TAIL_ATTEMPTS = 240;
+
 class EmberAnswerRunner {
   private cancelled = false;
   private timer: NodeJS.Timeout | null = null;
   private byteOffset = 0;
   private pendingLine = '';
   private transcriptPath: string | null = null;
+  private projectDir: string | null = null;
+  private shortSessionId: SessionId | null = null;
+  private attempts = 0;
+  private stopped = false;
 
   constructor(
     private readonly sessionGateway: ClaudeSessionGateway,
@@ -90,6 +105,7 @@ class EmberAnswerRunner {
   cancel(): void {
     this.cancelled = true;
     this.stopTimer();
+    this.stopSession();
   }
 
   private async dispatchThenTail(): Promise<void> {
@@ -97,7 +113,7 @@ class EmberAnswerRunner {
       prompt: this.options.question,
       flags: {
         model: 'sonnet',
-        permissionMode: 'plan',
+        permissionMode: 'auto',
         systemPrompt: this.options.systemPrompt,
         mcpConfigJson: '{"mcpServers":{}}',
         allowedTools: 'Read,Glob,Grep',
@@ -114,36 +130,54 @@ class EmberAnswerRunner {
     }
 
     const slug = this.options.projectPath.replace(/\//g, '-');
-    this.transcriptPath = join(this.homeDir, '.claude', 'projects', slug, `${dispatch.sessionId}.jsonl`);
-    this.scheduleTail(dispatch.sessionId);
+    this.projectDir = join(this.homeDir, '.claude', 'projects', slug);
+    this.shortSessionId = dispatch.sessionId;
+    this.scheduleTail();
   }
 
-  private scheduleTail(sessionId: SessionId): void {
+  private scheduleTail(): void {
     if (this.cancelled) {
       return;
     }
     this.timer = setTimeout(() => {
-      void this.tailOnce(sessionId);
+      this.tailOnce();
     }, this.pollIntervalMs);
   }
 
-  private async tailOnce(sessionId: SessionId): Promise<void> {
-    if (this.cancelled || this.transcriptPath === null) {
+  private tailOnce(): void {
+    if (this.cancelled) {
       return;
     }
+    this.attempts += 1;
 
+    this.resolveTranscript();
     const completed = this.readNewLines();
     if (completed) {
       this.finish();
       return;
     }
 
-    if (await this.agentTerminated(sessionId)) {
-      this.finish();
+    if (this.attempts >= MAX_TAIL_ATTEMPTS) {
+      this.fail('ember-answer-timeout');
       return;
     }
 
-    this.scheduleTail(sessionId);
+    this.scheduleTail();
+  }
+
+  private resolveTranscript(): void {
+    if (this.transcriptPath !== null || this.projectDir === null || this.shortSessionId === null) {
+      return;
+    }
+    if (!existsSync(this.projectDir)) {
+      return;
+    }
+    const match = readdirSync(this.projectDir).find(
+      (name) => name.startsWith(this.shortSessionId ?? '') && name.endsWith('.jsonl'),
+    );
+    if (match !== undefined) {
+      this.transcriptPath = join(this.projectDir, match);
+    }
   }
 
   private readNewLines(): boolean {
@@ -185,21 +219,13 @@ class EmberAnswerRunner {
     return terminal;
   }
 
-  private async agentTerminated(sessionId: SessionId): Promise<boolean> {
-    const agents = await this.sessionGateway.listAgents();
-    const entry = agents.find((agent) => agent.sessionId === sessionId);
-    if (entry === undefined) {
-      return false;
-    }
-    return entry.status === 'completed' || entry.status === 'failed' || entry.status === 'stopped';
-  }
-
   private finish(): void {
     if (this.cancelled) {
       return;
     }
     this.readNewLines();
     this.stopTimer();
+    this.stopSession();
     this.subscriber.onDone();
   }
 
@@ -209,6 +235,14 @@ class EmberAnswerRunner {
     }
     this.cancel();
     this.subscriber.onError(message);
+  }
+
+  private stopSession(): void {
+    if (this.stopped || this.shortSessionId === null) {
+      return;
+    }
+    this.stopped = true;
+    void this.sessionGateway.stop(this.shortSessionId);
   }
 
   private stopTimer(): void {
