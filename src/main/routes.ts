@@ -116,8 +116,8 @@ import { VersionCacheMemoryGateway } from '@/modules/cli-configuration/interface
 import { SelfUpdateCliGateway } from '@/modules/cli-configuration/interface-adapters/gateways/selfUpdate.cli.gateway.js';
 import { InstallTypeDetectorFsGateway } from '@/modules/cli-configuration/interface-adapters/gateways/installTypeDetector.fs.gateway.js';
 import { broadcastBackfillProgress } from '@/main/websocket.js';
-import { createClaudeInsightsInvoker } from '@/frameworks/claude/claudeInsightsInvoker.js';
-import { getDefaultLanguage, getWorktreeStaleThresholdHours } from '@/frameworks/settings/runtimeSettings.js';
+import { AiInsightsSessionClaudeGateway } from '@/modules/statistics-insights/interface-adapters/gateways/aiInsightsSession.claude.gateway.js';
+import { getDefaultLanguage, getModel, getWorktreeStaleThresholdHours } from '@/frameworks/settings/runtimeSettings.js';
 import { detectDegradedWorktrees } from '@/modules/worktree-management/usecases/detectDegradedWorktrees.usecase.js';
 import type {
   RemoveResult,
@@ -374,7 +374,11 @@ export async function registerRoutes(
     reviewFileGateway: deps.reviewFileGateway,
     reviewRequestTrackingGateway: deps.reviewRequestTrackingGateway,
     logger: deps.logger,
-    claudeInvoker: createClaudeInsightsInvoker(),
+    session: new AiInsightsSessionClaudeGateway(
+      new ClaudeSessionCliGateway(defaultProcessRunner()),
+      { homeDir: homedir(), model: getModel() },
+    ),
+    environment: new ProcessEnvironmentGateway(),
     language: getDefaultLanguage(),
   });
 

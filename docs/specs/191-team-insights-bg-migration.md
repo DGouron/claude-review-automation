@@ -1,6 +1,6 @@
 ---
 title: "SPEC-191: Migrate Team AI Insights from -p to --bg subscription billing"
-status: DRAFT
+status: implemented
 milestone: June 15 Migration
 related:
   - "125-developer-team-insights"
@@ -10,7 +10,9 @@ related:
 
 # SPEC-191: Migrate Team AI Insights from `-p` to `--bg` subscription billing
 
-## Status: DRAFT
+## Status: implemented
+
+Shipped 2026-05-30. Acceptance test at `src/tests/acceptance/191-team-insights-bg-migration.acceptance.test.ts`; transport swapped onto the `--bg` subscription path via `generateAiInsightsViaSession` use case + `AiInsightsSessionClaudeGateway` glue. The `-p` invoker (`claudeInsightsInvoker.ts`) was removed and dropped from the `noClaudePInProduction` allowlist. Report: `docs/reports/191-team-insights-bg-migration.report.md`.
 
 ## Context
 
@@ -73,11 +75,11 @@ Team AI Insights (SPEC-125) generates the developer/team narrative by invoking C
 
 See `.claude/skills/product-manager/rules/dod.md` for the full checklist.
 
-- [ ] Team AI Insights dispatches via `--bg` on the subscription; no `-p`/`--print` remains in the insights path.
-- [ ] Generated insights content is byte-for-byte equivalent to the previous headless output (same prompt, same parsing).
-- [ ] Answer is read from the completed session transcript and parsed into insights.
-- [ ] Finished sessions are stopped and removed after the answer is read.
-- [ ] API-key-present and logged-out cases fail with the French messages above instead of billing the API.
-- [ ] Timeout stops the session and reports failure.
-- [ ] Acceptance test GREEN proves the spec is satisfied.
-- [ ] `yarn verify` passes (typecheck + lint + test:ci).
+- [x] Team AI Insights dispatches via `--bg` on the subscription; no `-p`/`--print` remains in the insights path.
+- [x] Generated insights content is byte-for-byte equivalent to the previous headless output (same prompt, same parsing).
+- [x] Answer is read from the completed session transcript and parsed into insights.
+- [x] Finished sessions are stopped and removed after the answer is read.
+- [x] API-key-present and logged-out cases fail with the French messages above instead of billing the API.
+- [x] Timeout stops the session and reports failure.
+- [x] Acceptance test GREEN proves the spec is satisfied.
+- [x] `yarn verify` passes (typecheck + lint + test:ci).

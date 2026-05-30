@@ -6,7 +6,6 @@ const SRC_ROOT = join(process.cwd(), 'src');
 
 const ALLOWED_PATHS: string[] = [
   'src/cli/parseCliArgs.ts',
-  'src/frameworks/claude/claudeInsightsInvoker.ts',
   'src/tests/units/architecture/noClaudePInProduction.test.ts',
 ];
 
