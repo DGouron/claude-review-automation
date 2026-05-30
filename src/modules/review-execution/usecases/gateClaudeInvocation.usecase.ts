@@ -32,6 +32,12 @@ export interface GateClaudeInvocationInput {
   job: ReviewJob;
   triggerSource: TriggerSource;
   processor: GateClaudeInvocationProcessor;
+  /**
+   * Trigger-actor provenance verdict (SPEC-197). When explicitly `false` the job
+   * is parked pending regardless of triggerMode: a non-trusted actor never
+   * auto-runs. `undefined`/`true` preserves the existing triggerMode behaviour.
+   */
+  actorTrusted?: boolean;
 }
 
 export type GateClaudeInvocationResult =
@@ -49,7 +55,9 @@ export class GateClaudeInvocationUseCase {
   async execute(input: GateClaudeInvocationInput): Promise<GateClaudeInvocationResult> {
     const { triggerMode, pendingReviewRequestGateway, enqueue, broadcastPendingChanged, logger } = this.deps;
 
-    if (triggerMode === 'full-auto') {
+    const actorParks = input.actorTrusted === false;
+
+    if (triggerMode === 'full-auto' && !actorParks) {
       const enqueued = await enqueue(input.job, input.processor);
       if (!enqueued) {
         logger.info({ jobId: input.job.id }, 'Job rejected by queue (deduplicated or already active)');

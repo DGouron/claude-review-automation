@@ -28,6 +28,7 @@ import { runReviewRecovery } from '@/modules/review-execution/services/reviewRec
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
 import { configureSettingsLogger, configureSettingsPath, getDefaultSettingsPath, loadSettingsFromDisk } from '@/frameworks/settings/runtimeSettings.js';
+import { transportTrustProxyValue } from '@/security/transportGuardConfig.js';
 
 export interface ServerOptions {
   config?: Config;
@@ -87,7 +88,10 @@ function reviveJobStatusFromRecord(record: JobRecord): JobStatus {
 }
 
 async function buildServer(deps: Dependencies): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false });
+  // trust proxy is scoped to the single loopback hop only (never true, never a
+  // broad subnet) so Fastify does not inflate request attributes from client
+  // headers; the accept/reject decision lives entirely in the transport guard.
+  const app = Fastify({ logger: false, trustProxy: transportTrustProxyValue() });
 
   addRawBodyParser(app);
   await app.register(fastifyWebsocket);

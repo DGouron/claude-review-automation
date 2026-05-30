@@ -44,6 +44,10 @@ import { getConfigDir } from '@/shared/services/configDir.js';
 import { homedir } from 'node:os';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { handleGitHubWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/github.controller.js';
+import { InMemoryIdempotencyStore } from '@/modules/platform-integration/interface-adapters/gateways/inMemoryIdempotencyStore.gateway.js';
+import { transportGuardMiddleware } from '@/modules/platform-integration/interface-adapters/controllers/webhook/transportGuard.middleware.js';
+import { ForwardedForClientIpResolver } from '@/modules/platform-integration/interface-adapters/gateways/transport/clientIpResolver.forwardedFor.gateway.js';
+import { resolveTransportGuardConfig } from '@/security/transportGuardConfig.js';
 import {
   cancelJob,
   getJobStatus,
@@ -57,6 +61,8 @@ import {
 import { RecomputeGlobalConcurrencyUseCase } from '@/modules/cli-configuration/usecases/projectConfig/recomputeGlobalConcurrency.usecase.js';
 import { RepositoriesListRuntimeConfigGateway } from '@/modules/cli-configuration/interface-adapters/gateways/repositoriesList.runtimeConfig.gateway.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
+import { GitLabMemberAccessCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/memberAccess.gitlab.cli.gateway.js';
+import { IsTrustedActorUseCase } from '@/modules/platform-integration/usecases/isTrustedActor.usecase.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
@@ -72,6 +78,10 @@ import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/record
 import { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import { GitLabNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.gitlab.cli.gateway.js';
 import { GitHubNoteCommentPostCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/noteCommentPost.github.cli.gateway.js';
+import { EgressScannedNoteCommentPostGateway } from '@/modules/platform-integration/interface-adapters/gateways/egressScanned.noteCommentPost.gateway.js';
+import { LoggerEgressTraceGateway } from '@/modules/platform-integration/interface-adapters/gateways/loggerEgressTrace.gateway.js';
+import { createEgressScanner } from '@/modules/platform-integration/entities/egressScan/egressScan.scanner.js';
+import { defaultEgressScanConfig } from '@/modules/platform-integration/entities/egressScan/egressScan.defaults.js';
 import { GitLabApprovalRevocationCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.gitlab.cli.gateway.js';
 import { GitHubApprovalRevocationCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/cli/approvalRevocation.github.cli.gateway.js';
 import { ReviewContextFileSystemGateway } from '@/modules/review-execution/interface-adapters/gateways/reviewContext.fileSystem.gateway.js';
@@ -289,6 +299,11 @@ export async function registerRoutes(
     logger: deps.logger,
   });
 
+  // SPEC-197: trigger-actor provenance gate. Membership is resolved through the
+  // scoped GitLab executor, cached per username, fail-closed.
+  const gitLabMemberAccessGateway = new GitLabMemberAccessCliGateway(defaultGitLabExecutor);
+  const isTrustedActor = new IsTrustedActorUseCase(gitLabMemberAccessGateway);
+
   await app.register(pendingReviewsRoutes, {
     listPendingReviews,
     confirmPendingReview,
@@ -377,6 +392,16 @@ export async function registerRoutes(
   const trackingGw = deps.reviewRequestTrackingGateway;
   const threadFetchGw = new GitLabThreadFetchGateway(defaultGitLabExecutor);
 
+  const egressScanner = createEgressScanner(defaultEgressScanConfig);
+  const egressTraceGateway = new LoggerEgressTraceGateway(deps.logger);
+
+  // TTL must be >= the platform's maximum webhook retry window so a
+  // legitimately re-delivered event past that window is reprocessed, while any
+  // redelivery/replay inside it is acted upon at most once. 24h is a safe upper
+  // bound for GitLab's redelivery window.
+  const WEBHOOK_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+  const idempotencyStore = new InMemoryIdempotencyStore({ ttlMs: WEBHOOK_IDEMPOTENCY_TTL_MS });
+
   const removeWorktreeAction = (input: {
     identity: WorktreeIdentity;
     sourceCheckoutPath: string;
@@ -386,7 +411,25 @@ export async function registerRoutes(
       sourceCheckoutPath: input.sourceCheckoutPath,
     });
 
+  const transportGuardConfig = resolveTransportGuardConfig();
+  const clientIpResolver = new ForwardedForClientIpResolver();
+
   app.post('/webhooks/gitlab', async (request, reply) => {
+    let proceed = false;
+    transportGuardMiddleware(
+      {
+        request: { socket: { remoteAddress: request.socket.remoteAddress }, headers: request.headers },
+        reply: { code: (status) => reply.code(status), send: () => reply.send() },
+        next: () => {
+          proceed = true;
+        },
+        resolver: clientIpResolver,
+      },
+      transportGuardConfig,
+    );
+    if (!proceed) {
+      return;
+    }
     await handleGitLabWebhook(request, reply, deps.logger, trackingGw, {
       reviewContextGateway: deps.reviewContextGateway,
       threadFetchGateway: threadFetchGw,
@@ -403,11 +446,17 @@ export async function registerRoutes(
       getRepositories: () => deps.config.repositories,
       claudeInvokerDeps,
       gateClaudeInvocation,
+      isTrustedActor,
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
-      noteCommentPostGateway: new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
+      noteCommentPostGateway: new EgressScannedNoteCommentPostGateway(
+        new GitLabNoteCommentPostCliGateway(defaultGitLabExecutor),
+        egressScanner,
+        egressTraceGateway,
+      ),
       handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
       approvalRevocationGateway: new GitLabApprovalRevocationCliGateway(defaultGitLabExecutor),
+      idempotencyStore,
       getQualityThreshold: (projectPath: string) =>
         loadProjectConfig(projectPath)?.qualityThreshold ?? null,
       now: () => new Date().toISOString(),
@@ -417,6 +466,21 @@ export async function registerRoutes(
   const gitHubThreadFetchGw = new GitHubThreadFetchGateway(defaultGitHubExecutor);
 
   app.post('/webhooks/github', async (request, reply) => {
+    let proceedGitHub = false;
+    transportGuardMiddleware(
+      {
+        request: { socket: { remoteAddress: request.socket.remoteAddress }, headers: request.headers },
+        reply: { code: (status) => reply.code(status), send: () => reply.send() },
+        next: () => {
+          proceedGitHub = true;
+        },
+        resolver: clientIpResolver,
+      },
+      transportGuardConfig,
+    );
+    if (!proceedGitHub) {
+      return;
+    }
     await handleGitHubWebhook(request, reply, deps.logger, trackingGw, {
       reviewContextGateway: deps.reviewContextGateway,
       threadFetchGateway: gitHubThreadFetchGw,
@@ -435,7 +499,11 @@ export async function registerRoutes(
       gateClaudeInvocation,
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
-      noteCommentPostGateway: new GitHubNoteCommentPostCliGateway(defaultGitHubExecutor),
+      noteCommentPostGateway: new EgressScannedNoteCommentPostGateway(
+        new GitHubNoteCommentPostCliGateway(defaultGitHubExecutor),
+        egressScanner,
+        egressTraceGateway,
+      ),
       handlePlatformApproval: new HandlePlatformApprovalUseCase(trackingGw),
       approvalRevocationGateway: new GitHubApprovalRevocationCliGateway(defaultGitHubExecutor),
       getQualityThreshold: (projectPath: string) =>

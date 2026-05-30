@@ -154,4 +154,52 @@ describe('GateClaudeInvocationUseCase', () => {
       expect(gateway.saveCount).toBe(0);
     });
   });
+
+  describe('Rule: a non-trusted actor parks pending even in full-auto (SPEC-197)', () => {
+    it('parks the job and never enqueues when actorTrusted is false', async () => {
+      const useCase = new GateClaudeInvocationUseCase({
+        triggerMode: 'full-auto',
+        pendingReviewRequestGateway: gateway,
+        enqueue: enqueueSuccess,
+        broadcastPendingChanged: () => {
+          broadcasts += 1;
+        },
+        logger,
+      });
+
+      const result = await useCase.execute({
+        job: buildReviewJob(),
+        triggerSource: 'webhook-initial',
+        processor,
+        actorTrusted: false,
+      });
+
+      expect(result.status).toBe('pending');
+      expect(enqueueCalls).toHaveLength(0);
+      expect(processorRuns).toBe(0);
+      expect(gateway.saveCount).toBe(1);
+      expect(broadcasts).toBe(1);
+    });
+
+    it('enqueues normally in full-auto when actorTrusted is true', async () => {
+      const useCase = new GateClaudeInvocationUseCase({
+        triggerMode: 'full-auto',
+        pendingReviewRequestGateway: gateway,
+        enqueue: enqueueSuccess,
+        broadcastPendingChanged: () => {},
+        logger,
+      });
+
+      const result = await useCase.execute({
+        job: buildReviewJob(),
+        triggerSource: 'webhook-initial',
+        processor,
+        actorTrusted: true,
+      });
+
+      expect(result.status).toBe('enqueued');
+      expect(processorRuns).toBe(1);
+      expect(gateway.saveCount).toBe(0);
+    });
+  });
 });

@@ -1,10 +1,11 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
-import { verifyGitLabSignature, getGitLabEventType } from '@/security/verifier.js';
+import { verifyGitLabSignature, getGitLabEventType, getGitLabEventUuid } from '@/security/verifier.js';
 import { gitLabMergeRequestEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabMergeRequestEvent.guard.js';
 import { gitLabNoteEventGuard } from '@/modules/platform-integration/entities/gitlab/gitlabNoteEvent.guard.js';
 import { filterGitLabEvent, filterGitLabMrUpdate, filterGitLabMrClose, filterGitLabMrMerge, filterGitLabMrApprove, filterGitLabNoteEvent } from '@/modules/platform-integration/interface-adapters/controllers/webhook/eventFilter.js';
 import { findRepositoryByProjectPath, type RepositoryConfig } from '@/config/loader.js';
+import { resolvePinnedThreadFetchTarget } from '@/modules/platform-integration/services/pinnedThreadFetchTarget.js';
 import {
   enqueueReview,
   createJobId,
@@ -15,6 +16,7 @@ import {
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import type { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
+import type { IsTrustedActorUseCase } from '@/modules/platform-integration/usecases/isTrustedActor.usecase.js';
 import type { ProcessorBuilder } from '@/modules/review-execution/services/processorRegistry.js';
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
@@ -25,6 +27,7 @@ import type { CheckFollowupNeededUseCase } from '@/modules/tracking/usecases/tra
 import type { SyncThreadsUseCase } from '@/modules/tracking/usecases/tracking/syncThreads.usecase.js';
 import type { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/recordBypass.usecase.js';
 import type { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
+import type { IdempotencyStore } from '@/modules/platform-integration/entities/idempotency/idempotencyStore.gateway.js';
 import type { NoteCommentPostGateway } from '@/modules/platform-integration/entities/noteComment/noteCommentPost.gateway.js';
 import type { ApprovalRevocationGateway } from '@/modules/platform-integration/entities/approvalRevocation/approvalRevocation.gateway.js';
 import { evaluateQualityGate } from '@/modules/tracking/entities/qualityGate/qualityGate.js';
@@ -33,7 +36,11 @@ import { DEFAULT_AGENTS, DEFAULT_FOLLOWUP_AGENTS } from '@/modules/review-execut
 import { parseReviewOutput } from '@/modules/statistics-insights/services/statsService.js';
 import { ReviewContextResultFactory } from '@/modules/review-execution/entities/reviewContext/reviewContextResult.factory.js';
 import { parseThreadActions } from '@/modules/review-execution/services/threadActionsParser.js';
-import { executeThreadActions, defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { defaultCommandExecutor } from '@/modules/review-execution/services/threadActionsExecutor.js';
+import { dispatchConstrainedActions } from '@/modules/review-execution/services/dispatchConstrainedActions.js';
+import { resolveProvenance } from '@/modules/review-execution/entities/actionProvenance/actionProvenance.js';
+import { GitLabThreadInventoryGateway } from '@/modules/review-execution/interface-adapters/gateways/threadInventory.gitlab.gateway.js';
+import { defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
 import { executeActionsFromContext } from '@/modules/review-execution/services/contextActionsExecutor.js';
 import { startWatchingReviewContext, stopWatchingReviewContext } from '@/main/websocket.js';
 import type { ReviewContextGateway } from '@/modules/review-execution/entities/reviewContext/reviewContext.gateway.js';
@@ -83,11 +90,13 @@ export interface GitLabWebhookDependencies {
   getRepositories: () => RepositoryConfig[];
   claudeInvokerDeps?: ClaudeInvokerDependencies;
   gateClaudeInvocation?: GateClaudeInvocationUseCase;
+  isTrustedActor?: IsTrustedActorUseCase;
   removeWorktree: RemoveWorktreeAction;
   recordBypass: RecordBypassUseCase;
   noteCommentPostGateway: NoteCommentPostGateway;
   handlePlatformApproval: HandlePlatformApprovalUseCase;
   approvalRevocationGateway: ApprovalRevocationGateway;
+  idempotencyStore?: IdempotencyStore;
   getQualityThreshold: (projectPath: string) => number | null;
   now: () => string;
 }
@@ -96,6 +105,23 @@ function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): strin
   return getRepositories()
     .filter((repository) => repository.enabled)
     .map((repository) => repository.localPath);
+}
+
+/**
+ * Trigger-actor provenance gate (SPEC-197). Resolves whether the actor that
+ * triggered the webhook is a Developer+ member of the target project. When no
+ * resolver is wired the gate is a no-op (returns true) so existing behaviour is
+ * preserved; with a resolver present it is fail-closed (a thrown lookup -> false).
+ */
+async function resolveActorTrust(
+  deps: GitLabWebhookDependencies,
+  projectPath: string,
+  username: string,
+): Promise<boolean> {
+  if (!deps.isTrustedActor) {
+    return true;
+  }
+  return deps.isTrustedActor.execute({ username, projectPath });
 }
 
 async function handleGitLabNoteHook(
@@ -114,6 +140,22 @@ async function handleGitLabNoteHook(
   const filterResult = filterGitLabNoteEvent(parseResult.data);
   if (!filterResult.shouldProcess) {
     reply.status(200).send({ status: 'ignored', reason: filterResult.reason });
+    return;
+  }
+
+  // SPEC-197 AC3: gate the note trigger on actor provenance before any side effect.
+  // A non-trusted actor's note never reaches the bypass-processing path.
+  const noteActorTrusted = await resolveActorTrust(
+    deps,
+    filterResult.projectPath,
+    parseResult.data.user.username,
+  );
+  if (!noteActorTrusted) {
+    logger.info(
+      { projectPath: filterResult.projectPath, actor: parseResult.data.user.username },
+      'Note trigger from non-trusted actor parked (provenance gate)',
+    );
+    reply.status(202).send({ status: 'pending-confirmation', reason: 'untrusted-actor' });
     return;
   }
 
@@ -175,6 +217,23 @@ export async function handleGitLabWebhook(
     logger.warn({ error: verification.error }, 'GitLab signature verification failed');
     reply.status(401).send({ error: verification.error });
     return;
+  }
+
+  // 1a. Idempotency guard: at most once per event UUID within the TTL window.
+  // Runs right after auth and before any side effect. A missing UUID degrades
+  // to the normal (gated) pipeline rather than being rejected.
+  if (deps.idempotencyStore) {
+    const eventUuid = getGitLabEventUuid(request);
+    if (eventUuid !== undefined) {
+      const accepted = await deps.idempotencyStore.recordIfAbsent(eventUuid);
+      if (!accepted) {
+        logger.info({ eventUuid }, 'Duplicate GitLab event UUID, no-op');
+        reply.status(200).send({ status: 'ignored', reason: 'Duplicate event' });
+        return;
+      }
+    } else {
+      logger.debug('GitLab event without UUID, proceeding without deduplication');
+    }
   }
 
   // 2. Check event type
@@ -582,6 +641,7 @@ export async function handleGitLabWebhook(
                   logger,
                   defaultCommandExecutor,
                   followupBaseUrl,
+                  deps.noteCommentPostGateway,
                 );
                 logger.info(
                   { ...contextActionResult, threadResolveCount, mrNumber: j.mrNumber },
@@ -597,16 +657,21 @@ export async function handleGitLabWebhook(
                 const threadActions = parseThreadActions(result.stdout);
                 if (threadActions.length > 0) {
                   threadResolveCount = threadActions.filter(a => a.type === 'THREAD_RESOLVE').length;
-                  const actionResult = await executeThreadActions(
+                  const actionResult = await dispatchConstrainedActions(
                     threadActions,
                     {
-                      platform: 'gitlab',
-                      projectPath: j.projectPath,
-                      mrNumber: j.mrNumber,
-                      localPath: j.localPath,
-                    },
-                    logger,
-                    defaultCommandExecutor
+                      context: {
+                        platform: 'gitlab',
+                        projectPath: j.projectPath,
+                        mrNumber: j.mrNumber,
+                        localPath: j.localPath,
+                      },
+                      provenance: resolveProvenance(null),
+                      inventoryGateway: new GitLabThreadInventoryGateway(defaultGitLabExecutor),
+                      logger,
+                      executor: defaultCommandExecutor,
+                      postGateway: deps.noteCommentPostGateway,
+                    }
                   );
                   logger.info(
                     { ...actionResult, threadResolveCount, mrNumber: j.mrNumber },
@@ -665,11 +730,19 @@ export async function handleGitLabWebhook(
             }
           };
 
+          // SPEC-197 AC2: gate the followup trigger on actor provenance.
+          const followupActorTrusted = await resolveActorTrust(
+            deps,
+            updateResult.projectPath,
+            event.user.username,
+          );
+
           if (deps.gateClaudeInvocation) {
             const gateResult = await deps.gateClaudeInvocation.execute({
               job: followupJob,
               triggerSource: 'webhook-followup',
               processor: followupProcessor,
+              actorTrusted: followupActorTrusted,
             });
             if (gateResult.status === 'pending') {
               reply.status(202).send({
@@ -679,8 +752,19 @@ export async function handleGitLabWebhook(
               });
               return;
             }
-          } else {
+          } else if (followupActorTrusted) {
             enqueueReview(followupJob, followupProcessor);
+          } else {
+            logger.info(
+              { mrNumber: updateResult.mergeRequestNumber, actor: event.user.username },
+              'Followup trigger from non-trusted actor parked (provenance gate)',
+            );
+            reply.status(202).send({
+              status: 'pending-confirmation',
+              reason: 'untrusted-actor',
+              mrNumber: updateResult.mergeRequestNumber,
+            });
+            return;
           }
 
           reply.status(202).send({
@@ -790,11 +874,19 @@ export async function handleGitLabWebhook(
 
   const reviewProcessor = buildGitLabReviewProcessor(deps, logger)(job);
 
+  // SPEC-197 AC1: gate the reviewer-added trigger on actor provenance.
+  const reviewerActorTrusted = await resolveActorTrust(
+    deps,
+    filterResult.projectPath,
+    event.user.username,
+  );
+
   if (deps.gateClaudeInvocation) {
     const gateResult = await deps.gateClaudeInvocation.execute({
       job,
       triggerSource: 'webhook-initial',
       processor: reviewProcessor,
+      actorTrusted: reviewerActorTrusted,
     });
     if (gateResult.status === 'pending') {
       reply.status(202).send({
@@ -816,6 +908,19 @@ export async function handleGitLabWebhook(
       status: 'deduplicated',
       jobId,
       reason: 'Review already in progress or recently completed',
+    });
+    return;
+  }
+
+  if (!reviewerActorTrusted) {
+    logger.info(
+      { mrNumber: filterResult.mergeRequestNumber, actor: event.user.username },
+      'Reviewer-added trigger from non-trusted actor parked (provenance gate)',
+    );
+    reply.status(202).send({
+      status: 'pending-confirmation',
+      reason: 'untrusted-actor',
+      mrNumber: filterResult.mergeRequestNumber,
     });
     return;
   }
@@ -844,6 +949,7 @@ type GitLabReviewProcessorDeps = Pick<GitLabWebhookDependencies,
   | 'diffStatsFetchGateway'
   | 'recordCompletion'
   | 'claudeInvokerDeps'
+  | 'noteCommentPostGateway'
 >;
 
 export function buildGitLabReviewProcessor(
@@ -868,8 +974,26 @@ export function buildGitLabReviewProcessor(
       const threadFetchGw = deps.threadFetchGateway;
       const diffMetadataFetchGw = deps.diffMetadataFetchGateway;
 
+      const pinnedTarget = resolvePinnedThreadFetchTarget({
+        payloadProjectPath: j.projectPath,
+        payloadMrNumber: j.mrNumber,
+        findRepository: (projectPath) => {
+          const matched = findRepositoryByProjectPath(projectPath);
+          return matched ? { projectPath } : null;
+        },
+        gatedMrNumber: j.mrNumber,
+      });
+
       try {
-        const threads = threadFetchGw.fetchThreads(j.projectPath, j.mrNumber);
+        const threads = pinnedTarget
+          ? threadFetchGw.fetchThreads(pinnedTarget.projectPath, pinnedTarget.mrNumber)
+          : [];
+        if (!pinnedTarget) {
+          logger.warn(
+            { projectPath: j.projectPath, mrNumber: j.mrNumber },
+            'Thread-fetch target failed provenance pin; action surface is empty'
+          );
+        }
         let diffMetadata: import('@/modules/review-execution/entities/reviewContext/reviewContext.js').DiffMetadata | undefined;
         try {
           diffMetadata = diffMetadataFetchGw.fetchDiffMetadata(j.projectPath, j.mrNumber);
@@ -945,6 +1069,7 @@ export function buildGitLabReviewProcessor(
             logger,
             defaultCommandExecutor,
             reviewBaseUrl,
+            deps.noteCommentPostGateway,
           );
           logger.info(
             { ...contextActionResult, mrNumber: j.mrNumber },
@@ -959,16 +1084,21 @@ export function buildGitLabReviewProcessor(
           // FALLBACK: Execute thread actions from stdout markers (backward compatibility)
           const threadActions = parseThreadActions(result.stdout);
           if (threadActions.length > 0) {
-            const actionResult = await executeThreadActions(
+            const actionResult = await dispatchConstrainedActions(
               threadActions,
               {
-                platform: 'gitlab',
-                projectPath: j.projectPath,
-                mrNumber: j.mrNumber,
-                localPath: j.localPath,
-              },
-              logger,
-              defaultCommandExecutor
+                context: {
+                  platform: 'gitlab',
+                  projectPath: j.projectPath,
+                  mrNumber: j.mrNumber,
+                  localPath: j.localPath,
+                },
+                provenance: resolveProvenance(null),
+                inventoryGateway: new GitLabThreadInventoryGateway(defaultGitLabExecutor),
+                logger,
+                executor: defaultCommandExecutor,
+                postGateway: deps.noteCommentPostGateway,
+              }
             );
             logger.info(
               { ...actionResult, mrNumber: j.mrNumber },

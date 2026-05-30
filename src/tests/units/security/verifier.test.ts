@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi, beforeAll, afterAll } from 'vitest'
 import { createHmac } from 'node:crypto'
 import { createFastifyRequestStub } from '../../stubs/fastifyRequest.stub.js'
 
@@ -16,10 +16,26 @@ import {
   verifyGitLabSignature,
   verifyGitHubSignature,
   getGitLabEventType,
+  getGitLabEventUuid,
   getGitHubEventType,
 } from '../../../security/verifier.js'
 
 describe('verifyGitLabSignature', () => {
+  let originalToken: string | undefined
+
+  beforeAll(() => {
+    originalToken = process.env.GITLAB_WEBHOOK_TOKEN
+    process.env.GITLAB_WEBHOOK_TOKEN = TEST_GITLAB_TOKEN
+  })
+
+  afterAll(() => {
+    if (originalToken === undefined) {
+      Reflect.deleteProperty(process.env, 'GITLAB_WEBHOOK_TOKEN')
+    } else {
+      process.env.GITLAB_WEBHOOK_TOKEN = originalToken
+    }
+  })
+
   describe('when token is valid', () => {
     it('should return valid: true', () => {
       const request = createFastifyRequestStub({
@@ -228,6 +244,30 @@ describe('getGitLabEventType', () => {
     })
 
     const result = getGitLabEventType(request)
+
+    expect(result).toBeUndefined()
+  })
+})
+
+describe('getGitLabEventUuid', () => {
+  it('should extract the event UUID from the header', () => {
+    const request = createFastifyRequestStub({
+      headers: {
+        'x-gitlab-event-uuid': '13be3e1e-1d3f-4c2a-9b1a-0f0e0d0c0b0a',
+      },
+    })
+
+    const result = getGitLabEventUuid(request)
+
+    expect(result).toBe('13be3e1e-1d3f-4c2a-9b1a-0f0e0d0c0b0a')
+  })
+
+  it('should return undefined when the header is missing', () => {
+    const request = createFastifyRequestStub({
+      headers: {},
+    })
+
+    const result = getGitLabEventUuid(request)
 
     expect(result).toBeUndefined()
   })
