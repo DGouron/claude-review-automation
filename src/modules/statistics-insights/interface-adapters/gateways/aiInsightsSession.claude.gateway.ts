@@ -6,7 +6,7 @@ import {
   parseStreamJsonEvent,
   extractText,
   isTurnComplete,
-} from '@/modules/ember-chat/interface-adapters/gateways/emberStreamJson.parser.js';
+} from '@/modules/claude-invocation/interface-adapters/gateways/transcriptStreamJson.parser.js';
 import type {
   AiInsightsSessionGateway,
   AiInsightsSessionResult,
@@ -96,7 +96,12 @@ export class AiInsightsSessionClaudeGateway implements AiInsightsSessionGateway 
         continue;
       }
 
-      const raw = readFileSync(transcriptPath, 'utf-8');
+      let raw: string;
+      try {
+        raw = readFileSync(transcriptPath, 'utf-8');
+      } catch {
+        continue;
+      }
       const fresh = raw.slice(byteOffset);
       byteOffset = raw.length;
       pendingLine += fresh;

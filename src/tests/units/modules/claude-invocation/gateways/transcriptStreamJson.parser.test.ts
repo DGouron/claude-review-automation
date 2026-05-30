@@ -3,7 +3,7 @@ import {
   parseStreamJsonEvent,
   extractText,
   isTurnComplete,
-} from '@/modules/ember-chat/interface-adapters/gateways/emberStreamJson.parser.js';
+} from '@/modules/claude-invocation/interface-adapters/gateways/transcriptStreamJson.parser.js';
 
 describe('parseStreamJsonEvent', () => {
   it('parses a JSON object line into an event', () => {
