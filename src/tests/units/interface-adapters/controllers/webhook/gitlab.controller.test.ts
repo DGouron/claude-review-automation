@@ -81,6 +81,7 @@ vi.mock('@/modules/platform-integration/interface-adapters/gateways/diffMetadata
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
+import { getGitLabEventType } from '@/security/verifier.js';
 import { invokeClaudeReview } from '@/claude/invoker.js';
 import { GitLabEventFactory } from '@/tests/factories/gitLabEvent.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
@@ -652,6 +653,65 @@ describe('handleGitLabWebhook', () => {
 
         expect(enqueueReview).toHaveBeenCalled();
         expect(pendingGateway.saveCount).toBe(0);
+      });
+    });
+
+    describe('AC3 - note / comment gate', () => {
+      function buildNoteEvent(username: string) {
+        return {
+          object_kind: 'note',
+          user: { username, name: 'Note Actor' },
+          project: {
+            id: 1,
+            name: 'test-project',
+            path_with_namespace: 'test-org/test-project',
+            web_url: 'https://gitlab.com/test-org/test-project',
+            git_http_url: 'https://gitlab.com/test-org/test-project.git',
+          },
+          merge_request: { iid: 42 },
+          object_attributes: { noteable_type: 'MergeRequest', note: '@claude-bot please re-review' },
+        };
+      }
+
+      it('parks pending and never enqueues a note from a non-trusted actor', async () => {
+        vi.mocked(getGitLabEventType).mockReturnValueOnce('Note Hook');
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setAccess('reporter-actor', MEMBER_ACCESS_LEVELS.reporter);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const request = {
+          body: buildNoteEvent('reporter-actor'),
+          headers: {},
+        } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(enqueueReview).not.toHaveBeenCalled();
+        expect(mockReply.status).toHaveBeenCalledWith(202);
+        expect(memberAccess.calls).toEqual([
+          { projectPath: 'test-org/test-project', username: 'reporter-actor' },
+        ]);
+      });
+
+      it('proceeds for a note from a Developer actor', async () => {
+        vi.mocked(getGitLabEventType).mockReturnValueOnce('Note Hook');
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setAccess('dev-actor', MEMBER_ACCESS_LEVELS.developer);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const request = {
+          body: buildNoteEvent('dev-actor'),
+          headers: {},
+        } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(mockReply.status).not.toHaveBeenCalledWith(202);
+        expect(memberAccess.calls).toEqual([
+          { projectPath: 'test-org/test-project', username: 'dev-actor' },
+        ]);
       });
     });
 
