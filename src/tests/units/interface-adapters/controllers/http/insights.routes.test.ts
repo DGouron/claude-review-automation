@@ -8,7 +8,8 @@ import { InMemoryReviewFileGateway } from '@/tests/stubs/reviewFile.stub.js';
 import { InMemoryReviewRequestTrackingGateway } from '@/tests/stubs/reviewRequestTracking.stub.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
-import type { ClaudeInvoker } from '@/modules/statistics-insights/usecases/insights/generateAiInsights.usecase.js';
+import { StubAiInsightsSessionGateway } from '@/tests/stubs/aiInsightsSession.stub.js';
+import { StubEnvironmentGateway } from '@/tests/stubs/environment.stub.js';
 import type { AiInsightsResult } from '@/modules/statistics-insights/entities/insight/aiInsight.js';
 
 const validAiResult: AiInsightsResult = {
@@ -33,10 +34,6 @@ const validAiResult: AiInsightsResult = {
   generatedAt: '2026-03-15T10:00:00Z',
 };
 
-function createSuccessfulClaudeInvoker(): ClaudeInvoker {
-  return async () => JSON.stringify(validAiResult);
-}
-
 describe('insights routes', () => {
   let app: FastifyInstance;
   let statsGateway: InMemoryStatsGateway;
@@ -50,13 +47,16 @@ describe('insights routes', () => {
     insightsGateway = new InMemoryInsightsGateway();
     reviewFileGateway = new InMemoryReviewFileGateway();
     reviewRequestTrackingGateway = new InMemoryReviewRequestTrackingGateway();
+    const session = new StubAiInsightsSessionGateway();
+    session.setResult({ status: 'completed', answer: JSON.stringify(validAiResult) });
     await app.register(insightsRoutes, {
       statsGateway,
       insightsGateway,
       reviewFileGateway,
       reviewRequestTrackingGateway,
       logger: createStubLogger(),
-      claudeInvoker: createSuccessfulClaudeInvoker(),
+      session,
+      environment: new StubEnvironmentGateway(),
       language: 'fr',
     });
     await app.ready();

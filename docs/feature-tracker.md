@@ -59,4 +59,4 @@
 | Ember — Phase B: live answers via the Claude subscription | [190-ember-live-answers-subscription](specs/190-ember-live-answers-subscription.md) — [plan](plans/190-ember-live-answers-subscription.plan.md) — [report](reports/190-ember-live-answers-subscription.report.md) | implemented | 2026-05-29 |
 | Ember — Phase C: on-demand grounding + per-project memory | [192-ember-ondemand-grounding-and-memory](specs/192-ember-ondemand-grounding-and-memory.md) — [plan](plans/192-ember-ondemand-grounding-and-memory.plan.md) | implemented | 2026-05-30 |
 | Ember — Phase D: record recurring insights (MCP record_insight) | [193-ember-record-recurring-insight](specs/193-ember-record-recurring-insight.md) | drafted | 2026-05-30 |
-| Migrate Team AI Insights -p → --bg subscription billing | [191-team-insights-bg-migration](specs/191-team-insights-bg-migration.md) | drafted | 2026-05-28 |
+| Migrate Team AI Insights -p → --bg subscription billing | [191-team-insights-bg-migration](specs/191-team-insights-bg-migration.md) — [plan](plans/191-team-insights-bg-migration.plan.md) — [report](reports/191-team-insights-bg-migration.report.md) | implemented | 2026-05-30 |

@@ -5,7 +5,10 @@ import type { InsightsGateway } from '@/modules/statistics-insights/entities/ins
 import type { ReviewFileGateway } from '@/modules/review-execution/entities/review/reviewFile.gateway.js';
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/entities/tracking/reviewRequestTracking.gateway.js';
 import type { Language } from '@/modules/shared-kernel/entities/language/language.schema.js';
-import { generateAiInsights, persistAiInsightsResult, type ClaudeInvoker } from '@/modules/statistics-insights/usecases/insights/generateAiInsights.usecase.js';
+import type { EnvironmentGateway } from '@/modules/claude-invocation/entities/billingState/environment.gateway.js';
+import type { AiInsightsSessionGateway } from '@/modules/statistics-insights/entities/insight/aiInsightsSession.gateway.js';
+import { generateAiInsightsViaSession } from '@/modules/statistics-insights/usecases/insights/generateAiInsightsViaSession.usecase.js';
+import { persistAiInsightsResult } from '@/modules/statistics-insights/usecases/insights/persistAiInsights.usecase.js';
 import { getInsightsWithAiStatus } from '@/modules/statistics-insights/usecases/insights/getInsightsWithAiStatus.usecase.js';
 import { InsightsPresenter } from '@/modules/statistics-insights/interface-adapters/presenters/insights.presenter.js';
 
@@ -15,7 +18,8 @@ interface InsightsRoutesOptions {
   reviewFileGateway: ReviewFileGateway;
   reviewRequestTrackingGateway: ReviewRequestTrackingGateway;
   logger: Logger;
-  claudeInvoker: ClaudeInvoker;
+  session: AiInsightsSessionGateway;
+  environment: EnvironmentGateway;
   language: Language;
 }
 
@@ -35,7 +39,8 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
     reviewFileGateway,
     reviewRequestTrackingGateway,
     logger,
-    claudeInvoker,
+    session,
+    environment,
     language,
   } = options;
   const presenter = new InsightsPresenter();
@@ -83,13 +88,14 @@ export const insightsRoutes: FastifyPluginAsync<InsightsRoutesOptions> = async (
       : language;
 
     try {
-      const aiInsights = await generateAiInsights({
+      const aiInsights = await generateAiInsightsViaSession({
         projectPath,
         statsGateway,
         reviewFileGateway,
         reviewRequestTrackingGateway,
         logger,
-        claudeInvoker,
+        session,
+        environment,
         language: requestLanguage,
       });
 
