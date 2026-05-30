@@ -16,6 +16,7 @@ import {
 import { invokeClaudeReview, sendNotification } from '@/claude/invoker.js';
 import type { ClaudeInvokerDependencies } from '@/frameworks/claude/claudeInvoker.js';
 import type { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
+import type { IsTrustedActorUseCase } from '@/modules/platform-integration/usecases/isTrustedActor.usecase.js';
 import type { ProcessorBuilder } from '@/modules/review-execution/services/processorRegistry.js';
 import type { ReviewRequestTrackingGateway } from '@/modules/tracking/interface-adapters/gateways/reviewRequestTracking.gateway.js';
 import type { TrackAssignmentUseCase } from '@/modules/tracking/usecases/tracking/trackAssignment.usecase.js';
@@ -89,6 +90,7 @@ export interface GitLabWebhookDependencies {
   getRepositories: () => RepositoryConfig[];
   claudeInvokerDeps?: ClaudeInvokerDependencies;
   gateClaudeInvocation?: GateClaudeInvocationUseCase;
+  isTrustedActor?: IsTrustedActorUseCase;
   removeWorktree: RemoveWorktreeAction;
   recordBypass: RecordBypassUseCase;
   noteCommentPostGateway: NoteCommentPostGateway;
@@ -103,6 +105,23 @@ function listEnabledLocalPaths(getRepositories: () => RepositoryConfig[]): strin
   return getRepositories()
     .filter((repository) => repository.enabled)
     .map((repository) => repository.localPath);
+}
+
+/**
+ * Trigger-actor provenance gate (SPEC-197). Resolves whether the actor that
+ * triggered the webhook is a Developer+ member of the target project. When no
+ * resolver is wired the gate is a no-op (returns true) so existing behaviour is
+ * preserved; with a resolver present it is fail-closed (a thrown lookup -> false).
+ */
+async function resolveActorTrust(
+  deps: GitLabWebhookDependencies,
+  projectPath: string,
+  username: string,
+): Promise<boolean> {
+  if (!deps.isTrustedActor) {
+    return true;
+  }
+  return deps.isTrustedActor.execute({ username, projectPath });
 }
 
 async function handleGitLabNoteHook(
@@ -121,6 +140,22 @@ async function handleGitLabNoteHook(
   const filterResult = filterGitLabNoteEvent(parseResult.data);
   if (!filterResult.shouldProcess) {
     reply.status(200).send({ status: 'ignored', reason: filterResult.reason });
+    return;
+  }
+
+  // SPEC-197 AC3: gate the note trigger on actor provenance before any side effect.
+  // A non-trusted actor's note never reaches the bypass-processing path.
+  const noteActorTrusted = await resolveActorTrust(
+    deps,
+    filterResult.projectPath,
+    parseResult.data.user.username,
+  );
+  if (!noteActorTrusted) {
+    logger.info(
+      { projectPath: filterResult.projectPath, actor: parseResult.data.user.username },
+      'Note trigger from non-trusted actor parked (provenance gate)',
+    );
+    reply.status(202).send({ status: 'pending-confirmation', reason: 'untrusted-actor' });
     return;
   }
 
@@ -695,11 +730,19 @@ export async function handleGitLabWebhook(
             }
           };
 
+          // SPEC-197 AC2: gate the followup trigger on actor provenance.
+          const followupActorTrusted = await resolveActorTrust(
+            deps,
+            updateResult.projectPath,
+            event.user.username,
+          );
+
           if (deps.gateClaudeInvocation) {
             const gateResult = await deps.gateClaudeInvocation.execute({
               job: followupJob,
               triggerSource: 'webhook-followup',
               processor: followupProcessor,
+              actorTrusted: followupActorTrusted,
             });
             if (gateResult.status === 'pending') {
               reply.status(202).send({
@@ -709,8 +752,19 @@ export async function handleGitLabWebhook(
               });
               return;
             }
-          } else {
+          } else if (followupActorTrusted) {
             enqueueReview(followupJob, followupProcessor);
+          } else {
+            logger.info(
+              { mrNumber: updateResult.mergeRequestNumber, actor: event.user.username },
+              'Followup trigger from non-trusted actor parked (provenance gate)',
+            );
+            reply.status(202).send({
+              status: 'pending-confirmation',
+              reason: 'untrusted-actor',
+              mrNumber: updateResult.mergeRequestNumber,
+            });
+            return;
           }
 
           reply.status(202).send({
@@ -820,11 +874,19 @@ export async function handleGitLabWebhook(
 
   const reviewProcessor = buildGitLabReviewProcessor(deps, logger)(job);
 
+  // SPEC-197 AC1: gate the reviewer-added trigger on actor provenance.
+  const reviewerActorTrusted = await resolveActorTrust(
+    deps,
+    filterResult.projectPath,
+    event.user.username,
+  );
+
   if (deps.gateClaudeInvocation) {
     const gateResult = await deps.gateClaudeInvocation.execute({
       job,
       triggerSource: 'webhook-initial',
       processor: reviewProcessor,
+      actorTrusted: reviewerActorTrusted,
     });
     if (gateResult.status === 'pending') {
       reply.status(202).send({
@@ -846,6 +908,19 @@ export async function handleGitLabWebhook(
       status: 'deduplicated',
       jobId,
       reason: 'Review already in progress or recently completed',
+    });
+    return;
+  }
+
+  if (!reviewerActorTrusted) {
+    logger.info(
+      { mrNumber: filterResult.mergeRequestNumber, actor: event.user.username },
+      'Reviewer-added trigger from non-trusted actor parked (provenance gate)',
+    );
+    reply.status(202).send({
+      status: 'pending-confirmation',
+      reason: 'untrusted-actor',
+      mrNumber: filterResult.mergeRequestNumber,
     });
     return;
   }

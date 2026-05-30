@@ -96,6 +96,11 @@ import { RecordBypassUseCase } from '@/modules/tracking/usecases/tracking/record
 import { HandlePlatformApprovalUseCase } from '@/modules/tracking/usecases/tracking/handlePlatformApproval.usecase.js';
 import { StubNoteCommentPostGateway } from '@/tests/stubs/noteCommentPost.stub.js';
 import { StubApprovalRevocationGateway } from '@/tests/stubs/approvalRevocation.stub.js';
+import { StubMemberAccessGateway } from '@/tests/stubs/memberAccess.stub.js';
+import { StubPendingReviewRequestGateway } from '@/tests/stubs/pendingReviewRequest.stub.js';
+import { IsTrustedActorUseCase } from '@/modules/platform-integration/usecases/isTrustedActor.usecase.js';
+import { GateClaudeInvocationUseCase } from '@/modules/review-execution/usecases/gateClaudeInvocation.usecase.js';
+import { MEMBER_ACCESS_LEVELS } from '@/modules/platform-integration/entities/memberAccess/memberAccess.js';
 
 function createMockTrackingGateway() {
   const basicMr = TrackedMrFactory.create({
@@ -107,7 +112,7 @@ function createMockTrackingGateway() {
 
   return {
     getById: vi.fn((): TrackedMr | null => basicMr),
-    getByNumber: vi.fn(() => null),
+    getByNumber: vi.fn((): TrackedMr | null => null),
     create: vi.fn(),
     update: vi.fn(),
     getByState: vi.fn(() => []),
@@ -115,7 +120,7 @@ function createMockTrackingGateway() {
     remove: vi.fn(() => true),
     archive: vi.fn(() => true),
     recordReviewEvent: vi.fn(),
-    recordPush: vi.fn(() => null),
+    recordPush: vi.fn((): TrackedMr | null => null),
     loadTracking: vi.fn(() => null),
     saveTracking: vi.fn(),
   };
@@ -533,6 +538,140 @@ describe('handleGitLabWebhook', () => {
       expect(defaultDeps.enforceBudget.execute).toHaveBeenCalled();
       expect(enqueueReview).toHaveBeenCalled();
       expect(defaultDeps.broadcastBudgetExceeded).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('trusted-actor trigger provenance gate (SPEC-197)', () => {
+    function buildGatedDeps(
+      memberAccess: StubMemberAccessGateway,
+      pendingGateway: StubPendingReviewRequestGateway,
+    ) {
+      const gateClaudeInvocation = new GateClaudeInvocationUseCase({
+        triggerMode: 'full-auto',
+        pendingReviewRequestGateway: pendingGateway,
+        enqueue: enqueueReview,
+        broadcastPendingChanged: () => {},
+        logger,
+      });
+      return {
+        ...defaultDeps,
+        gateClaudeInvocation,
+        isTrustedActor: new IsTrustedActorUseCase(memberAccess),
+      };
+    }
+
+    describe('AC1 - reviewer-added gate', () => {
+      it('parks pending and never enqueues when the actor is a Reporter', async () => {
+        mockGateway.getById.mockReturnValue(null);
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setAccess('reporter-actor', MEMBER_ACCESS_LEVELS.reporter);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+        event.user = { username: 'reporter-actor', name: 'Reporter Actor' };
+        const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(enqueueReview).not.toHaveBeenCalled();
+        expect(pendingGateway.saveCount).toBe(1);
+        expect(memberAccess.calls).toEqual([
+          { projectPath: 'test-org/test-project', username: 'reporter-actor' },
+        ]);
+      });
+
+      it('enqueues when the actor is a Developer', async () => {
+        mockGateway.getById.mockReturnValue(null);
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setAccess('dev-actor', MEMBER_ACCESS_LEVELS.developer);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+        event.user = { username: 'dev-actor', name: 'Dev Actor' };
+        const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(enqueueReview).toHaveBeenCalled();
+        expect(pendingGateway.saveCount).toBe(0);
+      });
+    });
+
+    describe('AC2 - followup / MR-update gate', () => {
+      function buildFollowupMr(): TrackedMr {
+        return TrackedMrFactory.create({
+          id: 'gitlab-test-org/test-project-42',
+          mrNumber: 42,
+          platform: 'gitlab',
+          project: 'test-org/test-project',
+          state: 'pending-review',
+          openThreads: 3,
+          autoFollowup: true,
+          lastPushAt: '2026-05-26T12:00:00.000Z',
+          lastReviewAt: '2026-05-25T12:00:00.000Z',
+        });
+      }
+
+      it('parks pending and never enqueues a followup from a non-trusted actor', async () => {
+        const followupMr = buildFollowupMr();
+        mockGateway.getById.mockImplementation(() => followupMr);
+        mockGateway.getByNumber.mockImplementation(() => followupMr);
+        mockGateway.recordPush.mockImplementation(() => followupMr);
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setAccess('reporter-actor', MEMBER_ACCESS_LEVELS.reporter);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const event = GitLabEventFactory.createMrUpdate();
+        event.user = { username: 'reporter-actor', name: 'Reporter Actor' };
+        const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(enqueueReview).not.toHaveBeenCalled();
+        expect(pendingGateway.saveCount).toBe(1);
+      });
+
+      it('enqueues a followup from a Developer actor', async () => {
+        const followupMr = buildFollowupMr();
+        mockGateway.getById.mockImplementation(() => followupMr);
+        mockGateway.getByNumber.mockImplementation(() => followupMr);
+        mockGateway.recordPush.mockImplementation(() => followupMr);
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setAccess('dev-actor', MEMBER_ACCESS_LEVELS.developer);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const event = GitLabEventFactory.createMrUpdate();
+        event.user = { username: 'dev-actor', name: 'Dev Actor' };
+        const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(enqueueReview).toHaveBeenCalled();
+        expect(pendingGateway.saveCount).toBe(0);
+      });
+    });
+
+    describe('AC4 - fail-closed membership resolution', () => {
+      it('parks a reviewer-added trigger when membership resolution throws', async () => {
+        mockGateway.getById.mockReturnValue(null);
+        const memberAccess = new StubMemberAccessGateway();
+        memberAccess.setShouldFail(true);
+        const pendingGateway = new StubPendingReviewRequestGateway();
+        const deps = buildGatedDeps(memberAccess, pendingGateway);
+
+        const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+        event.user = { username: 'dev-actor', name: 'Dev Actor' };
+        const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+        await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+        expect(enqueueReview).not.toHaveBeenCalled();
+        expect(pendingGateway.saveCount).toBe(1);
+      });
     });
   });
 });

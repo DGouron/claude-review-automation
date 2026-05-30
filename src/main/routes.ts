@@ -60,6 +60,8 @@ import {
 import { RecomputeGlobalConcurrencyUseCase } from '@/modules/cli-configuration/usecases/projectConfig/recomputeGlobalConcurrency.usecase.js';
 import { RepositoriesListRuntimeConfigGateway } from '@/modules/cli-configuration/interface-adapters/gateways/repositoriesList.runtimeConfig.gateway.js';
 import { GitLabThreadFetchGateway, defaultGitLabExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.gitlab.gateway.js';
+import { GitLabMemberAccessCliGateway } from '@/modules/platform-integration/interface-adapters/gateways/memberAccess.gitlab.cli.gateway.js';
+import { IsTrustedActorUseCase } from '@/modules/platform-integration/usecases/isTrustedActor.usecase.js';
 import { GitLabDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.gitlab.gateway.js';
 import { GitHubThreadFetchGateway, defaultGitHubExecutor } from '@/modules/platform-integration/interface-adapters/gateways/threadFetch.github.gateway.js';
 import { GitHubDiffMetadataFetchGateway } from '@/modules/platform-integration/interface-adapters/gateways/diffMetadataFetch.github.gateway.js';
@@ -296,6 +298,11 @@ export async function registerRoutes(
     logger: deps.logger,
   });
 
+  // SPEC-197: trigger-actor provenance gate. Membership is resolved through the
+  // scoped GitLab executor, cached per username, fail-closed.
+  const gitLabMemberAccessGateway = new GitLabMemberAccessCliGateway(defaultGitLabExecutor);
+  const isTrustedActor = new IsTrustedActorUseCase(gitLabMemberAccessGateway);
+
   await app.register(pendingReviewsRoutes, {
     listPendingReviews,
     confirmPendingReview,
@@ -438,6 +445,7 @@ export async function registerRoutes(
       getRepositories: () => deps.config.repositories,
       claudeInvokerDeps,
       gateClaudeInvocation,
+      isTrustedActor,
       removeWorktree: removeWorktreeAction,
       recordBypass: new RecordBypassUseCase(trackingGw),
       noteCommentPostGateway: new EgressScannedNoteCommentPostGateway(

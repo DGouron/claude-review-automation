@@ -60,33 +60,42 @@ Therefore:
 
 ## Acceptance criteria
 
-> Membership resolution: `event.user.id` (or namespace path) is resolved against
-> the target project's membership via the GitLab membership API, cached with TTL,
-> **fail-closed** (lookup error / timeout / ambiguous → treated as non-trusted →
-> park, never auto-run). `Developer+` = access level ≥ Developer.
+> **Codebase note (amendment):** the parsed GitLab webhook event guards expose
+> `event.user.username` (`gitlabMergeRequestEvent.guard.ts`, `gitlabNoteEvent.guard.ts`),
+> **not** `event.user.id`. Membership resolution therefore keys on `event.user.username`.
+> Where the GitLab Members API requires a numeric user id, resolve it first via the
+> Users API (`/users?username=<username>`) and then query membership
+> (`/projects/:id/members/all/:user_id`); both calls go through the authenticated
+> service token. The cache and all ACs below key on `username`.
+
+> Membership resolution: `event.user.username` is resolved against the target
+> project's membership via the GitLab membership API (Users API → user id → Members
+> API), cached with TTL, **fail-closed** (lookup error / timeout / ambiguous / unknown
+> username → treated as non-trusted → park, never auto-run). `Developer+` = access
+> level ≥ Developer.
 
 **AC1 — Reviewer-added gate.**
 When `checkGitLabReviewerAdded` classifies a trigger and `event.user` resolves to
 Developer+, the job proceeds to invocation. Otherwise it is parked pending at
 `gateClaudeInvocation`.
 *Test (deterministic):* stub membership gateway returning a fixed access level per
-`userId`; feed a reviewer-added payload with a Reporter `event.user.id`; assert the
+`username`; feed a reviewer-added payload with a Reporter `event.user.username`; assert the
 job lands in the pending queue and `defaultGitLabExecutor` was never constructed.
 Assertion is on observable job state, never on model output.
 
 **AC2 — Followup / MR-update gate.**
 Same gate applies to `filterGitLabMrUpdate`. A non-trusted actor's followup update
 parks; a Developer+ actor's update proceeds.
-*Test:* two MR-update payloads differing only by `event.user.id`; assert trusted →
+*Test:* two MR-update payloads differing only by `event.user.username`; assert trusted →
 invocation path reached, non-trusted → pending. State-based.
 
 **AC3 — Note / comment gate (amendment).**
 `filterGitLabNoteEvent` / `handleGitLabNoteHook` now applies the identical actor
 gate before any auto-run. An incoming note from a non-trusted actor parks pending;
 a Developer+ note proceeds.
-*Test:* feed a note-event payload with a non-member `event.user.id`; assert the job
+*Test:* feed a note-event payload with a non-member `event.user.username`; assert the job
 is parked and no executor is wired (`gitlab.controller.ts:938-978` not reached).
-Then flip `event.user.id` to a Developer member and assert invocation path reached.
+Then flip `event.user.username` to a Developer member and assert invocation path reached.
 Deterministic on job state — does not assert on whether Claude would have obeyed any
 comment body.
 
@@ -98,8 +107,8 @@ trigger type (reviewer-add, followup, note). No path reaches invocation.
 
 **AC5 — Cache does not widen trust.**
 A cached Developer+ result for actor A must never be applied to actor B.
-*Test:* prime the cache with `userId=A → Developer`; query `userId=B` (not primed);
-assert B resolves fail-closed (park), proving cache keying is per-actor.
+*Test:* prime the cache with `username=A → Developer`; query `username=B` (not primed);
+assert B resolves fail-closed (park), proving cache keying is per-username.
 
 **AC6 — Token-boundary assumption is enforced, not assumed away.**
 The gate runs strictly *after* `verifier.ts` token validation has passed. A request
@@ -124,7 +133,7 @@ sits *behind* the token boundary and inherits its trust from SPEC-201.
 ## Test strategy
 
 Detroit style: real stubs, no `vi.fn`. A stub membership gateway returns a fixed
-access level keyed by `userId`, with a `setShouldFail(true)` switch for AC4. All
+access level keyed by `username`, with a `setShouldFail(true)` switch for AC4. All
 assertions observe **job state** (parked-pending vs invocation-path-reached) and
 **gateway call records** — never the LLM's compliance with any payload content.
 Each trigger type (reviewer-add / followup / note) gets its own payload fixture so a
@@ -132,7 +141,7 @@ failure names the exact entry point.
 
 ## Implementation order
 
-1. Membership gateway port + cached, fail-closed adapter (TTL, per-`userId` key).
+1. Membership gateway port + cached, fail-closed adapter (TTL, per-`username` key).
 2. Shared `isTrustedActor(event, projectPath)` resolver consuming the gateway.
 3. Wire the resolver into `checkGitLabReviewerAdded` (AC1), `filterGitLabMrUpdate`
    (AC2), and `filterGitLabNoteEvent` / `handleGitLabNoteHook` (AC3).
