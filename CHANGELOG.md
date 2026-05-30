@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.33.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.32.0...reviewflow-v3.33.0) (2026-05-30)
+
+
+### Added
+
+* **platform:** implement spec-196..201 webhook/executor platform hardening ([30bce95](https://github.com/DGouron/review-flow/commit/30bce9537dea405e00e5020a66479c65fa40f72e))
+
 ## [3.32.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.31.0...reviewflow-v3.32.0) (2026-05-30)
 
 
