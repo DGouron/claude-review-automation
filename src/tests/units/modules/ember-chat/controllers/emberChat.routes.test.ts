@@ -5,6 +5,8 @@ import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/control
 import { StubEmberAnswerTransportGateway } from '@/tests/stubs/emberAnswerTransport.stub.js';
 import { StubEmberReadDataGateway } from '@/tests/stubs/emberReadData.stub.js';
 import { StubEnvironmentGateway } from '@/tests/stubs/environment.stub.js';
+import { StubEmberMemoryGateway } from '@/tests/stubs/emberMemory.stub.js';
+import { EmberMemoryTurnFactory } from '@/tests/factories/emberMemory.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 
 const PROJECT_PATH = '/projects/alpha';
@@ -20,18 +22,21 @@ describe('emberChat routes', () => {
   let application: FastifyInstance;
   let transport: StubEmberAnswerTransportGateway;
   let environment: StubEnvironmentGateway;
+  let memory: StubEmberMemoryGateway;
 
   function buildApplication(): FastifyInstance {
     transport = new StubEmberAnswerTransportGateway();
     transport.respondWith(async (question) => `Réponse à ${question}`);
     environment = new StubEnvironmentGateway();
     environment.setHasAnthropicApiKey(false);
+    memory = new StubEmberMemoryGateway();
 
     const instance = Fastify();
     void instance.register(emberChatRoutes, {
       transport,
       environment,
       readData: new StubEmberReadDataGateway(),
+      memory,
       projectPath: PROJECT_PATH,
       logger: createStubLogger(),
     });
@@ -129,5 +134,17 @@ describe('emberChat routes', () => {
 
     expect(errors.length).toBeGreaterThan(0);
     expect(transport.startCount).toBe(0);
+  });
+
+  it('clears the project memory on POST /api/ember/memory/clear', async () => {
+    await memory.appendTurn(PROJECT_PATH, EmberMemoryTurnFactory.create());
+
+    const response = await application.inject({
+      method: 'POST',
+      url: '/api/ember/memory/clear',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await memory.load(PROJECT_PATH)).toBeNull();
   });
 });

@@ -36,6 +36,7 @@ import { SetupStateFileSystemGateway } from '@/modules/setup-wizard/interface-ad
 import { emberChatRoutes } from '@/modules/ember-chat/interface-adapters/controllers/http/emberChat.routes.js';
 import { EmberAnswerTransportClaudeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberAnswerTransport.claude.gateway.js';
 import { EmberReadDataCompositeGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberReadData.composite.gateway.js';
+import { EmberMemoryFileSystemGateway } from '@/modules/ember-chat/interface-adapters/gateways/emberMemory.fileSystem.gateway.js';
 import { ClaudeSessionCliGateway } from '@/modules/claude-invocation/interface-adapters/gateways/claudeSession.cli.gateway.js';
 import { defaultProcessRunner } from '@/frameworks/claude/claudeInvoker.js';
 import { ProcessEnvironmentGateway } from '@/modules/claude-invocation/interface-adapters/gateways/environment.process.gateway.js';
@@ -472,11 +473,13 @@ export async function registerRoutes(
     new ClaudeSessionCliGateway(defaultProcessRunner()),
     { homeDir: homedir() },
   );
+  const emberMemory = new EmberMemoryFileSystemGateway({ homeDir: homedir() });
 
   await app.register(emberChatRoutes, {
     transport: emberAnswerTransport,
     environment: new ProcessEnvironmentGateway(),
     readData: emberReadData,
+    memory: emberMemory,
     projectPath: emberGroundingProjectPath,
     logger: deps.logger,
   });
