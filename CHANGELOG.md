@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.31.0...reviewflow-v3.32.0) (2026-05-30)
+
+
+### Added
+
+* **ember:** implement spec-192 on-demand grounding + per-project memory (Phase C) ([e02fa46](https://github.com/DGouron/review-flow/commit/e02fa469b8b8b66be20c08a4f79e957a183c5d8f))
+* **ember:** spec-192 on-demand grounding + per-project memory (Phase C) ([c17eb53](https://github.com/DGouron/review-flow/commit/c17eb53c2a72eeac3ab77a73ee91b047618fa05f))
+
+
+### Fixed
+
+* **ember:** correct stale read-only message and notebook extension (spec-192 self-review) ([9657ec7](https://github.com/DGouron/review-flow/commit/9657ec710908226bc85f4dfcb126c11daf65e83d))
+
 ## [3.31.0](https://github.com/DGouron/review-flow/compare/reviewflow-v3.30.0...reviewflow-v3.31.0) (2026-05-29)
 
 
