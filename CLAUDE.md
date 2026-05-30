@@ -162,7 +162,7 @@ DOMAIN LAYER (Entities, Business Rules)
 
 ### Coverage Requirements
 
-Branches 80%, Functions 40%, Lines 30%, Statements 30%
+Statements 80%, Branches 80%, Functions 80%, Lines 80% — enforced via `coverage.thresholds` in `vitest.config.ts` (`yarn coverage` fails below).
 
 ### Test Structure
 

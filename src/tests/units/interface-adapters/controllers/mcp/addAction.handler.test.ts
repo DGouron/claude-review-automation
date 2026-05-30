@@ -97,4 +97,115 @@ describe("addAction handler", () => {
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("threadId required");
 	});
+
+	it("should add THREAD_RESOLVE action with an optional message", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({
+			jobId,
+			type: "THREAD_RESOLVE",
+			threadId: "t1",
+			message: "Resolved by automation",
+		});
+
+		expect(result.isError).toBeUndefined();
+		const content = JSON.parse(result.content[0].text);
+		expect(content.success).toBe(true);
+		expect(content.actionType).toBe("THREAD_RESOLVE");
+	});
+
+	it("should add THREAD_REPLY action successfully", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({
+			jobId,
+			type: "THREAD_REPLY",
+			threadId: "t1",
+			message: "Thanks for the feedback.",
+		});
+
+		expect(result.isError).toBeUndefined();
+		const content = JSON.parse(result.content[0].text);
+		expect(content.success).toBe(true);
+		expect(content.actionType).toBe("THREAD_REPLY");
+	});
+
+	it("should return error when THREAD_REPLY missing threadId", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({ jobId, type: "THREAD_REPLY", message: "reply" });
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("threadId required");
+	});
+
+	it("should return error when THREAD_REPLY missing message", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({ jobId, type: "THREAD_REPLY", threadId: "t1" });
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("message required");
+	});
+
+	it("should return error when POST_COMMENT missing body", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({ jobId, type: "POST_COMMENT" });
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("body required");
+	});
+
+	it("should return error when POST_INLINE_COMMENT has a non-string filePath", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({
+			jobId,
+			type: "POST_INLINE_COMMENT",
+			line: 42,
+			body: "Extract this logic.",
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("filePath required");
+	});
+
+	it("should return error when POST_INLINE_COMMENT has a non-number line", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({
+			jobId,
+			type: "POST_INLINE_COMMENT",
+			filePath: "src/app.ts",
+			line: "42",
+			body: "Extract this logic.",
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("line must be > 0");
+	});
+
+	it("should return error when the job context is not found", () => {
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({
+			jobId: "gitlab:unknown/path:999",
+			type: "POST_COMMENT",
+			body: "Great job!",
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("Job context not found");
+	});
+
+	it("should return error when appending to the review context fails", () => {
+		const orphanJobId = "gitlab:orphan/path:7";
+		jobContextGateway.register(orphanJobId, {
+			localPath: tempDir,
+			mergeRequestId: "gitlab-orphan-path-7",
+		});
+
+		const handler = createAddActionHandler({ jobContextGateway, reviewContextGateway });
+		const result = handler({
+			jobId: orphanJobId,
+			type: "POST_COMMENT",
+			body: "Great job!",
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("Failed to append action to review context");
+	});
 });

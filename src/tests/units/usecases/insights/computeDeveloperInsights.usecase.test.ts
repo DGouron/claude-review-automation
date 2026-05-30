@@ -445,6 +445,32 @@ describe('computeDeveloperInsights', () => {
       expect(alice.metrics.averageDeletions).toBe(50);
     });
 
+    it('should exclude high-score reviews with blocking issues from quality rate', () => {
+      const cleanReviews = Array.from({ length: 3 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-clean-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: 8,
+          blocking: 0,
+        }),
+      );
+      const highScoreButBlocking = Array.from({ length: 2 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-blocking-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 4,
+          score: 9,
+          blocking: 1,
+        }),
+      );
+
+      const result = computeDeveloperInsights([...cleanReviews, ...highScoreButBlocking]);
+
+      const alice = result[0];
+      expect(alice.metrics.firstReviewQualityRate).toBe(0.6);
+    });
+
     it('should compute first review quality rate based on reviews with score >= 7', () => {
       const goodReviews = Array.from({ length: 3 }, (_, index) =>
         ReviewStatsFactory.create({
@@ -543,6 +569,33 @@ describe('computeDeveloperInsights', () => {
       expect(result).toHaveLength(1);
       const alice = result[0];
       expect(alice.categoryLevels.codeVolume.level).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle zero developer duration when generating responsiveness strength', () => {
+      const instantReviews = createReviewsForDeveloper('alice', 10, {
+        score: 9,
+        blocking: 0,
+        warnings: 0,
+        duration: 0,
+      });
+      const slowReviews = createReviewsForDeveloper('bob', 10, {
+        score: 5,
+        blocking: 2,
+        warnings: 3,
+        duration: 600000,
+      });
+
+      const result = computeDeveloperInsights([...instantReviews, ...slowReviews]);
+
+      const alice = result.find((insight) => insight.developerName === 'alice');
+      expect(alice).toBeDefined();
+      expect(alice?.strengths).toContain('responsiveness');
+      const responsivenessStrength = alice?.insightDescriptions.find(
+        (description) =>
+          description.category === 'responsiveness' && description.type === 'strength',
+      );
+      expect(responsivenessStrength).toBeDefined();
+      expect(responsivenessStrength?.params?.percent).toBe(0);
     });
 
     it('should produce valid DeveloperInsight objects', () => {

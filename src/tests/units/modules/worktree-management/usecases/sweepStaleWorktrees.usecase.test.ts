@@ -167,4 +167,122 @@ describe('sweepStaleWorktrees use case', () => {
 
     expect(removed).toEqual([]);
   });
+
+  it('returns a zero summary when there are no entries to scan', async () => {
+    const summary = await sweepStaleWorktrees({
+      listEntries: async () => [],
+      removeWorktree: async identity => {
+        removed.push(identity);
+        return { status: 'removed' };
+      },
+      trackingGateway: { getById: (projectPath, mrId) => fakeTracking.getById(projectPath, mrId) },
+      getRepositories: () => [repository],
+      now: () => now,
+    });
+
+    expect(summary).toEqual({ scanned: 0, removed: 0, failures: 0 });
+    expect(removed).toEqual([]);
+  });
+
+  it('removes worktree when matching MR is closed with no mergedAt timestamp', async () => {
+    const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group-project', mrNumber: 6 };
+    const entry = buildEntry(identity, new Date('2026-05-23T11:00:00Z'));
+    trackingFor(identity, buildTrackedMr({
+      id: 'gitlab-group-project-6',
+      mrNumber: 6,
+      state: 'closed',
+      mergedAt: null,
+    }));
+
+    await runSweep([entry]);
+
+    expect(removed).toEqual([identity]);
+  });
+
+  it('removes worktree when mergedAt is not a parseable date', async () => {
+    const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group-project', mrNumber: 7 };
+    const entry = buildEntry(identity, new Date('2026-05-23T11:00:00Z'));
+    trackingFor(identity, buildTrackedMr({
+      id: 'gitlab-group-project-7',
+      mrNumber: 7,
+      state: 'merged',
+      mergedAt: 'not-a-date',
+    }));
+
+    await runSweep([entry]);
+
+    expect(removed).toEqual([identity]);
+  });
+
+  it('skips disabled repositories when resolving the tracked MR', async () => {
+    const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group-project', mrNumber: 8 };
+    const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+    const entry = buildEntry(identity, sixDaysAgo);
+    trackingFor(identity, buildTrackedMr({
+      id: 'gitlab-group-project-8',
+      mrNumber: 8,
+      state: 'pending-review',
+    }));
+
+    const summary = await sweepStaleWorktrees({
+      listEntries: async () => [entry],
+      removeWorktree: async removeIdentity => {
+        removed.push(removeIdentity);
+        return { status: 'removed' };
+      },
+      trackingGateway: { getById: (projectPath, mrId) => fakeTracking.getById(projectPath, mrId) },
+      getRepositories: () => [{ localPath: repository.localPath, enabled: false }],
+      now: () => now,
+    });
+
+    expect(removed).toEqual([identity]);
+    expect(summary).toEqual({ scanned: 1, removed: 1, failures: 0 });
+  });
+
+  it('counts a failure when removeWorktree reports a failed status', async () => {
+    const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group-project', mrNumber: 9 };
+    const entry = buildEntry(identity, new Date('2026-05-23T11:00:00Z'));
+
+    const summary = await sweepStaleWorktrees({
+      listEntries: async () => [entry],
+      removeWorktree: async () => ({ status: 'failed', warning: 'boom' }),
+      trackingGateway: { getById: (projectPath, mrId) => fakeTracking.getById(projectPath, mrId) },
+      getRepositories: () => [repository],
+      now: () => now,
+    });
+
+    expect(summary).toEqual({ scanned: 1, removed: 0, failures: 1 });
+  });
+
+  it('counts a failure when removeWorktree throws', async () => {
+    const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group-project', mrNumber: 10 };
+    const entry = buildEntry(identity, new Date('2026-05-23T11:00:00Z'));
+
+    const summary = await sweepStaleWorktrees({
+      listEntries: async () => [entry],
+      removeWorktree: async () => {
+        throw new Error('remove failed');
+      },
+      trackingGateway: { getById: (projectPath, mrId) => fakeTracking.getById(projectPath, mrId) },
+      getRepositories: () => [repository],
+      now: () => now,
+    });
+
+    expect(summary).toEqual({ scanned: 1, removed: 0, failures: 1 });
+  });
+
+  it('treats an absent removal result as neither removed nor failed', async () => {
+    const identity: WorktreeIdentity = { platform: 'gitlab', projectPath: 'group-project', mrNumber: 11 };
+    const entry = buildEntry(identity, new Date('2026-05-23T11:00:00Z'));
+
+    const summary = await sweepStaleWorktrees({
+      listEntries: async () => [entry],
+      removeWorktree: async () => ({ status: 'absent' }),
+      trackingGateway: { getById: (projectPath, mrId) => fakeTracking.getById(projectPath, mrId) },
+      getRepositories: () => [repository],
+      now: () => now,
+    });
+
+    expect(summary).toEqual({ scanned: 1, removed: 0, failures: 0 });
+  });
 });

@@ -29,6 +29,7 @@ vi.mock('@/config/loader.js', () => ({
 vi.mock('@/security/verifier.js', () => ({
   verifyGitLabSignature: vi.fn(() => ({ valid: true })),
   getGitLabEventType: vi.fn(() => 'Merge Request Hook'),
+  getGitLabEventUuid: vi.fn(() => undefined),
 }));
 
 vi.mock('@/frameworks/queue/pQueueAdapter.js', () => ({
@@ -79,9 +80,15 @@ vi.mock('@/modules/platform-integration/interface-adapters/gateways/diffMetadata
 }));
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleGitLabWebhook } from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
+import {
+  handleGitLabWebhook,
+  extractBaseUrl,
+  buildGitLabReviewProcessor,
+} from '@/modules/platform-integration/interface-adapters/controllers/webhook/gitlab.controller.js';
 import { enqueueReview } from '@/frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview } from '@/claude/invoker.js';
+import { verifyGitLabSignature, getGitLabEventType } from '@/security/verifier.js';
+import { findRepositoryByProjectPath } from '@/config/loader.js';
 import { GitLabEventFactory } from '@/tests/factories/gitLabEvent.factory.js';
 import { createStubLogger } from '@/tests/stubs/logger.stub.js';
 import { TrackedMrFactory } from '@/tests/factories/trackedMr.factory.js';
@@ -672,6 +679,481 @@ describe('handleGitLabWebhook', () => {
         expect(enqueueReview).not.toHaveBeenCalled();
         expect(pendingGateway.saveCount).toBe(1);
       });
+    });
+  });
+
+  describe('extractBaseUrl', () => {
+    it('returns protocol and host for an HTTPS remote', () => {
+      expect(extractBaseUrl('https://gitlab.example.com/group/project.git')).toBe(
+        'https://gitlab.example.com',
+      );
+    });
+
+    it('returns https host for an SSH remote', () => {
+      expect(extractBaseUrl('git@gitlab.example.com:group/project.git')).toBe(
+        'https://gitlab.example.com',
+      );
+    });
+
+    it('returns null for a remote that is neither http nor SSH-shaped', () => {
+      expect(extractBaseUrl('ftp-only-no-at-no-colon-pattern')).toBeNull();
+    });
+
+    it('returns null when the HTTPS URL is malformed', () => {
+      expect(extractBaseUrl('http://')).toBeNull();
+    });
+  });
+
+  describe('request gating before payload parsing', () => {
+    it('returns 401 when the GitLab signature is invalid', async () => {
+      vi.mocked(verifyGitLabSignature).mockReturnValueOnce({ valid: false, error: 'bad-token' });
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(401);
+      expect(mockReply.send).toHaveBeenCalledWith({ error: 'bad-token' });
+      expect(enqueueReview).not.toHaveBeenCalled();
+    });
+
+    it('ignores events that are neither Note Hook nor Merge Request Hook', async () => {
+      vi.mocked(getGitLabEventType).mockReturnValueOnce('Pipeline Hook');
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Not a MR event' }),
+      );
+    });
+
+    it('returns 400 when the merge request payload is not parseable', async () => {
+      const request = { body: { object_kind: 'merge_request' }, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(400);
+      expect(mockReply.send).toHaveBeenCalledWith({ error: 'Invalid webhook payload' });
+    });
+  });
+
+  describe('Note Hook handling', () => {
+    function buildNoteEvent(note: string) {
+      return {
+        object_kind: 'note',
+        event_type: 'note',
+        user: { username: 'note-author', name: 'Note Author' },
+        project: {
+          id: 1,
+          name: 'test-project',
+          path_with_namespace: 'test-org/test-project',
+          web_url: 'https://gitlab.com/test-org/test-project',
+          git_http_url: 'https://gitlab.com/test-org/test-project.git',
+        },
+        object_attributes: {
+          id: 7,
+          note,
+          noteable_type: 'MergeRequest',
+          noteable_id: 99,
+        },
+        merge_request: {
+          iid: 42,
+          title: 'Test MR',
+          state: 'opened',
+          source_branch: 'feature/test',
+          target_branch: 'main',
+          url: 'https://gitlab.com/test-org/test-project/-/merge_requests/42',
+        },
+      };
+    }
+
+    beforeEach(() => {
+      vi.mocked(getGitLabEventType).mockReturnValue('Note Hook');
+    });
+
+    it('ignores a note payload that does not match the note schema', async () => {
+      const request = { body: { object_kind: 'note' }, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Note payload not parseable' }),
+      );
+    });
+
+    it('ignores a note when the filter rejects it', async () => {
+      const body = buildNoteEvent('hello');
+      body.object_attributes.noteable_type = 'Issue';
+      const request = { body, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored' }),
+      );
+    });
+
+    it('ignores a note when the repository is not configured', async () => {
+      vi.mocked(findRepositoryByProjectPath).mockReturnValueOnce(undefined);
+      const request = { body: buildNoteEvent('hello'), headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Repository not configured' }),
+      );
+    });
+
+    it('records a bypass when the note carries a valid bypass marker', async () => {
+      const request = {
+        body: buildNoteEvent('/bypass-quality "urgent hotfix"'),
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockGateway.update).toHaveBeenCalledWith(
+        '/home/user/projects/test-project',
+        'gitlab-test-org/test-project-42',
+        expect.objectContaining({ bypass: expect.objectContaining({ reason: 'urgent hotfix' }) }),
+      );
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'bypass-recorded' }),
+      );
+    });
+
+    it('rejects a bypass marker that has no reason and posts an explanation comment', async () => {
+      const noteCommentPostGateway = new StubNoteCommentPostGateway();
+      const deps = { ...defaultDeps, noteCommentPostGateway };
+      const request = {
+        body: buildNoteEvent('/bypass-quality'),
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(noteCommentPostGateway.calls).toHaveLength(1);
+      expect(noteCommentPostGateway.calls[0]).toEqual(
+        expect.objectContaining({ projectPath: 'test-org/test-project', mrNumber: 42 }),
+      );
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'bypass-rejected', reason: 'missing-reason' }),
+      );
+    });
+
+    it('ignores a bypass marker when the MR is not tracked', async () => {
+      mockGateway.getById.mockReturnValue(null);
+      const request = {
+        body: buildNoteEvent('/bypass-quality "reason here"'),
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'MR not tracked' }),
+      );
+    });
+
+    it('ignores a note that carries no bypass marker', async () => {
+      const request = {
+        body: buildNoteEvent('just a normal comment'),
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'No bypass marker' }),
+      );
+    });
+
+    it('parks a note trigger from a non-trusted actor (provenance gate)', async () => {
+      const memberAccess = new StubMemberAccessGateway();
+      memberAccess.setAccess('note-author', MEMBER_ACCESS_LEVELS.reporter);
+      const deps = { ...defaultDeps, isTrustedActor: new IsTrustedActorUseCase(memberAccess) };
+      const request = {
+        body: buildNoteEvent('/bypass-quality "reason here"'),
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(202);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'pending-confirmation', reason: 'untrusted-actor' }),
+      );
+      expect(mockGateway.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('closed MR with unconfigured repository', () => {
+    it('acknowledges without cleanup when the repo is not configured', async () => {
+      vi.mocked(findRepositoryByProjectPath).mockReturnValueOnce(undefined);
+      const event = GitLabEventFactory.createClosedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'MR closed, repo not configured' }),
+      );
+    });
+  });
+
+  describe('approval quality gate', () => {
+    function buildApprovedMr(overrides: Partial<TrackedMr> = {}): TrackedMr {
+      return TrackedMrFactory.create({
+        id: 'gitlab-test-org/test-project-42',
+        mrNumber: 42,
+        platform: 'gitlab',
+        project: 'test-org/test-project',
+        state: 'pending-review',
+        latestScore: 4,
+        openThreads: 0,
+        bypass: null,
+        ...overrides,
+      });
+    }
+
+    it('revokes the platform approval and posts an FR comment when the quality gate fails', async () => {
+      const trackedMr = buildApprovedMr();
+      mockGateway.getById.mockReturnValue(trackedMr);
+      const approvalRevocationGateway = new StubApprovalRevocationGateway();
+      const noteCommentPostGateway = new StubNoteCommentPostGateway();
+      const deps = {
+        ...defaultDeps,
+        approvalRevocationGateway,
+        noteCommentPostGateway,
+        getQualityThreshold: (): number | null => 8,
+      };
+
+      const event = GitLabEventFactory.createApprovedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(approvalRevocationGateway.calls).toHaveLength(1);
+      expect(noteCommentPostGateway.calls).toHaveLength(1);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'unapproved', mrNumber: 42 }),
+      );
+    });
+
+    it('continues to post the FR comment when revoking the approval throws', async () => {
+      const trackedMr = buildApprovedMr();
+      mockGateway.getById.mockReturnValue(trackedMr);
+      const approvalRevocationGateway = new StubApprovalRevocationGateway();
+      approvalRevocationGateway.shouldThrow = true;
+      const noteCommentPostGateway = new StubNoteCommentPostGateway();
+      const deps = {
+        ...defaultDeps,
+        approvalRevocationGateway,
+        noteCommentPostGateway,
+        getQualityThreshold: (): number | null => 8,
+      };
+
+      const event = GitLabEventFactory.createApprovedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(noteCommentPostGateway.calls).toHaveLength(1);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'unapproved', mrNumber: 42 }),
+      );
+    });
+
+    it('ignores the approval when the MR is not tracked', async () => {
+      mockGateway.getById.mockReturnValue(null);
+      const event = GitLabEventFactory.createApprovedMr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'not-found', mrNumber: 42 }),
+      );
+    });
+  });
+
+  describe('followup budget gate', () => {
+    function buildFollowupMr(): TrackedMr {
+      return TrackedMrFactory.create({
+        id: 'gitlab-test-org/test-project-42',
+        mrNumber: 42,
+        platform: 'gitlab',
+        project: 'test-org/test-project',
+        state: 'pending-review',
+        openThreads: 3,
+        autoFollowup: true,
+        lastPushAt: '2026-05-26T12:00:00.000Z',
+        lastReviewAt: '2026-05-25T12:00:00.000Z',
+      });
+    }
+
+    it('rejects a followup and broadcasts when the budget is exceeded', async () => {
+      const followupMr = buildFollowupMr();
+      mockGateway.getById.mockReturnValue(followupMr);
+      mockGateway.getByNumber.mockReturnValue(followupMr);
+      mockGateway.recordPush.mockReturnValue(followupMr);
+      const enforceBudget = {
+        execute: vi.fn(async () => ({
+          accepted: false,
+          status: {
+            limitUsd: 200,
+            consumedUsd: 250,
+            remainingUsd: 0,
+            percentUsed: 125,
+            exceeded: true,
+            periodStart: '2026-05-01T00:00:00.000Z',
+          },
+        })),
+      };
+      const broadcastBudgetExceeded = vi.fn();
+      const deps = { ...defaultDeps, enforceBudget, broadcastBudgetExceeded };
+
+      const event = GitLabEventFactory.createMrUpdate();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(broadcastBudgetExceeded).toHaveBeenCalledWith(
+        expect.objectContaining({ mrNumber: 42, platform: 'gitlab' }),
+      );
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'rejected', reason: 'budget-exceeded' }),
+      );
+    });
+
+    it('skips the followup when auto-followup is disabled on the MR', async () => {
+      const followupMr = TrackedMrFactory.create({
+        id: 'gitlab-test-org/test-project-42',
+        mrNumber: 42,
+        platform: 'gitlab',
+        project: 'test-org/test-project',
+        state: 'pending-review',
+        openThreads: 3,
+        autoFollowup: false,
+        lastPushAt: '2026-05-26T12:00:00.000Z',
+        lastReviewAt: '2026-05-25T12:00:00.000Z',
+      });
+      mockGateway.getById.mockReturnValue(followupMr);
+      mockGateway.getByNumber.mockReturnValue(followupMr);
+      mockGateway.recordPush.mockReturnValue(followupMr);
+
+      const event = GitLabEventFactory.createMrUpdate();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Auto-followup disabled' }),
+      );
+    });
+  });
+
+  describe('review processor build', () => {
+    it('throws when no repository is configured for the job projectPath', async () => {
+      vi.mocked(findRepositoryByProjectPath).mockReturnValueOnce(undefined);
+      const processor = buildGitLabReviewProcessor(defaultDeps, logger)({
+        id: 'gitlab-test-org/test-project-42',
+        platform: 'gitlab',
+        projectPath: 'test-org/test-project',
+        localPath: '/home/user/projects/test-project',
+        mrNumber: 42,
+        skill: 'review-front',
+        mrUrl: 'https://gitlab.com/test-org/test-project/-/merge_requests/42',
+        sourceBranch: 'feature/test',
+        targetBranch: 'main',
+        jobType: 'review',
+      });
+
+      await expect(processor(
+        {
+          id: 'gitlab-test-org/test-project-42',
+          platform: 'gitlab',
+          projectPath: 'test-org/test-project',
+          localPath: '/home/user/projects/test-project',
+          mrNumber: 42,
+          skill: 'review-front',
+          mrUrl: 'https://gitlab.com/test-org/test-project/-/merge_requests/42',
+          sourceBranch: 'feature/test',
+          targetBranch: 'main',
+          jobType: 'review',
+        },
+        new AbortController().signal,
+      )).rejects.toThrow(/No GitLab repository configured/);
+    });
+
+    it('records completion stats on a successful review run', async () => {
+      mockGateway.getById.mockReturnValue(null);
+      const recordCompletion = new RecordReviewCompletionUseCase(mockGateway);
+      const recordSpy = vi.spyOn(recordCompletion, 'execute');
+      const diffStatsFetchGateway = { fetchDiffStats: vi.fn(() => null) };
+      const deps = { ...defaultDeps, recordCompletion, diffStatsFetchGateway };
+
+      vi.mocked(invokeClaudeReview).mockResolvedValue({
+        success: true,
+        cancelled: false,
+        stdout: 'Score: 9/10',
+        stderr: '',
+        exitCode: 0,
+        durationMs: 1200,
+      });
+      vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
+        await callback(job, new AbortController().signal);
+        return true;
+      });
+
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(recordSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mrId: 'gitlab-test-org/test-project-42',
+          reviewData: expect.objectContaining({ type: 'review' }),
+        }),
+      );
+    });
+
+    it('throws when a non-cancelled review run fails', async () => {
+      mockGateway.getById.mockReturnValue(null);
+      vi.mocked(invokeClaudeReview).mockResolvedValue({
+        success: false,
+        cancelled: false,
+        stdout: '',
+        stderr: 'boom',
+        exitCode: 1,
+        durationMs: 50,
+      });
+      const capturedMessages: string[] = [];
+      vi.mocked(enqueueReview).mockImplementation(async (job, callback) => {
+        try {
+          await callback(job, new AbortController().signal);
+        } catch (error) {
+          capturedMessages.push(error instanceof Error ? error.message : String(error));
+        }
+        return true;
+      });
+
+      const event = GitLabEventFactory.createWithReviewerAdded('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitLabWebhook(request, mockReply, logger, mockGateway, defaultDeps);
+
+      expect(capturedMessages).toEqual(['boom']);
     });
   });
 });

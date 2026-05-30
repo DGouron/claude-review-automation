@@ -176,6 +176,174 @@ describe('projectConfigRoutes — GET /api/project-config', () => {
     expect(payload.error).toMatch(/review-back/);
     await app.close();
   });
+
+  it('returns 400 when the path query parameter is missing', async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config',
+    });
+
+    expect(response.statusCode).toBe(400);
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toBe('Project path required');
+    await app.close();
+  });
+
+  it('returns 400 when the path is not absolute', async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=relative/path',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('Invalid path (must be absolute without ..)');
+    await app.close();
+  });
+
+  it('reports missing base required fields when they are absent', async () => {
+    vi.mocked(fsPromises.readFile).mockResolvedValue(
+      jsonResponse({ reviewSkill: 'review-front' }),
+    );
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toMatch(/Missing fields:/);
+    expect(payload.error).toMatch(/github/);
+    await app.close();
+  });
+
+  it('resolves the reviewSkill SKILL.md when reviewSkill is explicitly set', async () => {
+    vi.mocked(fsPromises.readFile).mockResolvedValue(
+      jsonResponse(ProjectConfigFactory.create({ reviewSkill: 'review-front' })),
+    );
+    const statMock = vi.mocked(fsPromises.stat);
+    statMock.mockResolvedValue(fakeStats());
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    expect(response.json().success).toBe(true);
+    const checkedPaths = statMock.mock.calls.map((call) => String(call[0]));
+    expect(
+      checkedPaths.some((checkedPath) => checkedPath.includes('review-front/SKILL.md')),
+    ).toBe(true);
+    await app.close();
+  });
+
+  it('rejects a config whose agents field is not an array', async () => {
+    const config = { ...ProjectConfigFactory.create(), agents: 'not-an-array' };
+    vi.mocked(fsPromises.readFile).mockResolvedValue(jsonResponse(config));
+    vi.mocked(fsPromises.stat).mockResolvedValue(fakeStats());
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toBe('Field "agents" must be an array');
+    await app.close();
+  });
+
+  it('rejects a config whose agents entries are malformed', async () => {
+    const config = {
+      ...ProjectConfigFactory.create(),
+      agents: [{ name: '', displayName: '' }],
+    };
+    vi.mocked(fsPromises.readFile).mockResolvedValue(jsonResponse(config));
+    vi.mocked(fsPromises.stat).mockResolvedValue(fakeStats());
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toMatch(/Invalid agents format/);
+    await app.close();
+  });
+
+  it('accepts a config with a well-formed agents array', async () => {
+    vi.mocked(fsPromises.readFile).mockResolvedValue(
+      jsonResponse(
+        ProjectConfigFactory.create({
+          agents: [{ name: 'security', displayName: 'Security Auditor' }],
+        }),
+      ),
+    );
+    vi.mocked(fsPromises.stat).mockResolvedValue(fakeStats());
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    expect(response.json().success).toBe(true);
+    await app.close();
+  });
+
+  it('returns the ENOENT message when config.json is missing', async () => {
+    const enoentError = Object.assign(new Error('no such file'), { code: 'ENOENT' });
+    vi.mocked(fsPromises.readFile).mockRejectedValue(enoentError);
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toBe('config.json file not found in .claude/reviews/');
+    await app.close();
+  });
+
+  it('returns a read error when the config file is not valid JSON', async () => {
+    vi.mocked(fsPromises.readFile).mockResolvedValue('not-json{');
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toMatch(/^Read error: /);
+    await app.close();
+  });
+
+  it('stringifies a non-Error thrown value in the read error message', async () => {
+    vi.mocked(fsPromises.readFile).mockRejectedValue('boom');
+
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/project-config?path=/fake/project',
+    });
+
+    const payload = response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.error).toBe('Read error: boom');
+    await app.close();
+  });
 });
 
 function baseConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
@@ -466,6 +634,122 @@ describe('projectConfigRoutes — PATCH /api/project-config', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().config.maxConcurrentReviews).toBeUndefined();
+    await app.close();
+  });
+
+  it('returns 501 when the PATCH use case is not configured', async () => {
+    const app = Fastify();
+    await app.register(projectConfigRoutes);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(501);
+    expect(response.json().error).toBe('PATCH not configured');
+    await app.close();
+  });
+
+  it('returns 400 when the body is not a JSON object', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify(['not', 'an', 'object']),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('Body must be a JSON object');
+    await app.close();
+  });
+
+  it('applies a valid defaultModel from the patch body', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig({ defaultModel: 'sonnet' }));
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { defaultModel: 'opus' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.defaultModel).toBe('opus');
+    await app.close();
+  });
+
+  it('treats an empty-string qualityThreshold as a clear request', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig({ qualityThreshold: 7 }));
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { qualityThreshold: '' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().config.qualityThreshold).toBeUndefined();
+    await app.close();
+  });
+
+  it('keeps a boolean maxConcurrentReviews to surface a validation error', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { maxConcurrentReviews: true },
+    });
+
+    expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('applies reviewSkill and reviewFollowupSkill string values from the patch', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const app = await buildAppWithPatch(gateway);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { reviewSkill: 'review-back', reviewFollowupSkill: 'review-followup-v2' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.config.reviewSkill).toBe('review-back');
+    expect(body.config.reviewFollowupSkill).toBe('review-followup-v2');
+    await app.close();
+  });
+
+  it('invokes the onSaved callback after a successful update', async () => {
+    const gateway = new StubProjectConfigGateway();
+    gateway.set('/repo/A', baseConfig());
+    const updateProjectConfig = new UpdateProjectConfigUseCase(gateway);
+    const onSaved = vi.fn();
+    const app = Fastify();
+    await app.register(projectConfigRoutes, { updateProjectConfig, onSaved });
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/project-config?path=' + encodeURIComponent('/repo/A'),
+      payload: { language: 'en' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(onSaved).toHaveBeenCalledWith('/repo/A');
     await app.close();
   });
 });

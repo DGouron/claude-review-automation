@@ -4,6 +4,7 @@ import { computeDeveloperInsights } from '@/modules/statistics-insights/usecases
 import { computeTeamInsights } from '@/modules/statistics-insights/usecases/insights/computeTeamInsights.usecase.js';
 import { ReviewStatsFactory } from '@/tests/factories/projectStats.factory.js';
 import { PersistedInsightsDataFactory, PersistedDeveloperMetricsFactory } from '@/tests/factories/persistedInsightsData.factory.js';
+import { DiffStatsFactory } from '@/tests/factories/diffStats.factory.js';
 import type { ReviewStats } from '@/modules/statistics-insights/services/statsService.js';
 
 function createReviewsForDeveloper(
@@ -394,6 +395,256 @@ describe('computeInsightsWithPersistence', () => {
       expect(aliceMetrics?.totalAdditions).toBe(1000);
       expect(aliceMetrics?.totalDeletions).toBe(250);
       expect(aliceMetrics?.diffStatsReviewCount).toBe(5);
+    });
+
+    it('should report zero average additions/deletions when no diffStats were ever recorded', () => {
+      const reviews = createReviewsForDeveloper('alice', 6, {
+        score: 8,
+        diffStats: null,
+      });
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      expect(result.developerInsights).toHaveLength(1);
+      const alice = result.developerInsights[0];
+      expect(alice.metrics.averageAdditions).toBe(0);
+      expect(alice.metrics.averageDeletions).toBe(0);
+    });
+
+    it('should compute non-zero average additions/deletions from cumulative diffStats', () => {
+      const reviews = createReviewsForDeveloper('alice', 6, {
+        score: 8,
+        diffStats: { commitsCount: 2, additions: 300, deletions: 100 },
+      });
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      const alice = result.developerInsights[0];
+      expect(alice.metrics.averageAdditions).toBe(300);
+      expect(alice.metrics.averageDeletions).toBe(100);
+    });
+  });
+
+  describe('aiInsights preservation', () => {
+    it('should default aiInsights to null and reviewCountAtAiGeneration to 0 on first run', () => {
+      const reviews = createReviewsForDeveloper('alice', 6, { score: 8 });
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      expect(result.persistedData.aiInsights).toBeNull();
+      expect(result.persistedData.reviewCountAtAiGeneration).toBe(0);
+    });
+
+    it('should preserve existing aiInsights and reviewCountAtAiGeneration', () => {
+      const recentReviews = createReviewsForDeveloper('alice', 6, { score: 8 });
+      const aiInsights = {
+        developers: [
+          {
+            developerName: 'alice',
+            title: 'Architect',
+            titleExplanation: 'Strong design',
+            strengths: ['quality'],
+            weaknesses: [],
+            recommendations: ['keep going'],
+            summary: 'Solid contributor',
+          },
+        ],
+        team: {
+          summary: 'Healthy team',
+          strengths: ['velocity'],
+          weaknesses: [],
+          recommendations: ['document more'],
+          dynamics: 'collaborative',
+        },
+        generatedAt: '2024-01-10T08:00:00Z',
+      };
+
+      const persistedData = PersistedInsightsDataFactory.create({
+        developers: [PersistedDeveloperMetricsFactory.create({
+          developerName: 'alice',
+          totalReviews: 6,
+          recentReviews,
+        })],
+        processedReviewIds: recentReviews.map((review) => review.id),
+        aiInsights,
+        reviewCountAtAiGeneration: 6,
+      });
+
+      const result = computeInsightsWithPersistence([], persistedData);
+
+      expect(result.persistedData.aiInsights).toEqual(aiInsights);
+      expect(result.persistedData.reviewCountAtAiGeneration).toBe(6);
+    });
+  });
+
+  describe('strength and weakness descriptions', () => {
+    it('should generate strength descriptions for a high-performing single developer', () => {
+      const reviews = createReviewsForDeveloper('star', 8, {
+        score: 10,
+        blocking: 0,
+        warnings: 0,
+        suggestions: 0,
+        duration: 5000,
+        diffStats: { commitsCount: 4, additions: 500, deletions: 200 },
+      });
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      expect(result.developerInsights).toHaveLength(1);
+      const star = result.developerInsights[0];
+      expect(star.strengths.length).toBeGreaterThan(0);
+      const strengthDescriptions = star.insightDescriptions.filter(
+        (description) => description.type === 'strength',
+      );
+      expect(strengthDescriptions.length).toBeGreaterThan(0);
+      for (const description of strengthDescriptions) {
+        expect(description.descriptionKey).toMatch(/^insight\./);
+      }
+    });
+
+    it('should generate weakness descriptions for a low-performing single developer', () => {
+      const reviews = createReviewsForDeveloper('struggler', 8, {
+        score: 2,
+        blocking: 5,
+        warnings: 8,
+        suggestions: 10,
+        duration: 600000,
+        diffStats: { commitsCount: 1, additions: 5, deletions: 1 },
+      });
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      expect(result.developerInsights).toHaveLength(1);
+      const struggler = result.developerInsights[0];
+      expect(struggler.weaknesses.length).toBeGreaterThan(0);
+      const weaknessDescriptions = struggler.insightDescriptions.filter(
+        (description) => description.type === 'weakness',
+      );
+      expect(weaknessDescriptions.length).toBeGreaterThan(0);
+      for (const description of weaknessDescriptions) {
+        expect(description.descriptionKey).toMatch(/^insight\./);
+      }
+    });
+  });
+
+  describe('trend-based strength descriptions', () => {
+    it('should emit an improving-trend description when a strength category has level below 7 and an improving trend', () => {
+      const recentReviews = Array.from({ length: 20 }, (_, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: index < 10 ? 5 : 7,
+          blocking: 1,
+          warnings: 2,
+          suggestions: 3,
+          duration: 120000,
+          timestamp: new Date(2024, 0, index + 1).toISOString(),
+          diffStats: null,
+        }),
+      );
+
+      const result = computeInsightsWithPersistence(recentReviews, null);
+
+      expect(result.developerInsights).toHaveLength(1);
+      const alice = result.developerInsights[0];
+      expect(alice.categoryLevels.quality.trend).toBe('improving');
+      expect(alice.categoryLevels.quality.level).toBeLessThan(7);
+      expect(alice.strengths).toContain('quality');
+
+      const qualityDescription = alice.insightDescriptions.find(
+        (description) => description.category === 'quality' && description.type === 'strength',
+      );
+      expect(qualityDescription?.descriptionKey).toBe('insight.quality.improving');
+      expect(qualityDescription?.params).toEqual({});
+    });
+  });
+
+  describe('code volume score correlation', () => {
+    it('should compute a non-zero correlation when both score and volume vary across recent reviews', () => {
+      const varyingData = [
+        { score: 5, additions: 100, deletions: 20 },
+        { score: 7, additions: 300, deletions: 60 },
+        { score: 9, additions: 500, deletions: 100 },
+        { score: 6, additions: 200, deletions: 40 },
+        { score: 8, additions: 400, deletions: 80 },
+      ];
+      const reviews = varyingData.map((data, index) =>
+        ReviewStatsFactory.create({
+          id: `alice-corr-${index}`,
+          assignedBy: 'alice',
+          mrNumber: index + 1,
+          score: data.score,
+          blocking: 0,
+          warnings: 1,
+          suggestions: 2,
+          duration: 60000,
+          timestamp: new Date(2024, 0, index + 1).toISOString(),
+          diffStats: DiffStatsFactory.create({
+            additions: data.additions,
+            deletions: data.deletions,
+          }),
+        }),
+      );
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      expect(result.developerInsights).toHaveLength(1);
+      const alice = result.developerInsights[0];
+      expect(alice.categoryLevels.codeVolume.level).toBe(9);
+    });
+
+    it('should fall back to zero correlation when volume has no variance (zero denominator)', () => {
+      const constantVolume = DiffStatsFactory.create({ additions: 100, deletions: 20 });
+      const reviews = [5, 7, 9, 5, 7].map((score, index) =>
+        ReviewStatsFactory.create({
+          id: `bob-flat-${index}`,
+          assignedBy: 'bob',
+          mrNumber: index + 1,
+          score,
+          blocking: 0,
+          warnings: 1,
+          suggestions: 2,
+          duration: 60000,
+          timestamp: new Date(2024, 0, index + 1).toISOString(),
+          diffStats: constantVolume,
+        }),
+      );
+
+      const result = computeInsightsWithPersistence(reviews, null);
+
+      expect(result.developerInsights).toHaveLength(1);
+      const bob = result.developerInsights[0];
+      expect(bob.categoryLevels.codeVolume.level).toBe(3);
+    });
+  });
+
+  describe('multiple developers (team metrics)', () => {
+    it('should compute team metrics across developers instead of absolute benchmarks', () => {
+      const aliceReviews = createReviewsForDeveloper('alice', 6, {
+        score: 9,
+        blocking: 0,
+        warnings: 1,
+        duration: 30000,
+        diffStats: { commitsCount: 3, additions: 300, deletions: 100 },
+      });
+      const bobReviews = createReviewsForDeveloper('bob', 6, {
+        score: 4,
+        blocking: 3,
+        warnings: 5,
+        duration: 300000,
+        diffStats: { commitsCount: 1, additions: 20, deletions: 10 },
+      });
+
+      const result = computeInsightsWithPersistence(
+        [...aliceReviews, ...bobReviews],
+        null,
+      );
+
+      expect(result.developerInsights).toHaveLength(2);
+      const names = result.developerInsights.map((insight) => insight.developerName);
+      expect(names).toContain('alice');
+      expect(names).toContain('bob');
     });
   });
 });

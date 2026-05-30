@@ -1,6 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir, homedir } from 'node:os';
+import { join } from 'node:path';
 import {
   SupervisorLockFileSystemGateway,
+  createDefaultSupervisorLockFileSystem,
+  getDefaultSupervisorLockFilePath,
   type SupervisorLockFileSystem,
 } from '@/modules/supervisor-management/interface-adapters/gateways/supervisorLock.fileSystem.gateway.js';
 
@@ -122,5 +127,82 @@ describe('SupervisorLockFileSystemGateway', () => {
     await gateway.release();
 
     expect(fileSystem.files.get('/lock')).toBe('5555');
+  });
+
+  it('is a no-op on release when no lock file exists', async () => {
+    const gateway = new SupervisorLockFileSystemGateway({
+      lockFilePath: '/lock',
+      currentPid: 1000,
+      fileSystem,
+    });
+
+    await gateway.release();
+
+    expect(fileSystem.files.has('/lock')).toBe(false);
+  });
+});
+
+describe('getDefaultSupervisorLockFilePath', () => {
+  it('points at the reviewflow supervisor lock under the home directory', () => {
+    expect(getDefaultSupervisorLockFilePath()).toBe(
+      join(homedir(), '.reviewflow', 'supervisor.lock'),
+    );
+  });
+});
+
+describe('createDefaultSupervisorLockFileSystem (integration with real filesystem)', () => {
+  let baseDir: string;
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'supervisor-lock-'));
+  });
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true });
+  });
+
+  it('returns null when reading a file that does not exist', () => {
+    const fileSystem = createDefaultSupervisorLockFileSystem();
+
+    expect(fileSystem.readFile(join(baseDir, 'missing.lock'))).toBe(null);
+  });
+
+  it('writes a file creating parent directories, then reads it back', () => {
+    const fileSystem = createDefaultSupervisorLockFileSystem();
+    const lockPath = join(baseDir, 'nested', 'supervisor.lock');
+
+    fileSystem.writeFile(lockPath, '4242');
+
+    expect(fileSystem.readFile(lockPath)).toBe('4242');
+    expect(readFileSync(lockPath, 'utf-8')).toBe('4242');
+  });
+
+  it('ensures a directory exists', () => {
+    const fileSystem = createDefaultSupervisorLockFileSystem();
+    const dirPath = join(baseDir, 'ensured');
+
+    fileSystem.ensureDirectory(dirPath);
+
+    fileSystem.writeFile(join(dirPath, 'child.lock'), 'ok');
+    expect(fileSystem.readFile(join(dirPath, 'child.lock'))).toBe('ok');
+  });
+
+  it('deletes an existing file and is a no-op on a missing one', () => {
+    const fileSystem = createDefaultSupervisorLockFileSystem();
+    const lockPath = join(baseDir, 'to-delete.lock');
+    writeFileSync(lockPath, '1');
+
+    fileSystem.deleteFile(lockPath);
+    expect(fileSystem.readFile(lockPath)).toBe(null);
+
+    fileSystem.deleteFile(lockPath);
+    expect(fileSystem.readFile(lockPath)).toBe(null);
+  });
+
+  it('reports the current process as alive and a fabricated pid as dead', () => {
+    const fileSystem = createDefaultSupervisorLockFileSystem();
+
+    expect(fileSystem.isProcessAlive(process.pid)).toBe(true);
+    expect(fileSystem.isProcessAlive(2_147_483_646)).toBe(false);
   });
 });
