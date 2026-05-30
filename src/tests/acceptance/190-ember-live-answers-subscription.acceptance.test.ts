@@ -3,6 +3,7 @@ import { ProjectStatsFactory, ReviewStatsFactory } from '@/tests/factories/proje
 import { StubEnvironmentGateway } from '@/tests/stubs/environment.stub.js';
 import { StubEmberReadDataGateway } from '@/tests/stubs/emberReadData.stub.js';
 import { StubEmberAnswerTransportGateway } from '@/tests/stubs/emberAnswerTransport.stub.js';
+import { StubEmberMemoryGateway } from '@/tests/stubs/emberMemory.stub.js';
 import { askEmber } from '@/modules/ember-chat/usecases/askEmber/askEmber.usecase.js';
 import type { EmberStreamSubscriber } from '@/modules/ember-chat/usecases/askEmber/askEmber.usecase.js';
 import { buildEmberSystemPrompt } from '@/modules/ember-chat/services/emberSystemPrompt.js';
@@ -66,6 +67,7 @@ describe('Answer Ember questions live via the Claude subscription (acceptance, S
           transport,
           environment: environment(false),
           readData: reviewData(),
+          memory: new StubEmberMemoryGateway(),
           projectPath: PROJECT_PATH,
         },
       );
@@ -95,6 +97,7 @@ describe('Answer Ember questions live via the Claude subscription (acceptance, S
           transport,
           environment: environment(false),
           readData: largeReviewData(),
+          memory: new StubEmberMemoryGateway(),
           projectPath: PROJECT_PATH,
         },
       );
@@ -122,6 +125,7 @@ describe('Answer Ember questions live via the Claude subscription (acceptance, S
           transport,
           environment: environment(true),
           readData: reviewData(),
+          memory: new StubEmberMemoryGateway(),
           projectPath: PROJECT_PATH,
         },
       );
@@ -142,6 +146,7 @@ describe('Answer Ember questions live via the Claude subscription (acceptance, S
           transport,
           environment: environment(false),
           readData: reviewData(),
+          memory: new StubEmberMemoryGateway(),
           projectPath: PROJECT_PATH,
         },
       );
@@ -161,6 +166,7 @@ describe('Answer Ember questions live via the Claude subscription (acceptance, S
           transport,
           environment: environment(false),
           readData: reviewData(),
+          memory: new StubEmberMemoryGateway(),
           projectPath: PROJECT_PATH,
         },
       );
@@ -199,6 +205,7 @@ describe('Answer Ember questions live via the Claude subscription (acceptance, S
         insights: null,
         jobHistory: null,
         worktrees: [],
+        memory: null,
       });
 
       expect(prompt.length).toBeLessThan(60_000);
