@@ -57,3 +57,7 @@ claude-review.desktop
 # VitePress
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Stryker (mutation testing)
+.stryker-tmp/
+reports/mutation/
