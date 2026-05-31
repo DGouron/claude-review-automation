@@ -46,6 +46,7 @@
     "test:ui": "vitest --ui",
     "test:ci": "vitest --run",
     "coverage": "vitest --coverage",
+    "test:mutation": "stryker run",
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
     "verify": "yarn typecheck && yarn lint && yarn test:ci",
@@ -69,6 +70,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.18",

@@ -141,6 +141,51 @@ describe('OverviewPresenter', () => {
 
       expect(viewModel.activeReviews.items[0]?.elapsedLabel).toBe('—');
     });
+
+    it('falls back to "—" elapsedLabel when startedAt is an unparseable date string', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend' })],
+        activeJobs: [
+          {
+            id: 'broken-date-job',
+            mrNumber: 9,
+            project: '/repos/frontend',
+            mrUrl: 'https://example.com/9',
+            status: 'running',
+            startedAt: 'not-a-date',
+          },
+        ],
+        projectStats: [],
+        recentReviews: [],
+      });
+
+      expect(viewModel.activeReviews.items[0]?.elapsedLabel).toBe('—');
+    });
+
+    it('falls back to "—" projectName when the job localPath matches no repository', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [],
+        activeJobs: [
+          {
+            id: 'orphan-job',
+            mrNumber: 7,
+            project: '/repos/unknown',
+            mrUrl: 'https://example.com/7',
+            status: 'running',
+            startedAt: new Date(NOW.getTime() - 60_000).toISOString(),
+          },
+        ],
+        projectStats: [],
+        recentReviews: [],
+      });
+
+      expect(viewModel.activeReviews.items[0]?.projectName).toBe('—');
+      expect(viewModel.activeReviews.items[0]?.mrPrefix).toBe('MR');
+    });
   });
 
   describe('project cards', () => {
@@ -423,6 +468,75 @@ describe('OverviewPresenter', () => {
       });
 
       expect(viewModel.projectCards.items[0]?.externalLink).toBeUndefined();
+    });
+
+    it('forwards externalLink into a card that has a stats entry with history', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [
+          RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab' }),
+        ],
+        activeJobs: [],
+        projectStats: [
+          ProjectStatsApiResponseFactory.create({
+            project: 'frontend',
+            path: '/repos/frontend',
+            totalReviews: 1,
+            averageScore: 8,
+            reviews: [ReviewStatsFactory.create({ id: 'r1', timestamp: '2026-05-25T11:59:00.000Z', score: 8 })],
+          }),
+        ],
+        recentReviews: [],
+        projectConfigs: {
+          '/repos/frontend': { externalLink: 'https://notion.so/team/frontend' },
+        },
+      });
+
+      const card = viewModel.projectCards.items[0];
+      expect(card?.totalReviews).toBe(1);
+      expect(card?.isEmptyHistory).toBe(false);
+      expect(card?.externalLink).toBe('https://notion.so/team/frontend');
+    });
+
+    it('omits externalLink when the projectConfigs entry holds an empty string', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [
+          RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend', platform: 'gitlab' }),
+        ],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [],
+        projectConfigs: {
+          '/repos/frontend': { externalLink: '' },
+        },
+      });
+
+      expect(viewModel.projectCards.items[0]?.externalLink).toBeUndefined();
+    });
+  });
+
+  describe('recent review title fallback', () => {
+    it('falls back to an empty title when the review file has no title', () => {
+      const presenter = new OverviewPresenter({ now: () => NOW });
+
+      const viewModel = presenter.present({
+        repositories: [RepositoryConfigFactory.create({ name: 'frontend', localPath: '/repos/frontend' })],
+        activeJobs: [],
+        projectStats: [],
+        recentReviews: [
+          RecentReviewFileFactory.create({
+            path: '/repos/frontend/.claude/reviews/2026-05-25-MR-1.md',
+            mrNumber: '1',
+            mtime: '2026-05-25T11:59:00.000Z',
+            title: undefined,
+          }),
+        ],
+      });
+
+      expect(viewModel.recentReviewsFeed.items[0]?.title).toBe('');
     });
   });
 });

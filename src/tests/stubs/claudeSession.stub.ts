@@ -35,6 +35,10 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
   private usageValue: UsageReport = { usesApiPool: false, raw: 'subscription pool' };
   private scheduledAgentStatuses: ScheduledAgentStatus[] = [];
   private sessionUsageResult: SessionUsageSnapshot | null = null;
+  private stopResult: CleanupResult = { success: true, warning: null };
+  private removeResult: CleanupResult = { success: true, warning: null };
+  private stopError: unknown = null;
+  private removeError: unknown = null;
 
   setDispatchResult(result: DispatchResult): void {
     this.dispatchResult = result;
@@ -50,6 +54,22 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
 
   setSessionUsage(value: SessionUsageSnapshot | null): void {
     this.sessionUsageResult = value;
+  }
+
+  setStopResult(result: CleanupResult): void {
+    this.stopResult = result;
+  }
+
+  setRemoveResult(result: CleanupResult): void {
+    this.removeResult = result;
+  }
+
+  setStopError(error: unknown): void {
+    this.stopError = error;
+  }
+
+  setRemoveError(error: unknown): void {
+    this.removeError = error;
   }
 
   scheduleAgentCompletion(
@@ -71,12 +91,18 @@ export class StubClaudeSessionGateway implements ClaudeSessionGateway {
 
   async stop(sessionId: SessionId): Promise<CleanupResult> {
     this.stopCalls.push(sessionId);
-    return { success: true, warning: null };
+    if (this.stopError !== null) {
+      throw this.stopError;
+    }
+    return this.stopResult;
   }
 
   async remove(sessionId: SessionId): Promise<CleanupResult> {
     this.removeCalls.push(sessionId);
-    return { success: true, warning: null };
+    if (this.removeError !== null) {
+      throw this.removeError;
+    }
+    return this.removeResult;
   }
 
   async listAgents(): Promise<AgentStatusEntry[]> {

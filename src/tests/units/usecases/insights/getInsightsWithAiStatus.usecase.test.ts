@@ -158,6 +158,75 @@ describe('getInsightsWithAiStatus', () => {
     expect(result.hasNewReviewsSinceAiGeneration).toBe(false);
   });
 
+  it('should return null aiInsights and false flag when no stats but persisted data has no AI insights', () => {
+    const persistedData = PersistedInsightsDataFactory.create({
+      processedReviewIds: ['r1', 'r2', 'r3'],
+      aiInsights: null,
+      reviewCountAtAiGeneration: 0,
+    });
+    insightsGateway.savePersistedInsights('/test/project', persistedData);
+
+    const result = getInsightsWithAiStatus({
+      projectPath: '/test/project',
+      statsGateway,
+      insightsGateway,
+    });
+
+    expect(result.aiInsights).toBeNull();
+    expect(result.hasNewReviewsSinceAiGeneration).toBe(false);
+  });
+
+  it('should detect new reviews since AI generation when no stats but persisted count is below processed reviews', () => {
+    const persistedData = PersistedInsightsDataFactory.create({
+      processedReviewIds: ['r1', 'r2', 'r3', 'r4', 'r5'],
+      aiInsights: validAiInsights,
+      reviewCountAtAiGeneration: 3,
+    });
+    insightsGateway.savePersistedInsights('/test/project', persistedData);
+
+    const result = getInsightsWithAiStatus({
+      projectPath: '/test/project',
+      statsGateway,
+      insightsGateway,
+    });
+
+    expect(result.aiInsights).toEqual(validAiInsights);
+    expect(result.hasNewReviewsSinceAiGeneration).toBe(true);
+  });
+
+  it('should persist null aiInsights and zero count when no stats but persisted data lacks AI insights', () => {
+    const persistedData = PersistedInsightsDataFactory.create({
+      processedReviewIds: ['r1'],
+      aiInsights: null,
+      reviewCountAtAiGeneration: 0,
+    });
+    insightsGateway.savePersistedInsights('/test/project', persistedData);
+
+    getInsightsWithAiStatus({
+      projectPath: '/test/project',
+      statsGateway,
+      insightsGateway,
+    });
+
+    const saved = insightsGateway.loadPersistedInsights('/test/project');
+    expect(saved?.aiInsights).toBeNull();
+    expect(saved?.reviewCountAtAiGeneration).toBe(0);
+  });
+
+  it('should treat an empty reviews array as no stats and return empty insights', () => {
+    statsGateway.saveProjectStats('/test/project', ProjectStatsFactory.withReviews([]));
+
+    const result = getInsightsWithAiStatus({
+      projectPath: '/test/project',
+      statsGateway,
+      insightsGateway,
+    });
+
+    expect(result.developerInsights).toEqual([]);
+    expect(result.aiInsights).toBeNull();
+    expect(result.hasNewReviewsSinceAiGeneration).toBe(false);
+  });
+
   it('should save updated persisted data', () => {
     const reviews = [
       ReviewStatsFactory.create({ id: 'r1', assignedBy: 'alice', score: 8 }),

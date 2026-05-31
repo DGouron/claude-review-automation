@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "PILOT scope: statistics-insights module only. Run locally on demand (yarn test:mutation). NOT wired into CI / yarn verify — mutation testing is slow and costly.",
+  "packageManager": "yarn",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.config.ts"
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/modules/statistics-insights/**/*.ts",
+    "!src/modules/statistics-insights/**/*.schema.ts",
+    "!src/modules/statistics-insights/**/*.gateway.ts",
+    "!src/**/*.d.ts"
+  ],
+  "reporters": ["html", "clear-text", "progress"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/insights.html"
+  },
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": null
+  },
+  "concurrency": 4,
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": true
+}

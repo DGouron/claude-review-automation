@@ -79,6 +79,8 @@ import { GitHubEventFactory } from '../../../../factories/gitHubEvent.factory.js
 import { createStubLogger } from '../../../../stubs/logger.stub.js';
 import { enqueueReview } from '../../../../../frameworks/queue/pQueueAdapter.js';
 import { invokeClaudeReview } from '../../../../../claude/invoker.js';
+import { verifyGitHubSignature, getGitHubEventType } from '../../../../../security/verifier.js';
+import { findRepositoryByRemoteUrl } from '../../../../../config/loader.js';
 import { TrackedMrFactory } from '../../../../factories/trackedMr.factory.js';
 import type { TrackedMr } from '@/modules/tracking/entities/tracking/trackedMr.js';
 
@@ -829,6 +831,443 @@ describe('handleGitHubWebhook', () => {
       expect(mockReply.status).toHaveBeenCalledWith(200);
       expect(mockReply.send).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'cleaned' }),
+      );
+    });
+  });
+
+  describe('signature and event-type gating', () => {
+    afterEach(() => {
+      vi.mocked(verifyGitHubSignature).mockReturnValue({ valid: true });
+      vi.mocked(getGitHubEventType).mockReturnValue('pull_request');
+    });
+
+    it('responds 401 when signature verification fails', async () => {
+      vi.mocked(verifyGitHubSignature).mockReturnValue({
+        valid: false,
+        error: 'bad-signature',
+      });
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(401);
+      expect(mockReply.send).toHaveBeenCalledWith({ error: 'bad-signature' });
+      expect(enqueueReview).not.toHaveBeenCalled();
+    });
+
+    it('ignores a non-PR event type', async () => {
+      vi.mocked(getGitHubEventType).mockReturnValue('ping');
+
+      const request = { body: {}, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Not a PR event' }),
+      );
+      expect(enqueueReview).not.toHaveBeenCalled();
+    });
+
+    it('responds 400 when the pull_request payload is not parseable', async () => {
+      const request = {
+        body: { not: 'a valid PR payload' },
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(400);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ error: 'Invalid webhook payload' }),
+      );
+      expect(enqueueReview).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('repository configuration gating', () => {
+    afterEach(() => {
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(mockRepoConfig);
+    });
+
+    it('ignores a review request when the repository is not configured', async () => {
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(undefined);
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Repository not configured' }),
+      );
+      expect(enqueueReview).not.toHaveBeenCalled();
+    });
+
+    it('acknowledges a closed PR when the repository is not configured', async () => {
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(undefined);
+
+      const event = GitHubEventFactory.createClosedPr();
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'ignored',
+          reason: 'PR closed, repo not configured',
+        }),
+      );
+    });
+  });
+
+  describe('deduplication on enqueue', () => {
+    it('responds 200 deduplicated when enqueueReview returns false', async () => {
+      vi.mocked(enqueueReview).mockResolvedValue(false);
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'deduplicated' }),
+      );
+    });
+  });
+
+  describe('issue_comment hook', () => {
+    afterEach(() => {
+      vi.mocked(getGitHubEventType).mockReturnValue('pull_request');
+    });
+
+    function buildCommentRequest(body: string): FastifyRequest {
+      vi.mocked(getGitHubEventType).mockReturnValue('issue_comment');
+      return {
+        body: {
+          action: 'created',
+          issue: { number: 123, pull_request: { url: 'https://api/pr/123' } },
+          comment: { body, user: { login: 'commenter' } },
+          repository: {
+            full_name: 'test-owner/test-repo',
+            html_url: 'https://github.com/test-owner/test-repo',
+            clone_url: 'https://github.com/test-owner/test-repo.git',
+          },
+          sender: { login: 'commenter' },
+        },
+        headers: {},
+      } as unknown as FastifyRequest;
+    }
+
+    it('ignores an unparseable issue_comment payload', async () => {
+      vi.mocked(getGitHubEventType).mockReturnValue('issue_comment');
+      const request = { body: { action: 'created' }, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: 'Comment payload not parseable' }),
+      );
+    });
+
+    it('ignores a comment for an unconfigured repository', async () => {
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(undefined);
+      const request = buildCommentRequest('/bypass: shipping hotfix');
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(mockRepoConfig);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Repository not configured' }),
+      );
+    });
+
+    it('posts a comment and responds bypass-rejected when a marker has no reason', async () => {
+      (mockDeps.recordBypass.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'rejected-missing-reason',
+        message: 'Please provide a reason',
+      });
+      const request = buildCommentRequest('/bypass');
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockDeps.noteCommentPostGateway.postComment).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Please provide a reason' }),
+      );
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'bypass-rejected', reason: 'missing-reason' }),
+      );
+    });
+
+    it('responds bypass-recorded when a valid bypass marker is recorded', async () => {
+      (mockDeps.recordBypass.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'recorded',
+        bypass: { author: 'commenter', reason: 'hotfix', recordedAt: '2026-05-26T12:00:00.000Z' },
+      });
+      const request = buildCommentRequest('/bypass: hotfix');
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'bypass-recorded' }),
+      );
+    });
+
+    it('ignores a bypass marker on an untracked PR', async () => {
+      (mockDeps.recordBypass.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'mr-not-found',
+      });
+      const request = buildCommentRequest('/bypass: hotfix');
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'PR not tracked' }),
+      );
+    });
+
+    it('ignores a comment without a bypass marker', async () => {
+      (mockDeps.recordBypass.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'no-marker',
+      });
+      const request = buildCommentRequest('just a normal comment');
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'No bypass marker' }),
+      );
+    });
+  });
+
+  describe('pull_request_review hook', () => {
+    afterEach(() => {
+      vi.mocked(getGitHubEventType).mockReturnValue('pull_request');
+    });
+
+    function buildApprovalRequest(): FastifyRequest {
+      vi.mocked(getGitHubEventType).mockReturnValue('pull_request_review');
+      return {
+        body: {
+          action: 'submitted',
+          review: { id: 55, state: 'approved', user: { login: 'approver' } },
+          pull_request: { number: 123, state: 'open' },
+          repository: {
+            full_name: 'test-owner/test-repo',
+            clone_url: 'https://github.com/test-owner/test-repo.git',
+          },
+          sender: { login: 'approver' },
+        },
+        headers: {},
+      } as unknown as FastifyRequest;
+    }
+
+    it('ignores an unparseable pull_request_review payload', async () => {
+      vi.mocked(getGitHubEventType).mockReturnValue('pull_request_review');
+      const request = { body: { action: 'submitted' }, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: 'pull_request_review payload not parseable' }),
+      );
+    });
+
+    it('ignores a non-approval review', async () => {
+      vi.mocked(getGitHubEventType).mockReturnValue('pull_request_review');
+      const request = {
+        body: {
+          action: 'submitted',
+          review: { id: 55, state: 'commented', user: { login: 'approver' } },
+          pull_request: { number: 123, state: 'open' },
+          repository: {
+            full_name: 'test-owner/test-repo',
+            clone_url: 'https://github.com/test-owner/test-repo.git',
+          },
+          sender: { login: 'approver' },
+        },
+        headers: {},
+      } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Review state is commented, not approved' }),
+      );
+    });
+
+    it('ignores an approval for an unconfigured repository', async () => {
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(undefined);
+      const request = buildApprovalRequest();
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      vi.mocked(findRepositoryByRemoteUrl).mockReturnValue(mockRepoConfig);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', reason: 'Repository not configured' }),
+      );
+    });
+
+    it('marks the PR approved when the state transition succeeds', async () => {
+      (mockDeps.transitionState.execute as ReturnType<typeof vi.fn>).mockReturnValue({ ok: true });
+      const request = buildApprovalRequest();
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'approved', prNumber: 123 }),
+      );
+    });
+
+    it('revokes the approval and posts an FR comment when quality gate reverts it', async () => {
+      (mockDeps.transitionState.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        ok: false,
+        reason: 'quality-gate',
+        message: 'gate failed',
+      });
+      (mockDeps.handlePlatformApproval.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'reverted',
+        reason: 'below-threshold',
+        message: 'Score trop bas',
+      });
+      const request = buildApprovalRequest();
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockDeps.approvalRevocationGateway.revoke).toHaveBeenCalledWith(
+        expect.objectContaining({ mrNumber: 123, reviewId: 55 }),
+      );
+      expect(mockDeps.noteCommentPostGateway.postComment).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Score trop bas' }),
+      );
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'unapproved', prNumber: 123, reason: 'below-threshold' }),
+      );
+    });
+
+    it('keeps responding unapproved when the revocation gateway throws', async () => {
+      (mockDeps.transitionState.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        ok: false,
+        reason: 'quality-gate',
+        message: 'gate failed',
+      });
+      (mockDeps.handlePlatformApproval.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'reverted',
+        reason: 'blockers-present',
+        message: 'Blocages restants',
+      });
+      (mockDeps.approvalRevocationGateway.revoke as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('GitHub API down'),
+      );
+      (mockDeps.noteCommentPostGateway.postComment as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('comment failed'),
+      );
+      const request = buildApprovalRequest();
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'unapproved', reason: 'blockers-present' }),
+      );
+    });
+
+    it('ignores the approval when the quality gate verdict is not reverted', async () => {
+      (mockDeps.transitionState.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        ok: false,
+        reason: 'quality-gate',
+        message: 'gate failed',
+      });
+      (mockDeps.handlePlatformApproval.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        kind: 'bypass-active',
+      });
+      const request = buildApprovalRequest();
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockDeps.approvalRevocationGateway.revoke).not.toHaveBeenCalled();
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', prNumber: 123, reason: 'bypass-active' }),
+      );
+    });
+
+    it('ignores the approval when the transition fails for a non-quality-gate reason', async () => {
+      (mockDeps.transitionState.execute as ReturnType<typeof vi.fn>).mockReturnValue({
+        ok: false,
+        reason: 'not-found',
+      });
+      const request = buildApprovalRequest();
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, mockDeps);
+
+      expect(mockDeps.handlePlatformApproval.execute).not.toHaveBeenCalled();
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ignored', prNumber: 123, reason: 'not-found' }),
+      );
+    });
+  });
+
+  describe('gated invocation (gateClaudeInvocation present)', () => {
+    it('responds 202 pending-confirmation when the gate parks the review', async () => {
+      const deps = {
+        ...mockDeps,
+        gateClaudeInvocation: {
+          execute: vi.fn(async () => ({ status: 'pending', pendingId: 'pending-1' })),
+        },
+      } as unknown as GitHubWebhookDependencies;
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(enqueueReview).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(202);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'pending-confirmation', pendingId: 'pending-1', prNumber: 123 }),
+      );
+    });
+
+    it('responds 202 queued when the gate enqueues the review', async () => {
+      const deps = {
+        ...mockDeps,
+        gateClaudeInvocation: {
+          execute: vi.fn(async () => ({ status: 'enqueued' })),
+        },
+      } as unknown as GitHubWebhookDependencies;
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(202);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'queued', prNumber: 123 }),
+      );
+    });
+
+    it('responds 200 deduplicated when the gate deduplicates the review', async () => {
+      const deps = {
+        ...mockDeps,
+        gateClaudeInvocation: {
+          execute: vi.fn(async () => ({ status: 'deduplicated' })),
+        },
+      } as unknown as GitHubWebhookDependencies;
+
+      const event = GitHubEventFactory.createReviewRequestedPr('claude-bot');
+      const request = { body: event, headers: {} } as unknown as FastifyRequest;
+
+      await handleGitHubWebhook(request, mockReply, logger, mockGateway, deps);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'deduplicated' }),
       );
     });
   });

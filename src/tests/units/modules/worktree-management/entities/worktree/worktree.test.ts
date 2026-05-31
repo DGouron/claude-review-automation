@@ -2,12 +2,76 @@ import { describe, it, expect } from 'vitest';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
+  createWorktreePath,
   deriveWorktreeSlug,
+  deriveWorktreeDirectoryName,
   deriveWorktreePath,
   deriveFetchRef,
+  parseWorktreeDirectoryName,
 } from '@/modules/worktree-management/entities/worktree/worktree.js';
 
 describe('worktree entity helpers', () => {
+  describe('createWorktreePath', () => {
+    it('returns the value for a valid absolute path', () => {
+      const path = createWorktreePath('/home/damien/.reviewflow/worktrees/gitlab-x-1');
+      expect(path).toBe('/home/damien/.reviewflow/worktrees/gitlab-x-1');
+    });
+
+    it('throws on an empty string', () => {
+      expect(() => createWorktreePath('')).toThrow(
+        'Invalid worktree path (must be absolute, non-empty): ',
+      );
+    });
+
+    it('throws on a relative (non-absolute) path', () => {
+      expect(() => createWorktreePath('relative/path')).toThrow(
+        'Invalid worktree path (must be absolute, non-empty): relative/path',
+      );
+    });
+  });
+
+  describe('deriveWorktreeDirectoryName', () => {
+    it('joins platform, slugged project path, and mr number', () => {
+      expect(
+        deriveWorktreeDirectoryName({
+          platform: 'gitlab',
+          projectPath: 'group/project',
+          mrNumber: 42,
+        }),
+      ).toBe('gitlab-group-project-42');
+    });
+  });
+
+  describe('parseWorktreeDirectoryName', () => {
+    it('parses a gitlab directory name', () => {
+      expect(parseWorktreeDirectoryName('gitlab-group-project-42')).toEqual({
+        platform: 'gitlab',
+        projectPath: 'group-project',
+        mrNumber: 42,
+      });
+    });
+
+    it('parses a github directory name', () => {
+      expect(parseWorktreeDirectoryName('github-owner-repo-17')).toEqual({
+        platform: 'github',
+        projectPath: 'owner-repo',
+        mrNumber: 17,
+      });
+    });
+
+    it('returns null when the name does not match the pattern', () => {
+      expect(parseWorktreeDirectoryName('bitbucket-owner-repo-17')).toBeNull();
+    });
+
+    it('returns null when there is no trailing mr number', () => {
+      expect(parseWorktreeDirectoryName('gitlab-project')).toBeNull();
+    });
+
+    it('returns null when the mr number is zero', () => {
+      expect(parseWorktreeDirectoryName('gitlab-project-0')).toBeNull();
+    });
+  });
+
   describe('deriveWorktreeSlug', () => {
     it('replaces slashes with dashes', () => {
       expect(deriveWorktreeSlug('group/project')).toBe('group-project');
